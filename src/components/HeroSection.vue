@@ -2,7 +2,7 @@
 </script>
 
 <template>
-  <section class="w-full bg-neo-violet text-white border-b-4 border-black py-14 sm:py-20 lg:py-24 select-none relative overflow-hidden" aria-labelledby="hero-title">
+  <section class="w-full bg-neo-violet text-white border-b-4 border-black pt-28 sm:pt-0 py-14 sm:py-20 lg:py-24 select-none relative overflow-hidden" aria-labelledby="hero-title">
     <div class="absolute inset-0 pointer-events-none select-none overflow-hidden">
       <span class="absolute top-8 left-[8%] text-neo-yellow text-3xl font-black opacity-60">✦</span>
       <span class="absolute top-1/4 left-[3%] text-white text-2xl font-black opacity-40">★</span>
@@ -22,18 +22,18 @@
             id="hero-title"
             class="font-outfit font-black text-4xl sm:text-5xl md:text-6xl tracking-tight leading-[0.98] text-white"
           >
-            LITERASI PILIHAN.<br />
+            BACA LEBIH DALAM.<br />
             <span class="relative inline-block mt-2">
               <span
                 class="bg-neo-yellow text-black border-3 md:border-4 border-black px-3 sm:px-4 py-1 inline-block -rotate-1 rounded-[2px] shadow-[5px_5px_0px_0px_#000]"
               >
-                UNTUK PIKIRAN KRITIS.
+                UNTUK IDE YANG LEBIH TAJAM.
               </span>
             </span>
           </h1>
 
           <p class="font-sans text-base sm:text-lg md:text-xl font-semibold text-white/90 leading-relaxed max-w-xl">
-            Kurasi karya sastra klasik, humaniora, sains, dan pengembangan diri terbaik dari penerbit terkemuka. 100% buku orisinal dengan kemasan proteksi maksimal langsung ke rak bukumu.
+            Temukan ragam buku pilihan dari penerbit terkemuka untuk menemani perjalanan belajarmu. Jaminan buku edisi asli dengan pengiriman aman ke seluruh Indonesia.
           </p>
           
           <div class="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
@@ -57,7 +57,7 @@
               <span class="text-neo-yellow">✓</span> 100% Edisi Asli Penerbit
             </span>
             <span class="flex items-center gap-1.5">
-              <span class="text-neo-yellow">✓</span> Kemasan Khusus Anti-Penyok
+              <span class="text-neo-yellow">✓</span> Proteksi Kemasan
             </span>
             <span class="flex items-center gap-1.5">
               <span class="text-neo-yellow">✓</span> Pengiriman ke Seluruh Indonesia
