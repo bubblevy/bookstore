@@ -4,7 +4,6 @@ import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import CartDrawer from '@/components/CartDrawer.vue'
 import SearchModal from '@/components/SearchModal.vue'
-import LoginModal from '@/components/LoginModal.vue'
 import QuickViewModal from '@/components/QuickViewModal.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
 
@@ -41,7 +40,6 @@ onMounted(() => {
     <!-- Global Interactive Overlays -->
     <CartDrawer />
     <SearchModal />
-    <LoginModal />
     <QuickViewModal />
     <ToastNotification />
   </div>
