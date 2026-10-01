@@ -1,0 +1,413 @@
+@import "tailwindcss";
+
+/* ===== NEUBRUTALISM THEME — Palette from referensi/warna.jpeg ===== */
+@theme {
+  /* Fonts */
+  --font-outfit: "Outfit", sans-serif;
+  --font-sans: "Plus Jakarta Sans", sans-serif;
+
+  /* Usage ratio from referensi/warna.jpeg:
+     50% Neutral background
+     25% Wisdom Violet
+     15% Luminous Yellow
+     10% Vibrant Orange
+     + Lime accent & Black/White supportive
+  */
+  --color-violet: #8847f5;
+  --color-violet-light: #9d64f8;
+  --color-violet-dark: #6f2ed6;
+
+  --color-yellow: #d8fa00;
+  --color-yellow-light: #e6ff33;
+  --color-yellow-dark: #bce000;
+
+  --color-orange: #ff7b29;
+  --color-orange-light: #ff9147;
+  --color-orange-dark: #e86312;
+
+  --color-lime: #cbff00;
+  --color-lime-light: #dbff4d;
+
+  /* Base & semantic colors */
+  --color-background: #f1f1f5;
+  --color-foreground: #000000;
+
+  --color-primary: #8847f5;
+  --color-primary-foreground: #ffffff;
+
+  --color-secondary: #000000;
+  --color-secondary-foreground: #ffffff;
+
+  --color-accent: #d8fa00;
+  --color-accent-foreground: #000000;
+
+  --color-highlight: #ff7b29;
+  --color-highlight-foreground: #ffffff;
+
+  --color-muted: #e5e5eb;
+  --color-muted-foreground: #52525b;
+
+  --color-card: #ffffff;
+  --color-card-foreground: #000000;
+
+  --color-border: #000000;
+  --color-input: #000000;
+
+  /* Radius — Neubrutalist sharp: 2px everywhere */
+  --radius-xs: 2px;
+  --radius-sm: 2px;
+  --radius: 2px;
+  --radius-md: 2px;
+  --radius-lg: 2px;
+  --radius-xl: 2px;
+  --radius-2xl: 2px;
+
+  /* Shadows */
+  --shadow-sm: 2px 2px 0px 0px #000000;
+  --shadow: 4px 4px 0px 0px #000000;
+  --shadow-md: 6px 6px 0px 0px #000000;
+  --shadow-lg: 8px 8px 0px 0px #000000;
+  --shadow-xl: 12px 12px 0px 0px #000000;
+}
+
+/* ===== Base styles ===== */
+html {
+  scroll-behavior: smooth;
+  font-family: var(--font-sans);
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Font utilities */
+.font-outfit {
+  font-family: var(--font-outfit);
+}
+.font-sans {
+  font-family: var(--font-sans);
+}
+
+/* Selection */
+::selection {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+/* Scrollbar — neobrutalist */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-background);
+  border-left: 2px solid var(--color-border);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-primary);
+  border: 2px solid var(--color-border);
+}
+
+/* ===== Button base — neobrutalist press effect ===== */
+.neubrutal-btn {
+  transition: all 0.1s ease;
+  cursor: pointer;
+  border: 2px solid var(--color-border);
+  border-radius: 2px;
+}
+.neubrutal-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: none !important;
+}
+
+/* ===== Card hover effect ===== */
+.neubrutal-card-hover {
+  transition: all 0.15s ease;
+}
+.neubrutal-card-hover:hover {
+  transform: translate(-3px, -3px);
+  box-shadow: 6px 6px 0px 0px var(--color-border) !important;
+}
+
+/* ===== Link underline animation ===== */
+.link-under-link {
+  position: relative;
+  text-decoration: none;
+}
+.link-under-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 100%;
+  height: 2px;
+  background: var(--color-border);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.2s ease;
+}
+.link-under-link:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+/* ===== Keyframe Animations ===== */
+@keyframes float-slow {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-12px) rotate(3deg);
+  }
+}
+@keyframes float-slower {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-18px) rotate(-4deg);
+  }
+}
+@keyframes hero-float {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-6px) scale(1.02);
+  }
+}
+@keyframes hero-entrance {
+  0% {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes wiggle {
+  0%,
+  100% {
+    transform: rotate(-2deg);
+  }
+  50% {
+    transform: rotate(2deg);
+  }
+}
+@keyframes marquee {
+  from {
+    transform: translateX(0%);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+@keyframes marquee2 {
+  from {
+    transform: translateX(50%);
+  }
+  to {
+    transform: translateX(0%);
+  }
+}
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Animation utility classes */
+.animate-float-slow {
+  animation: float-slow 6s ease-in-out infinite;
+}
+.animate-float-slower {
+  animation: float-slower 8s ease-in-out infinite;
+}
+.animate-hero-float {
+  animation: hero-float 3s ease-in-out infinite;
+}
+.animate-hero-entrance {
+  animation: hero-entrance 0.6s ease-out forwards;
+}
+.animate-wiggle {
+  animation: wiggle 4s ease-in-out infinite;
+}
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+.animate-marquee2 {
+  animation: marquee2 30s linear infinite;
+}
+.animate-spin-slow {
+  animation: spin-slow 18s linear infinite;
+}
+
+/* Flying badge hover/floating physics animations */
+@keyframes fly-badge-1 {
+  0%, 100% {
+    transform: translateY(0px) rotate(-5deg);
+  }
+  50% {
+    transform: translateY(-12px) rotate(-2deg);
+  }
+}
+@keyframes fly-badge-2 {
+  0%, 100% {
+    transform: translateY(0px) rotate(6deg);
+  }
+  50% {
+    transform: translateY(-14px) rotate(9deg);
+  }
+}
+@keyframes fly-badge-3 {
+  0%, 100% {
+    transform: translateY(0px) rotate(3deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(0deg);
+  }
+}
+@keyframes fly-badge-4 {
+  0%, 100% {
+    transform: translateY(0px) rotate(-4deg);
+  }
+  50% {
+    transform: translateY(-13px) rotate(-7deg);
+  }
+}
+
+.animate-fly-1 {
+  animation: fly-badge-1 3.5s ease-in-out infinite;
+}
+.animate-fly-2 {
+  animation: fly-badge-2 4.2s ease-in-out infinite;
+}
+.animate-fly-3 {
+  animation: fly-badge-3 3.8s ease-in-out infinite;
+}
+.animate-fly-4 {
+  animation: fly-badge-4 4.5s ease-in-out infinite;
+}
+
+/* Pause animation on hover — for marquee text */
+.animate-marquee:hover,
+.animate-marquee2:hover {
+  animation-play-state: paused;
+}
+
+/* ===== Sticker rotation helpers ===== */
+.rotate-sticker-1 {
+  transform: rotate(-3deg);
+}
+.rotate-sticker-2 {
+  transform: rotate(2deg);
+}
+.rotate-sticker-3 {
+  transform: rotate(-1deg);
+}
+.rotate-sticker-4 {
+  transform: rotate(3deg);
+}
+
+/* ===== Neubrutalist focus ring ===== */
+*:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 3px;
+}
+
+/* ===== Neubrutalist colored shadows & palette helpers ===== */
+.bg-neo-violet { background-color: #8847f5; }
+.bg-neo-yellow { background-color: #d8fa00; }
+.bg-neo-orange { background-color: #ff7b29; }
+.bg-neo-lime { background-color: #cbff00; }
+
+.text-neo-violet { color: #8847f5; }
+.text-neo-yellow { color: #d8fa00; }
+.text-neo-orange { color: #ff7b29; }
+
+.shadow-neo-sm { box-shadow: 2px 2px 0px 0px #000000; }
+.shadow-neo { box-shadow: 4px 4px 0px 0px #000000; }
+.shadow-neo-md { box-shadow: 6px 6px 0px 0px #000000; }
+.shadow-neo-lg { box-shadow: 8px 8px 0px 0px #000000; }
+.shadow-neo-xl { box-shadow: 12px 12px 0px 0px #000000; }
+
+.shadow-neo-yellow {
+  box-shadow: 5px 5px 0px 0px #d8fa00;
+}
+.shadow-neo-violet {
+  box-shadow: 5px 5px 0px 0px #8847f5;
+}
+.shadow-neo-orange {
+  box-shadow: 5px 5px 0px 0px #ff7b29;
+}
+.shadow-neo-lime {
+  box-shadow: 5px 5px 0px 0px #cbff00;
+}
+
+/* ===== Reveal on scroll ===== */
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ===== Transitions ===== */
+.drawer-enter-active,
+.drawer-leave-active {
+  transition: transform 0.3s ease;
+}
+.drawer-enter-from,
+.drawer-leave-to {
+  transform: translateX(-100%);
+}
+.modal-fade-enter-active,
+.modal-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
+}
+.modal-pop-enter-active,
+.modal-pop-leave-active {
+  transition: transform 0.2s ease;
+}
+.modal-pop-enter-from,
+.modal-pop-leave-to {
+  transform: scale(0.95);
+}
+.toast-enter-active,
+.toast-leave-active {
+  transition: all 0.3s ease;
+}
+.toast-enter-from,
+.toast-leave-to {
+  opacity: 0;
+  transform: translateY(16px);
+}
+
+/* ===== Line clamp ===== */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
