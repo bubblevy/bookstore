@@ -17,7 +17,7 @@ function handleSubscribe() {
 
 <template>
   <!-- Full-width alternating background band (White) -->
-  <section class="w-full bg-white border-b-4 border-black py-16 md:py-20 select-none">
+  <section class="w-full bg-white border-b-4 border-black py-16 md:py-20">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4">
       <span class="inline-block bg-neo-yellow border-2 border-black px-3 py-0.5 rounded font-outfit font-black text-xs uppercase tracking-wider shadow-neo-sm">
         BULETIN LITERASI

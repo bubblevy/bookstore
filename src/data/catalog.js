@@ -48,9 +48,9 @@ export const categories = [
     count: '95+ Buku',
     description: 'Tipografi, arsitektur, estetika visual & grafis retro',
     icon: 'palette',
-    theme: 'violet',
-    bg: '#8847F5',
-    text: '#FFFFFF',
+    theme: 'pink',
+    bg: '#FF9EC1',
+    text: '#000000',
   },
   {
     id: 'komik-manga',
@@ -58,8 +58,8 @@ export const categories = [
     count: '120+ Buku',
     description: 'Komik visual, webtoon cetak & manga masterpiece',
     icon: 'star',
-    theme: 'yellow',
-    bg: '#D8FA00',
+    theme: 'sky',
+    bg: '#6EC6FF',
     text: '#000000',
   },
 ]

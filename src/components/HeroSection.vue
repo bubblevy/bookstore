@@ -1,18 +1,34 @@
-<script setup>
-</script>
+<script setup></script>
 
 <template>
-  <section class="w-full bg-neo-violet text-white border-b-4 border-black pt-28 sm:pt-0 py-14 sm:py-20 lg:py-24 select-none relative overflow-hidden" aria-labelledby="hero-title">
+  <section
+    class="w-full bg-neo-violet text-white border-b-4 border-black pt-28 sm:pt-0 py-14 sm:py-20 lg:py-24 select-none relative overflow-hidden"
+    aria-labelledby="hero-title"
+  >
     <div class="absolute inset-0 pointer-events-none select-none overflow-hidden">
       <span class="absolute top-8 left-[8%] text-neo-yellow text-3xl font-black opacity-60">✦</span>
       <span class="absolute top-1/4 left-[3%] text-white text-2xl font-black opacity-40">★</span>
-      <span class="absolute bottom-12 left-[12%] text-neo-lime text-3xl font-black opacity-60">✦</span>
-      <span class="absolute top-10 right-[15%] text-neo-orange text-3xl font-black opacity-60">✦</span>
-      <span class="absolute top-1/2 right-[4%] text-neo-yellow text-3xl font-black opacity-50">★</span>
-      <span class="absolute bottom-16 right-[22%] text-white text-2xl font-black opacity-50">✦</span>
-      <div class="absolute -top-12 -left-12 w-48 h-48 rounded-full border-4 border-black/20 bg-neo-yellow/10"></div>
-      <div class="absolute -bottom-16 -right-16 w-60 h-60 rounded-full border-4 border-black/20 bg-neo-orange/10"></div>
-      <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1.5px,transparent_1.5px)] bg-size:24px_24px"></div>
+      <span class="absolute bottom-12 left-[12%] text-neo-lime text-3xl font-black opacity-60"
+        >✦</span
+      >
+      <span class="absolute top-10 right-[15%] text-neo-orange text-3xl font-black opacity-60"
+        >✦</span
+      >
+      <span class="absolute top-1/2 right-[4%] text-neo-yellow text-3xl font-black opacity-50"
+        >★</span
+      >
+      <span class="absolute bottom-16 right-[22%] text-white text-2xl font-black opacity-50"
+        >✦</span
+      >
+      <div
+        class="absolute -top-12 -left-12 w-48 h-48 rounded-full border-4 border-black/20 bg-neo-yellow/10"
+      ></div>
+      <div
+        class="absolute -bottom-16 -right-16 w-60 h-60 rounded-full border-4 border-black/20 bg-neo-orange/10"
+      ></div>
+      <div
+        class="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1.5px,transparent_1.5px)] bg-size:24px_24px"
+      ></div>
     </div>
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -32,10 +48,13 @@
             </span>
           </h1>
 
-          <p class="font-sans text-base sm:text-lg md:text-xl font-semibold text-white/90 leading-relaxed max-w-xl">
-            Temukan ragam buku pilihan dari penerbit terkemuka untuk menemani perjalanan belajarmu. Jaminan buku edisi asli dengan pengiriman aman ke seluruh Indonesia.
+          <p
+            class="font-sans text-base sm:text-lg md:text-xl font-semibold text-white/90 leading-relaxed max-w-xl"
+          >
+            Temukan ragam buku pilihan dari penerbit terkemuka untuk menemani perjalanan belajarmu.
+            Jaminan buku edisi asli dengan pengiriman aman ke seluruh Indonesia.
           </p>
-          
+
           <div class="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
             <a
               href="#katalog"
@@ -52,7 +71,9 @@
             </a>
           </div>
 
-          <div class="pt-4 border-t-2 border-white/20 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-outfit font-bold text-white/90">
+          <div
+            class="pt-4 border-t-2 border-white/20 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-outfit font-bold text-white/90"
+          >
             <span class="flex items-center gap-1.5">
               <span class="text-neo-yellow">✓</span> 100% Edisi Asli Penerbit
             </span>
@@ -66,14 +87,16 @@
         </div>
 
         <!-- Right Column: 4-Block Staggered Brick Puzzle (Tata Bata Tidak Sejajar Panjang-Pendek, Total 4 Ujung) -->
-        <div class="hidden md:flex md:col-span-6 justify-end items-center relative py-4 lg:py-6 pe-1 select-none pointer-events-none">
+        <div
+          class="hidden md:flex md:col-span-6 justify-end items-center relative py-4 lg:py-6 pe-1 select-none pointer-events-none"
+        >
           <div class="grid grid-cols-2 gap-4 lg:gap-5 w-full max-w-[440px] lg:max-w-[490px]">
-            
             <!-- Column 1 (Kiri): Atas PANJANG, Bawah PENDEK -->
             <div class="flex flex-col gap-4 lg:gap-5">
               <!-- Block 1: PANJANG / TINGGI (Kuning - Burung Hantu) -->
               <div
-                class="w-full h-[230px] lg:h-[260px] bg-neo-yellow text-black border-3 md:border-4 border-black rounded-[2px] p-3.5 sm:p-4 shadow-[6px_6px_0px_0px_#000] flex flex-col justify-between"
+                style="background-color: rgb(255, 158, 193); color: rgb(0, 0, 0)"
+                class="w-full h-[230px] lg:h-[260px] text-black border-3 md:border-4 border-black rounded-[2px] p-3.5 sm:p-4 shadow-[6px_6px_0px_0px_#000] flex flex-col justify-between"
               >
                 <!-- Header stripe -->
                 <div class="flex items-center justify-between border-b-2 border-black pb-2">
@@ -81,25 +104,71 @@
                     <span class="w-2.5 h-2.5 rounded-full bg-black"></span>
                     <span class="w-2.5 h-2.5 rounded-full bg-black"></span>
                   </div>
-                  <span class="font-outfit font-black text-[10px] uppercase tracking-widest bg-black text-white px-1.5 py-0.5 rounded-[1px]">01</span>
+                  <span
+                    class="font-outfit font-black text-[10px] uppercase tracking-widest bg-black text-white px-1.5 py-0.5 rounded-[1px]"
+                    >01</span
+                  >
                 </div>
 
                 <!-- Center Illustration: Burung Hantu (Owl) -->
                 <div class="w-full flex-1 flex items-center justify-center p-1">
-                  <svg viewBox="0 0 100 100" class="w-full h-full max-h-[135px] lg:max-h-[155px]" xmlns="http://www.w3.org/2000/svg">
-                    <ellipse cx="50" cy="55" rx="32" ry="36" fill="#FFFFFF" stroke="#000" stroke-width="3" />
-                    <path d="M 20 45 C 15 65, 25 80, 35 85" fill="#000" stroke="#000" stroke-width="2" />
-                    <path d="M 80 45 C 85 65, 75 80, 65 85" fill="#000" stroke="#000" stroke-width="2" />
-                    <path d="M 40 60 Q 50 65 60 60 M 42 70 Q 50 75 58 70" stroke="#000" stroke-width="2.5" fill="none" stroke-linecap="round" />
-                    <polygon points="26,30 36,15 45,28" fill="#8847F5" stroke="#000" stroke-width="3" />
-                    <polygon points="74,30 64,15 55,28" fill="#8847F5" stroke="#000" stroke-width="3" />
+                  <svg
+                    viewBox="0 0 100 100"
+                    class="w-full h-full max-h-[135px] lg:max-h-[155px]"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <ellipse
+                      cx="50"
+                      cy="55"
+                      rx="32"
+                      ry="36"
+                      fill="#FFFFFF"
+                      stroke="#000"
+                      stroke-width="3"
+                    />
+                    <path
+                      d="M 20 45 C 15 65, 25 80, 35 85"
+                      fill="#000"
+                      stroke="#000"
+                      stroke-width="2"
+                    />
+                    <path
+                      d="M 80 45 C 85 65, 75 80, 65 85"
+                      fill="#000"
+                      stroke="#000"
+                      stroke-width="2"
+                    />
+                    <path
+                      d="M 40 60 Q 50 65 60 60 M 42 70 Q 50 75 58 70"
+                      stroke="#000"
+                      stroke-width="2.5"
+                      fill="none"
+                      stroke-linecap="round"
+                    />
+                    <polygon
+                      points="26,30 36,15 45,28"
+                      fill="#8847F5"
+                      stroke="#000"
+                      stroke-width="3"
+                    />
+                    <polygon
+                      points="74,30 64,15 55,28"
+                      fill="#8847F5"
+                      stroke="#000"
+                      stroke-width="3"
+                    />
                     <circle cx="38" cy="38" r="12" fill="#FFFFFF" stroke="#000" stroke-width="3" />
                     <circle cx="38" cy="38" r="6" fill="#000" />
                     <circle cx="40" cy="36" r="2" fill="#FFFFFF" />
                     <circle cx="62" cy="38" r="12" fill="#FFFFFF" stroke="#000" stroke-width="3" />
                     <circle cx="62" cy="38" r="6" fill="#000" />
                     <circle cx="64" cy="36" r="2" fill="#FFFFFF" />
-                    <polygon points="50,42 45,50 55,50" fill="#FF7B29" stroke="#000" stroke-width="2.5" />
+                    <polygon
+                      points="50,42 45,50 55,50"
+                      fill="#FF7B29"
+                      stroke="#000"
+                      stroke-width="2.5"
+                    />
                     <rect x="15" y="88" width="70" height="5" rx="2" fill="#000" />
                   </svg>
                 </div>
@@ -115,18 +184,60 @@
                 <!-- Mini Header -->
                 <div class="flex items-center justify-between border-b-2 border-black pb-1">
                   <span class="w-8 h-1.5 bg-black"></span>
-                  <span class="font-outfit font-black text-[10px] uppercase tracking-widest bg-black text-white px-1.5 py-0.5 rounded-[1px]">02</span>
+                  <span
+                    class="font-outfit font-black text-[10px] uppercase tracking-widest bg-black text-white px-1.5 py-0.5 rounded-[1px]"
+                    >02</span
+                  >
                 </div>
 
                 <!-- Illustration: Ikan Paus (Whale) -->
                 <div class="w-full flex-1 flex items-center justify-center p-1">
-                  <svg viewBox="0 0 100 65" class="w-full h-full max-h-[85px] lg:max-h-[100px]" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M 40 12 C 38 4, 30 6, 32 10 M 42 10 C 45 2, 53 4, 50 10" stroke="#000" stroke-width="2" fill="none" stroke-linecap="round" />
-                    <path d="M 15 32 C 18 16, 55 12, 72 28 C 82 34, 86 30, 89 24 C 86 42, 78 44, 70 42 C 55 50, 26 52, 15 32 Z" fill="#8847F5" stroke="#000" stroke-width="2.5" stroke-linejoin="round" />
-                    <path d="M 20 37 C 28 46, 48 45, 60 40" stroke="#FFFFFF" stroke-width="2.5" fill="none" />
-                    <path d="M 38 38 C 41 47, 49 50, 46 41" fill="#FF7B29" stroke="#000" stroke-width="2" />
-                    <circle cx="24" cy="28" r="2.5" fill="#FFFFFF" stroke="#000" stroke-width="1.5" />
-                    <path d="M 10 58 Q 20 54 30 58 T 50 58 T 70 58 T 90 58" stroke="#000" stroke-width="2.5" fill="none" stroke-linecap="round" />
+                  <svg
+                    viewBox="0 0 100 65"
+                    class="w-full h-full max-h-[85px] lg:max-h-[100px]"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M 40 12 C 38 4, 30 6, 32 10 M 42 10 C 45 2, 53 4, 50 10"
+                      stroke="#000"
+                      stroke-width="2"
+                      fill="none"
+                      stroke-linecap="round"
+                    />
+                    <path
+                      d="M 15 32 C 18 16, 55 12, 72 28 C 82 34, 86 30, 89 24 C 86 42, 78 44, 70 42 C 55 50, 26 52, 15 32 Z"
+                      fill="#8847F5"
+                      stroke="#000"
+                      stroke-width="2.5"
+                      stroke-linejoin="round"
+                    />
+                    <path
+                      d="M 20 37 C 28 46, 48 45, 60 40"
+                      stroke="#FFFFFF"
+                      stroke-width="2.5"
+                      fill="none"
+                    />
+                    <path
+                      d="M 38 38 C 41 47, 49 50, 46 41"
+                      fill="#FF7B29"
+                      stroke="#000"
+                      stroke-width="2"
+                    />
+                    <circle
+                      cx="24"
+                      cy="28"
+                      r="2.5"
+                      fill="#FFFFFF"
+                      stroke="#000"
+                      stroke-width="1.5"
+                    />
+                    <path
+                      d="M 10 58 Q 20 54 30 58 T 50 58 T 70 58 T 90 58"
+                      stroke="#000"
+                      stroke-width="2.5"
+                      fill="none"
+                      stroke-linecap="round"
+                    />
                   </svg>
                 </div>
 
@@ -146,17 +257,42 @@
               >
                 <!-- Mini Header -->
                 <div class="flex items-center justify-between border-b-2 border-black pb-1">
-                  <span class="font-outfit font-black text-[10px] uppercase tracking-widest bg-black text-white px-1.5 py-0.5 rounded-[1px]">03</span>
+                  <span
+                    class="font-outfit font-black text-[10px] uppercase tracking-widest bg-black text-white px-1.5 py-0.5 rounded-[1px]"
+                    >03</span
+                  >
                   <span class="w-8 h-1.5 bg-black"></span>
                 </div>
 
                 <!-- Illustration: Buah Jeruk (Citrus Fruit) -->
                 <div class="w-full flex-1 flex items-center justify-center p-1">
-                  <svg viewBox="0 0 100 80" class="w-full h-full max-h-[85px] lg:max-h-[100px]" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M 50 16 C 50 8, 48 4, 46 2" stroke="#000" stroke-width="3" fill="none" stroke-linecap="round" />
-                    <path d="M 50 10 C 62 5, 72 13, 62 17 C 54 19, 50 13, 50 10 Z" fill="#CBFF00" stroke="#000" stroke-width="2.5" stroke-linejoin="round" />
+                  <svg
+                    viewBox="0 0 100 80"
+                    class="w-full h-full max-h-[85px] lg:max-h-[100px]"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M 50 16 C 50 8, 48 4, 46 2"
+                      stroke="#000"
+                      stroke-width="3"
+                      fill="none"
+                      stroke-linecap="round"
+                    />
+                    <path
+                      d="M 50 10 C 62 5, 72 13, 62 17 C 54 19, 50 13, 50 10 Z"
+                      fill="#CBFF00"
+                      stroke="#000"
+                      stroke-width="2.5"
+                      stroke-linejoin="round"
+                    />
                     <circle cx="50" cy="46" r="26" fill="#FF7B29" stroke="#000" stroke-width="3" />
-                    <path d="M 35 34 A 20 20 0 0 1 65 34" stroke="#FFFFFF" stroke-width="2.5" fill="none" stroke-linecap="round" />
+                    <path
+                      d="M 35 34 A 20 20 0 0 1 65 34"
+                      stroke="#FFFFFF"
+                      stroke-width="2.5"
+                      fill="none"
+                      stroke-linecap="round"
+                    />
                     <circle cx="50" cy="46" r="14" fill="#D8FA00" stroke="#000" stroke-width="2" />
                     <line x1="50" y1="32" x2="50" y2="60" stroke="#000" stroke-width="1.5" />
                     <line x1="36" y1="46" x2="64" y2="46" stroke="#000" stroke-width="1.5" />
@@ -177,7 +313,10 @@
               >
                 <!-- Header stripe -->
                 <div class="flex items-center justify-between border-b-2 border-black pb-2">
-                  <span class="font-outfit font-black text-[10px] uppercase tracking-widest bg-black text-white px-1.5 py-0.5 rounded-[1px]">04</span>
+                  <span
+                    class="font-outfit font-black text-[10px] uppercase tracking-widest bg-black text-white px-1.5 py-0.5 rounded-[1px]"
+                    >04</span
+                  >
                   <div class="flex gap-1.5">
                     <span class="w-2.5 h-2.5 rounded-full bg-black"></span>
                     <span class="w-2.5 h-2.5 rounded-full bg-black"></span>
@@ -186,19 +325,57 @@
 
                 <!-- Center Illustration: Kucing Membaca Buku -->
                 <div class="w-full flex-1 flex items-center justify-center p-1">
-                  <svg viewBox="0 0 100 100" class="w-full h-full max-h-[135px] lg:max-h-[155px]" xmlns="http://www.w3.org/2000/svg">
-                    <polygon points="32,24 22,8 42,16" fill="#8847F5" stroke="#000" stroke-width="3" />
-                    <polygon points="68,24 78,8 58,16" fill="#8847F5" stroke="#000" stroke-width="3" />
+                  <svg
+                    viewBox="0 0 100 100"
+                    class="w-full h-full max-h-[135px] lg:max-h-[155px]"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <polygon
+                      points="32,24 22,8 42,16"
+                      fill="#8847F5"
+                      stroke="#000"
+                      stroke-width="3"
+                    />
+                    <polygon
+                      points="68,24 78,8 58,16"
+                      fill="#8847F5"
+                      stroke="#000"
+                      stroke-width="3"
+                    />
                     <circle cx="50" cy="34" r="22" fill="#FFFFFF" stroke="#000" stroke-width="3" />
-                    <path d="M 38 32 Q 43 36 48 32" stroke="#000" stroke-width="2.5" fill="none" stroke-linecap="round" />
-                    <path d="M 52 32 Q 57 36 62 32" stroke="#000" stroke-width="2.5" fill="none" stroke-linecap="round" />
+                    <path
+                      d="M 38 32 Q 43 36 48 32"
+                      stroke="#000"
+                      stroke-width="2.5"
+                      fill="none"
+                      stroke-linecap="round"
+                    />
+                    <path
+                      d="M 52 32 Q 57 36 62 32"
+                      stroke="#000"
+                      stroke-width="2.5"
+                      fill="none"
+                      stroke-linecap="round"
+                    />
                     <polygon points="50,37 47,40 53,40" fill="#000" />
-                    <path d="M 50 40 L 50 43 M 47 44 Q 50 46 53 44" stroke="#000" stroke-width="2" fill="none" stroke-linecap="round" />
+                    <path
+                      d="M 50 40 L 50 43 M 47 44 Q 50 46 53 44"
+                      stroke="#000"
+                      stroke-width="2"
+                      fill="none"
+                      stroke-linecap="round"
+                    />
                     <line x1="26" y1="36" x2="36" y2="38" stroke="#000" stroke-width="1.5" />
                     <line x1="26" y1="42" x2="36" y2="41" stroke="#000" stroke-width="1.5" />
                     <line x1="74" y1="36" x2="64" y2="38" stroke="#000" stroke-width="1.5" />
                     <line x1="74" y1="42" x2="64" y2="41" stroke="#000" stroke-width="1.5" />
-                    <path d="M 24 64 L 50 60 L 76 64 L 76 84 L 50 80 L 24 84 Z" fill="#CBFF00" stroke="#000" stroke-width="3" stroke-linejoin="round" />
+                    <path
+                      d="M 24 64 L 50 60 L 76 64 L 76 84 L 50 80 L 24 84 Z"
+                      fill="#CBFF00"
+                      stroke="#000"
+                      stroke-width="3"
+                      stroke-linejoin="round"
+                    />
                     <line x1="50" y1="60" x2="50" y2="80" stroke="#000" stroke-width="2.5" />
                     <line x1="30" y1="68" x2="45" y2="67" stroke="#000" stroke-width="1.5" />
                     <line x1="30" y1="73" x2="45" y2="72" stroke="#000" stroke-width="1.5" />
@@ -206,8 +383,24 @@
                     <line x1="55" y1="67" x2="70" y2="68" stroke="#000" stroke-width="1.5" />
                     <line x1="55" y1="72" x2="70" y2="73" stroke="#000" stroke-width="1.5" />
                     <line x1="58" y1="77" x2="70" y2="78" stroke="#000" stroke-width="1.5" />
-                    <ellipse cx="36" cy="62" rx="5" ry="4" fill="#FFFFFF" stroke="#000" stroke-width="2" />
-                    <ellipse cx="64" cy="62" rx="5" ry="4" fill="#FFFFFF" stroke="#000" stroke-width="2" />
+                    <ellipse
+                      cx="36"
+                      cy="62"
+                      rx="5"
+                      ry="4"
+                      fill="#FFFFFF"
+                      stroke="#000"
+                      stroke-width="2"
+                    />
+                    <ellipse
+                      cx="64"
+                      cy="62"
+                      rx="5"
+                      ry="4"
+                      fill="#FFFFFF"
+                      stroke="#000"
+                      stroke-width="2"
+                    />
                   </svg>
                 </div>
 
@@ -215,7 +408,6 @@
                 <div class="h-2 w-full bg-black rounded-[1px]"></div>
               </div>
             </div>
-
           </div>
         </div>
       </div>

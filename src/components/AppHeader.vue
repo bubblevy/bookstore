@@ -51,14 +51,21 @@ defineExpose({ closeMobile })
   <div class="sticky top-0 z-40 select-none">
     <!-- Main Navigation Bar: Consistent Container Width with Footer -->
     <header class="bg-white border-b-4 border-black">
-      <div class="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 lg:px-8 py-3 md:py-3.5">
+      <div
+        class="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 lg:px-8 py-3 md:py-3.5"
+      >
         <!-- Brand -->
         <router-link to="/" class="flex items-center gap-2.5 group" @click="closeMobile">
           <div class="flex flex-col">
             <div class="flex items-center gap-1.5">
-              <span class="font-outfit font-black text-xl md:text-2xl tracking-tight leading-none">BOOKSTORE</span>
+              <span class="font-outfit font-black text-xl md:text-2xl tracking-tight leading-none text-neo-violet"
+                >BOOKSTORE</span
+              >
             </div>
-            <span class="font-sans text-[10px] font-extrabold text-muted-foreground uppercase tracking-widest mt-0.5">SELALU ADA CERITA BARU</span>
+            <span
+              class="font-sans text-[10px] font-extrabold text-muted-foreground uppercase tracking-widest mt-0.5"
+              >SELALU ADA CERITA BARU</span
+            >
           </div>
         </router-link>
 
@@ -79,14 +86,28 @@ defineExpose({ closeMobile })
             @click="handleSearchClick"
           >
             <div class="flex items-center gap-2 min-w-0">
-              <svg class="w-5 h-5 text-black shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+              <svg
+                class="w-5 h-5 text-black shrink-0"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
+                />
               </svg>
-              <span class="hidden md:inline font-outfit font-semibold text-xs text-neutral-500 truncate">
+              <span
+                class="hidden md:inline font-outfit font-semibold text-xs text-neutral-500 truncate"
+              >
                 Cari judul buku, penulis...
               </span>
             </div>
-            <kbd class="hidden md:inline-flex items-center text-[10px] font-mono font-bold bg-neutral-100 text-neutral-600 border border-black/30 px-1.5 py-0.5 rounded-[2px] shrink-0">
+            <kbd
+              class="hidden md:inline-flex items-center text-[10px] font-mono font-bold bg-neutral-100 text-neutral-600 border border-black/30 px-1.5 py-0.5 rounded-[2px] shrink-0"
+            >
               Ctrl K
             </kbd>
           </button>
@@ -97,10 +118,20 @@ defineExpose({ closeMobile })
             aria-label="Buka keranjang belanja"
             @click="openCart"
           >
-            <svg class="w-5 h-5 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <svg
+              class="w-5 h-5 text-black"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
               <circle cx="8" cy="21" r="1.2" fill="currentColor" />
               <circle cx="19" cy="21" r="1.2" fill="currentColor" />
-              <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+              <path
+                d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"
+              />
             </svg>
             <!-- Badge flying above icon -->
             <span
@@ -124,16 +155,22 @@ defineExpose({ closeMobile })
               class="neubrutal-btn flex items-center gap-2 bg-white border-2 md:border-3 border-black pl-1.5 pr-3 h-10 rounded-[2px] shadow-neo-sm"
               @click="userMenuOpen = !userMenuOpen"
             >
-              <div class="w-7 h-7 rounded-[2px] bg-neo-violet text-white border border-black flex items-center justify-center font-outfit font-black text-xs">
+              <div
+                class="w-7 h-7 rounded-[2px] bg-neo-violet text-white border border-black flex items-center justify-center font-outfit font-black text-xs"
+              >
                 {{ state.userName.slice(0, 2).toUpperCase() }}
               </div>
-              <span class="font-outfit font-extrabold text-xs">{{ state.userName.split(' ')[0] }}</span>
+              <span class="font-outfit font-extrabold text-xs">{{
+                state.userName.split(' ')[0]
+              }}</span>
             </button>
             <div
               v-if="userMenuOpen"
               class="absolute right-0 top-full mt-2 w-48 bg-white border-3 border-black rounded-[2px] p-2 z-50 shadow-neo"
             >
-              <p class="px-3 py-1 font-outfit font-black text-xs text-muted-foreground">Halo, {{ state.userName }}</p>
+              <p class="px-3 py-1 font-outfit font-black text-xs text-muted-foreground">
+                Halo, {{ state.userName }}
+              </p>
               <div class="border-t border-black my-1"></div>
               <button
                 class="w-full text-left px-3 py-2 rounded-[2px] font-outfit font-bold text-xs hover:bg-neo-yellow hover:text-black"
@@ -150,7 +187,13 @@ defineExpose({ closeMobile })
             aria-label="Buka menu navigasi"
             @click="mobileOpen = true"
           >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <svg
+              class="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              viewBox="0 0 24 24"
+            >
               <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7" />
             </svg>
           </button>
@@ -179,31 +222,63 @@ defineExpose({ closeMobile })
         class="fixed inset-y-0 left-0 w-full max-w-xs sm:max-w-sm bg-background z-50 lg:hidden border-r-4 border-black shadow-[8px_0_0_0_#000] flex flex-col"
       >
         <div class="flex items-center justify-between p-4 sm:p-5 border-b-4 border-black bg-white">
-          <div class="flex items-center gap-2">
-            <div class="w-9 h-9 bg-neo-violet text-white border-2 border-black rounded-[2px] flex items-center justify-center shadow-neo-sm">
-              <svg viewBox="0 0 24 24" class="w-4 h-4 fill-white">
-                <path d="M4 4 L4 20 L11 18 L11 5 Z M13 5 L18 4 L20 6 L20 20 L13 19 Z" stroke="white" stroke-width="1.5" stroke-linejoin="round" />
-              </svg>
+          <router-link to="/" class="flex items-center gap-2" @click="closeMobile">
+            <div class="flex flex-col">
+              <div class="flex items-center gap-1.5">
+                <span class="font-outfit font-black text-lg md:text-xl tracking-tight leading-none text-neo-violet"
+                  >BOOKSTORE</span
+                >
+              </div>
+              <span
+                class="font-sans text-[9px] font-extrabold text-muted-foreground uppercase tracking-widest mt-0.5"
+                >SELALU ADA CERITA BARU</span
+              >
             </div>
-            <span class="font-outfit font-black text-xl">BOOKSTORE</span>
-          </div>
+          </router-link>
           <button
             class="w-9 h-9 border-2 border-black rounded-[2px] bg-white shadow-neo-sm hover:bg-gray-100 flex items-center justify-center"
             aria-label="Tutup menu"
             @click="closeMobile"
           >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <svg
+              class="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              viewBox="0 0 24 24"
+            >
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        <nav class="flex flex-col px-6 py-4 gap-1 font-outfit font-black text-lg flex-1 overflow-y-auto">
-          <a href="#katalog" class="py-3 border-b-2 border-black/10 hover:text-neo-violet" @click="closeMobile">Katalog Buku</a>
-          <a href="#kategori" class="py-3 border-b-2 border-black/10 hover:text-neo-violet" @click="closeMobile">Kategori</a>
-          <a href="#vibe-section" class="py-3 border-b-2 border-black/10 hover:text-neo-violet" @click="closeMobile">Filosofi Membaca</a>
-          <a href="#ulasan" class="py-3 border-b-2 border-black/10 hover:text-neo-violet" @click="closeMobile">Ulasan Pembeli</a>
-          <a href="#kontak" class="py-3 border-b-2 border-black/10 hover:text-neo-violet" @click="closeMobile">Kontak</a>
+        <nav
+          class="flex flex-col px-6 py-4 gap-1 font-outfit font-black text-lg flex-1 overflow-y-auto"
+        >
+          <a
+            href="#katalog"
+            class="py-3 border-b-2 border-black/10 hover:text-neo-violet"
+            @click="closeMobile"
+            >Katalog Buku</a
+          >
+          <a
+            href="#kategori"
+            class="py-3 border-b-2 border-black/10 hover:text-neo-violet"
+            @click="closeMobile"
+            >Kategori</a
+          >
+          <a
+            href="#ulasan"
+            class="py-3 border-b-2 border-black/10 hover:text-neo-violet"
+            @click="closeMobile"
+            >Ulasan Pembeli</a
+          >
+          <a
+            href="#kontak"
+            class="py-3 border-b-2 border-black/10 hover:text-neo-violet"
+            @click="closeMobile"
+            >Kontak</a
+          >
         </nav>
 
         <!-- Mobile Drawer Footer: Removed Lihat Keranjang because it's already in header -->
@@ -217,7 +292,9 @@ defineExpose({ closeMobile })
           </button>
           <div v-else class="flex items-center justify-between">
             <div class="flex items-center gap-2.5">
-              <div class="w-8 h-8 rounded-[2px] bg-neo-violet text-white border-2 border-black flex items-center justify-center font-outfit font-black text-xs shadow-neo-sm">
+              <div
+                class="w-8 h-8 rounded-[2px] bg-neo-violet text-white border-2 border-black flex items-center justify-center font-outfit font-black text-xs shadow-neo-sm"
+              >
                 {{ state.userName.slice(0, 2).toUpperCase() }}
               </div>
               <span class="font-outfit font-black text-sm">{{ state.userName }}</span>
