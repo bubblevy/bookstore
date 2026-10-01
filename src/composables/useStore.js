@@ -15,6 +15,7 @@ const state = reactive({
       theme: 'violet',
       quantity: 1,
       format: 'Soft Cover',
+      selected: true,
     },
   ],
 
@@ -24,6 +25,7 @@ const state = reactive({
   // Auth state
   isLoggedIn: false,
   userName: '',
+  userEmail: '',
 
   // Active modal: null | 'login' | 'quickview' | 'search'
   activeModal: null,
@@ -70,6 +72,7 @@ function addToCart(book, options = {}) {
       theme: book.theme || 'violet',
       format: format,
       quantity: qty,
+      selected: true,
     })
   }
   showToast(`"${book.title}" (${format}) masuk keranjang!`, { type: 'success' })
@@ -83,16 +86,34 @@ function removeFromCart(id, format) {
 function updateQuantity(id, qty, format) {
   const item = state.cart.find((item) => item.id === id && (!format || item.format === format))
   if (item) {
-    if (qty <= 0) {
-      removeFromCart(id, format)
-    } else {
-      item.quantity = Math.min(99, qty)
+    if (qty < 1) {
+      return
     }
+    item.quantity = Math.min(99, qty)
   }
 }
 
 function clearCart() {
   state.cart = []
+}
+
+function toggleSelectItem(id, format) {
+  const item = state.cart.find((item) => item.id === id && (!format || item.format === format))
+  if (item) {
+    item.selected = !item.selected
+  }
+}
+
+function selectAllItems() {
+  state.cart.forEach((item) => {
+    item.selected = true
+  })
+}
+
+function deselectAllItems() {
+  state.cart.forEach((item) => {
+    item.selected = false
+  })
 }
 
 // Drawer actions
@@ -120,15 +141,31 @@ function closeModal() {
 }
 
 // Auth actions
-function login(name) {
+function login(name, email = '') {
   state.isLoggedIn = true
   state.userName = name
-  showToast(`Selamat datang, ${name}! Siap berburu buku baru?`, { type: 'success' })
+  state.userEmail = email
+  showToast(`Selamat datang kembali, ${name}!`, { type: 'success' })
+}
+
+function register(name, email) {
+  state.isLoggedIn = true
+  state.userName = name
+  state.userEmail = email
+  showToast(`Akun berhasil dibuat. Selamat datang, ${name}!`, { type: 'success' })
+}
+
+function loginWithGoogle(name, email) {
+  state.isLoggedIn = true
+  state.userName = name
+  state.userEmail = email
+  showToast(`Masuk dengan Google berhasil. Halo, ${name}!`, { type: 'success' })
 }
 
 function logout() {
   state.isLoggedIn = false
   state.userName = ''
+  state.userEmail = ''
   showToast('Anda telah keluar.', { type: 'info' })
 }
 
@@ -136,6 +173,10 @@ function logout() {
 const cartCount = () => state.cart.reduce((sum, item) => sum + item.quantity, 0)
 const cartTotal = () =>
   state.cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
+const selectedCount = () => state.cart.filter((item) => item.selected).length
+const selectedTotal = () =>
+  state.cart.filter((item) => item.selected).reduce((sum, item) => sum + item.price * item.quantity, 0)
+const selectedItems = () => state.cart.filter((item) => item.selected)
 
 export { showToast, onToast }
 
@@ -148,14 +189,22 @@ export function useStore() {
     removeFromCart,
     updateQuantity,
     clearCart,
+    toggleSelectItem,
+    selectAllItems,
+    deselectAllItems,
     openCart,
     closeCart,
     toggleCart,
     openModal,
     closeModal,
     login,
+    register,
+    loginWithGoogle,
     logout,
     cartCount,
     cartTotal,
+    selectedCount,
+    selectedTotal,
+    selectedItems,
   }
 }

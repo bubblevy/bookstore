@@ -396,21 +396,21 @@ export const comparisonData = {
   boring: {
     title: 'TOKO BUKU BIASA',
     items: [
-      '❌ Rekomendasi kaku algoritma tanpa rasa',
-      '❌ Pengemasan tipis rentan penyok di jalan',
-      '❌ Desain situs membosankan dan monoton',
-      '❌ Sering tercampur buku bajakan/repro',
-      '❌ Customer service robotik yang lambat',
+      'Rekomendasi kaku algoritma tanpa rasa',
+      'Pengemasan tipis rentan penyok di jalan',
+      'Desain situs membosankan dan monoton',
+      'Sering tercampur buku bajakan/repro',
+      'Customer service robotik yang lambat',
     ],
   },
   neubrutal: {
     title: 'BOOKSTORE INDONESIA',
     items: [
-      '⚡ Kurasi pilihan editor & komunitas pecinta buku',
-      '🛡️ Proteksi paket kaku ekstra aman + asuransi',
-      '🎨 Antarmuka Neubrutalism yang ekspresif & berani',
-      '✨ 100% Original bergaransi resmi dari penerbit',
-      '❤️ Komunitas aktif dengan diskusi buku bulanan',
+      'Kurasi pilihan editor & komunitas pecinta buku',
+      'Proteksi paket kaku ekstra aman + asuransi',
+      'Antarmuka Neubrutalism yang ekspresif & berani',
+      '100% Original bergaransi resmi dari penerbit',
+      'Komunitas aktif dengan diskusi buku bulanan',
     ],
   },
 }

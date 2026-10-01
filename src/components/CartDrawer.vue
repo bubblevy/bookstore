@@ -5,43 +5,22 @@ import { useStore } from '@/composables/useStore'
 import BookCover from './BookCover.vue'
 
 const router = useRouter()
-const { state, closeCart, removeFromCart, updateQuantity, clearCart, showToast, cartTotal, cartCount } = useStore()
+const { state, closeCart, removeFromCart, updateQuantity, showToast, selectedCount, selectedTotal, toggleSelectItem, selectAllItems, deselectAllItems, cartCount } = useStore()
 
-const promoCode = ref('')
-const discountApplied = ref(false)
-
-const subtotal = computed(() => cartTotal())
-const freeShippingThreshold = 150000
-const progressToFreeShipping = computed(() => Math.min(100, (subtotal.value / freeShippingThreshold) * 100))
-const remainingForFreeShipping = computed(() => Math.max(0, freeShippingThreshold - subtotal.value))
-
-const discountAmount = computed(() => (discountApplied.value ? Math.round(subtotal.value * 0.1) : 0))
-const shippingCost = computed(() => (subtotal.value >= freeShippingThreshold || subtotal.value === 0 ? 0 : 15000))
-const finalTotal = computed(() => subtotal.value - discountAmount.value + shippingCost.value)
+const selCount = computed(() => selectedCount())
+const selTotal = computed(() => selectedTotal())
 
 const formattedSubtotal = computed(() =>
-  new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(subtotal.value),
-)
-const formattedFinalTotal = computed(() =>
-  new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(finalTotal.value),
-)
-const formattedRemaining = computed(() =>
-  new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(remainingForFreeShipping.value),
+  new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(selTotal.value),
 )
 
-function applyPromo() {
-  if (promoCode.value.toUpperCase() === 'NEOBOOK' || promoCode.value.toUpperCase() === 'DISKON10') {
-    discountApplied.value = true
-    showToast('Kupon diskon 10% berhasil dipasang! 🎉', { type: 'success' })
-  } else {
-    showToast('Kode kupon tidak valid. Coba kode: "NEOBOOK"', { type: 'error' })
+function goToCheckout() {
+  if (selCount.value === 0) {
+    showToast('Pilih minimal 1 buku untuk checkout', { type: 'error' })
+    return
   }
-}
-
-function handleCheckout() {
-  showToast('Simulasi checkout berhasil! Terima kasih telah berbelanja di BookStore.', { type: 'success' })
-  clearCart()
   closeCart()
+  router.push({ name: 'checkout' })
 }
 </script>
 
@@ -76,13 +55,18 @@ function handleCheckout() {
         <!-- Header -->
         <div class="p-4 sm:p-5 bg-white border-b-4 border-black flex items-center justify-between">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-neo-yellow border-2 border-black flex items-center justify-center shadow-neo-sm font-outfit font-black text-lg">
-              🛒
+            <!-- Cart icon matching header style -->
+            <div class="w-10 h-10 bg-neo-yellow border-2 border-black flex items-center justify-center shadow-neo-sm">
+              <svg class="w-5 h-5 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="8" cy="21" r="1.2" fill="currentColor" />
+                <circle cx="19" cy="21" r="1.2" fill="currentColor" />
+                <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+              </svg>
             </div>
             <div>
               <h2 class="font-outfit font-black text-xl leading-none">KERANJANG SAYA</h2>
               <p class="font-sans text-xs font-bold text-muted-foreground mt-0.5">
-                {{ cartCount() }} item terpilih
+                {{ cartCount() }} item · {{ selCount }} dipilih
               </p>
             </div>
           </div>
@@ -97,30 +81,28 @@ function handleCheckout() {
           </button>
         </div>
 
-        <!-- Free shipping progress bar -->
-        <div class="bg-neo-yellow/30 p-3.5 border-b-2 border-black">
-          <div class="flex items-center justify-between text-xs font-outfit font-black mb-1.5">
-            <span v-if="remainingForFreeShipping > 0">
-              Tambah {{ formattedRemaining }} lagi untuk <span class="bg-neo-yellow px-1 py-0.2 border border-black">GRATIS ONGKIR</span>
-            </span>
-            <span v-else class="text-green-700 flex items-center gap-1">
-              🎉 Selamat! Kamu dapat GRATIS ONGKIR!
-            </span>
-            <span>{{ Math.round(progressToFreeShipping) }}%</span>
-          </div>
-          <div class="w-full h-3 bg-white border-2 border-black overflow-hidden p-0.5">
-            <div
-              class="h-full bg-neo-violet transition-all duration-300"
-              :style="{ width: `${progressToFreeShipping}%` }"
-            ></div>
-          </div>
+        <!-- Select all / deselect all -->
+        <div v-if="state.cart.length > 0" class="bg-neo-lime/50 border-b-2 border-black px-4 py-2.5 flex items-center justify-between">
+          <button
+            class="font-outfit font-black text-xs hover:underline"
+            @click="selCount === state.cart.length ? deselectAllItems() : selectAllItems()"
+          >
+            {{ selCount === state.cart.length ? '✗ Batalkan semua' : '✓ Pilih semua' }}
+          </button>
+          <span class="font-outfit font-black text-xs text-muted-foreground">
+            {{ selCount }}/{{ state.cart.length }} dipilih
+          </span>
         </div>
 
         <!-- Item list -->
         <div class="flex-1 overflow-y-auto p-4 space-y-3">
           <div v-if="state.cart.length === 0" class="py-16 text-center">
-            <div class="w-20 h-20 mx-auto mb-4 bg-white border-3 border-black flex items-center justify-center text-3xl shadow-neo">
-              📚
+            <div class="w-20 h-20 mx-auto mb-4 bg-white border-3 border-black flex items-center justify-center shadow-neo">
+              <svg class="w-10 h-10 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="8" cy="21" r="1.2" fill="currentColor" />
+                <circle cx="19" cy="21" r="1.2" fill="currentColor" />
+                <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+              </svg>
             </div>
             <h3 class="font-outfit font-black text-xl">Keranjangmu Kosong</h3>
             <p class="font-sans text-xs font-bold text-muted-foreground mt-1 max-w-xs mx-auto">
@@ -138,7 +120,21 @@ function handleCheckout() {
             v-for="item in state.cart"
             :key="`${item.id}-${item.format}`"
             class="bg-white border-3 border-black p-3.5 shadow-neo flex gap-3 relative group"
+            :class="{ 'opacity-50': !item.selected }"
           >
+            <!-- Checkbox -->
+            <div class="flex items-start pt-0.5">
+              <button
+                class="w-6 h-6 border-2 border-black flex items-center justify-center shrink-0 transition-all"
+                :class="item.selected ? 'bg-neo-violet border-neo-violet' : 'bg-white'"
+                @click="toggleSelectItem(item.id, item.format)"
+              >
+                <svg v-if="item.selected" class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </button>
+            </div>
+
             <!-- Thumbnail cover -->
             <div class="w-16 h-22 shrink-0 border-2 border-black overflow-hidden shadow-neo-sm bg-background">
               <BookCover
@@ -160,7 +156,7 @@ function handleCheckout() {
                     @click="removeFromCart(item.id, item.format)"
                   >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
                     </svg>
                   </button>
                 </div>
@@ -197,50 +193,17 @@ function handleCheckout() {
 
         <!-- Footer / Checkout -->
         <div v-if="state.cart.length > 0" class="p-4 bg-white border-t-4 border-black space-y-3.5">
-          <!-- Promo code input -->
-          <div class="flex gap-2">
-            <input
-              v-model="promoCode"
-              type="text"
-              placeholder="Kode Kupon (e.g. NEOBOOK)"
-              class="flex-1 bg-background border-2 border-black px-3 py-2 font-outfit font-bold text-xs uppercase outline-none shadow-neo-sm"
-            />
-            <button
-              class="neubrutal-btn bg-neo-yellow text-black border-2 border-black px-4 py-2 font-outfit font-black text-xs shadow-neo-sm hover:bg-yellow-300"
-              @click="applyPromo"
-            >
-              Pasang
-            </button>
-          </div>
-
-          <!-- Price summary -->
-          <div class="space-y-1.5 text-xs font-sans font-bold">
-            <div class="flex justify-between text-muted-foreground">
-              <span>Subtotal</span>
-              <span class="font-outfit text-black font-black">{{ formattedSubtotal }}</span>
-            </div>
-            <div v-if="discountApplied" class="flex justify-between text-green-600">
-              <span>Diskon Kupon (10%)</span>
-              <span class="font-outfit font-black">-{{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(discountAmount) }}</span>
-            </div>
-            <div class="flex justify-between text-muted-foreground">
-              <span>Estimasi Ongkir</span>
-              <span class="font-outfit text-black font-black">
-                {{ shippingCost === 0 ? 'GRATIS' : new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(shippingCost) }}
-              </span>
-            </div>
-            <div class="flex justify-between text-base font-outfit font-black pt-2 border-t-2 border-black">
-              <span>TOTAL</span>
-              <span class="text-neo-violet text-lg">{{ formattedFinalTotal }}</span>
-            </div>
+          <div class="flex items-center justify-between text-sm font-sans font-bold">
+            <span class="text-muted-foreground">Subtotal ({{ selCount }} item)</span>
+            <span class="font-outfit font-black text-base text-neo-violet">{{ formattedSubtotal }}</span>
           </div>
 
           <!-- Checkout CTA -->
           <button
             class="w-full neubrutal-btn bg-neo-yellow text-black border-3 border-black py-3.5 font-outfit font-black text-base shadow-neo flex items-center justify-center gap-2 hover:bg-yellow-300"
-            @click="handleCheckout"
+            @click="goToCheckout"
           >
-            <span>CHECKOUT SEKARANG</span>
+            <span>CHECKOUT ({{ selCount }} ITEM)</span>
             <span>→</span>
           </button>
         </div>

@@ -143,13 +143,20 @@ defineExpose({ closeMobile })
           </button>
 
           <!-- Auth: HIDDEN ON MOBILE to give space to the hamburger menu -->
-          <button
-            v-if="!state.isLoggedIn"
-            class="hidden md:inline-flex neubrutal-btn bg-neo-violet text-white border-2 md:border-3 border-black px-3.5 md:px-4 h-10 rounded-[2px] font-outfit font-black text-xs md:text-sm shadow-neo-sm hover:bg-violet-600 items-center justify-center"
-            @click="openModal('login')"
-          >
-            Masuk
-          </button>
+          <div v-if="!state.isLoggedIn" class="hidden md:flex items-center gap-2">
+            <router-link
+              to="/login"
+              class="neubrutal-btn bg-white text-black border-2 md:border-3 border-black px-3.5 md:px-4 h-10 rounded-[2px] font-outfit font-black text-xs md:text-sm shadow-neo-sm hover:bg-gray-100 flex items-center justify-center"
+            >
+              Masuk
+            </router-link>
+            <router-link
+              to="/register"
+              class="neubrutal-btn bg-neo-yellow text-black border-2 md:border-3 border-black px-3.5 md:px-4 h-10 rounded-[2px] font-outfit font-black text-xs md:text-sm shadow-neo-sm hover:bg-yellow-300 flex items-center justify-center"
+            >
+              Daftar
+            </router-link>
+          </div>
           <div v-else class="relative hidden md:block">
             <button
               class="neubrutal-btn flex items-center gap-2 bg-white border-2 md:border-3 border-black pl-1.5 pr-3 h-10 rounded-[2px] shadow-neo-sm"
@@ -281,15 +288,24 @@ defineExpose({ closeMobile })
           >
         </nav>
 
-        <!-- Mobile Drawer Footer: Removed Lihat Keranjang because it's already in header -->
+        <!-- Mobile Drawer Footer -->
         <div class="p-5 mt-auto bg-white border-t-4 border-black">
-          <button
-            v-if="!state.isLoggedIn"
-            class="w-full neubrutal-btn bg-neo-yellow text-black border-3 border-black py-3.5 rounded-[2px] font-outfit font-black shadow-neo"
-            @click="openModal('login'); closeMobile()"
-          >
-            Masuk / Buat Akun
-          </button>
+          <div v-if="!state.isLoggedIn" class="flex flex-col gap-2.5">
+            <router-link
+              to="/login"
+              class="w-full neubrutal-btn bg-neo-yellow text-black border-3 border-black py-3 rounded-[2px] font-outfit font-black text-center shadow-neo block"
+              @click="closeMobile"
+            >
+              Masuk ke Akun
+            </router-link>
+            <router-link
+              to="/register"
+              class="w-full neubrutal-btn bg-white text-black border-3 border-black py-3 rounded-[2px] font-outfit font-black text-center shadow-neo block hover:bg-gray-50"
+              @click="closeMobile"
+            >
+              Daftar Akun Baru
+            </router-link>
+          </div>
           <div v-else class="flex items-center justify-between">
             <div class="flex items-center gap-2.5">
               <div
