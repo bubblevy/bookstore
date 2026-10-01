@@ -4,7 +4,14 @@ import BookCard from './BookCard.vue'
 import { featuredBooks } from '@/data/catalog'
 
 const activeFilter = ref('Semua')
-const filters = ['Semua', 'Fiksi Populer', 'Self-Growth', 'Sci-Fi & Fantasy', 'Sejarah & Biografi', 'Seni & Desain']
+const filters = [
+  'Semua',
+  'Fiksi Populer',
+  'Self-Growth',
+  'Sci-Fi & Fantasy',
+  'Sejarah & Biografi',
+  'Seni & Desain',
+]
 
 const visibleCount = ref(8)
 
@@ -32,11 +39,16 @@ watch(activeFilter, () => {
 
 <template>
   <!-- Full-width alternating background band (Neutral Background) with Bookstore Ornaments -->
-  <section id="katalog" class="w-full bg-background border-b-4 border-black py-16 md:py-20 scroll-mt-20 select-none relative overflow-hidden">
+  <section
+    id="katalog"
+    class="w-full bg-background border-b-4 border-black py-16 md:py-20 scroll-mt-20 relative overflow-hidden"
+  >
     <!-- Background Bookstore Ornaments & Literary Accents -->
     <div class="absolute inset-0 pointer-events-none select-none overflow-hidden">
       <!-- Subtle dot grid -->
-      <div class="absolute inset-0 opacity-[0.05] bg-[radial-gradient(#000_1.5px,transparent_1.5px)] [background-size:24px_24px]"></div>
+      <div
+        class="absolute inset-0 opacity-[0.05] bg-[radial-gradient(#000_1.5px,transparent_1.5px)] [background-size:24px_24px]"
+      ></div>
 
       <!-- Left Watermark: Open book outline -->
       <svg
@@ -51,7 +63,9 @@ watch(activeFilter, () => {
       </svg>
 
       <!-- Right Watermark: Book spine stack -->
-      <div class="absolute -right-8 bottom-20 opacity-[0.04] text-black flex flex-col gap-2 rotate-6">
+      <div
+        class="absolute -right-8 bottom-20 opacity-[0.04] text-black flex flex-col gap-2 rotate-6"
+      >
         <div class="w-48 h-6 border-2 border-black bg-black"></div>
         <div class="w-56 h-8 border-2 border-black bg-black"></div>
         <div class="w-52 h-7 border-2 border-black bg-black"></div>
@@ -59,13 +73,23 @@ watch(activeFilter, () => {
       </div>
 
       <!-- Floating literary symbols -->
-      <span class="absolute top-10 right-[12%] text-neo-violet text-3xl font-black opacity-40">✦</span>
-      <span class="absolute bottom-16 left-[5%] text-neo-orange text-3xl font-black opacity-40">★</span>
-      <span class="absolute top-1/2 left-[2%] text-neo-yellow text-2xl font-black opacity-60">✦</span>
-      <span class="absolute bottom-1/3 right-[3%] text-neo-lime text-2xl font-black opacity-60">★</span>
+      <span class="absolute top-10 right-[12%] text-neo-violet text-3xl font-black opacity-40"
+        >✦</span
+      >
+      <span class="absolute bottom-16 left-[5%] text-neo-orange text-3xl font-black opacity-40"
+        >★</span
+      >
+      <span class="absolute top-1/2 left-[2%] text-neo-yellow text-2xl font-black opacity-60"
+        >✦</span
+      >
+      <span class="absolute bottom-1/3 right-[3%] text-neo-lime text-2xl font-black opacity-60"
+        >★</span
+      >
 
       <!-- Subtle barcode & ISBN stamp -->
-      <div class="absolute top-6 right-8 hidden lg:flex items-center gap-2 opacity-25 border border-black px-2 py-0.5 rounded-[2px] text-[10px] font-outfit font-black tracking-widest uppercase">
+      <div
+        class="absolute top-6 right-8 hidden lg:flex items-center gap-2 opacity-25 border border-black px-2 py-0.5 rounded-[2px] text-[10px] font-outfit font-black tracking-widest uppercase"
+      >
         <span>||||||| | ||||| |||</span>
         <span>CATALOG-ID · 2026</span>
       </div>
@@ -73,30 +97,47 @@ watch(activeFilter, () => {
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
       <!-- Section Header: Professional bookstore editorial -->
-      <div class="flex flex-col md:flex-row md:items-end justify-between mb-8 md:mb-12 gap-5">
+      <div class="mb-8 md:mb-12">
         <div>
-          <span class="inline-block bg-neo-yellow border-2 border-black px-3 py-0.5 rounded-[2px] font-outfit font-black text-xs uppercase tracking-wider shadow-neo-sm mb-2">
-            KURASI BUKU TERBAIK
+          <span
+            class="inline-block bg-neo-yellow border-2 border-black px-3 py-0.5 rounded-[2px] font-outfit font-black text-xs uppercase tracking-wider shadow-neo-sm mb-3"
+          >
+            Original & Terjamin
           </span>
-          <h2 class="font-outfit font-black text-3xl sm:text-4xl md:text-5xl tracking-tight leading-none text-black">
-            KATALOG BUKU PILIHAN.
+          <h2
+            class="font-outfit font-black text-3xl sm:text-4xl md:text-5xl tracking-tight leading-none text-black"
+          >
+            KATALOG BUKU.
           </h2>
-          <p class="font-sans text-sm md:text-base font-semibold text-muted-foreground mt-2 max-w-lg">
-            Temukan karya terpilih dari sastrawan ternama, pemikir kontemporer, dan pakar pengembangan diri.
+          <p
+            class="font-sans text-sm md:text-base font-semibold text-muted-foreground mt-2 max-w-lg"
+          >
+            Ribuan pilihan bacaan dari berbagai genre dan disiplin ilmu. Siap menemanimu menemukan
+            gagasan dan perspektif baru setiap hari.
           </p>
         </div>
+      </div>
 
-        <!-- Filter tabs: clean neubrutal pills -->
-        <div class="flex flex-wrap items-center gap-2">
-          <button
-            v-for="filter in filters"
-            :key="filter"
-            class="neubrutal-btn border-2 border-black px-3.5 py-1.5 rounded-[2px] font-outfit font-black text-xs shadow-neo-sm transition-all"
-            :class="activeFilter === filter ? 'bg-neo-yellow text-black' : 'bg-white hover:bg-gray-50 text-black'"
-            @click="activeFilter = filter"
-          >
-            {{ filter }}
-          </button>
+      <!-- Filter tabs: horizontal scroll, breaks past container edges -->
+      <div
+        class="relative mb-8 md:mb-10 -mx-4 px-4 sm:-mx-16 sm:px-16 lg:-mx-24 lg:px-24 xl:-mx-36 xl:px-36"
+      >
+        <div class="overflow-x-auto scrollbar-hide pb-1">
+          <div class="flex items-center gap-2 w-max sm:flex-wrap">
+            <button
+              v-for="filter in filters"
+              :key="filter"
+              class="neubrutal-btn border-2 border-black px-3.5 py-1.5 rounded-[2px] font-outfit font-black text-xs shadow-neo-sm transition-all whitespace-nowrap"
+              :class="
+                activeFilter === filter
+                  ? 'bg-neo-yellow text-black'
+                  : 'bg-white hover:bg-gray-50 text-black'
+              "
+              @click="activeFilter = filter"
+            >
+              {{ filter }}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -133,7 +174,9 @@ watch(activeFilter, () => {
       >
         <div class="text-4xl mb-3">🔍</div>
         <p class="font-outfit font-black text-xl">Koleksi Belum Tersedia</p>
-        <p class="font-sans text-xs text-muted-foreground mt-1">Belum ada judul untuk kategori ini. Silakan pilih kategori lain.</p>
+        <p class="font-sans text-xs text-muted-foreground mt-1">
+          Belum ada judul untuk kategori ini. Silakan pilih kategori lain.
+        </p>
         <button
           class="mt-4 neubrutal-btn bg-neo-yellow text-black border-2 border-black py-2 px-5 rounded-[2px] font-outfit font-black text-xs shadow-neo-sm"
           @click="activeFilter = 'Semua'"

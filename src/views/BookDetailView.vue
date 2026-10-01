@@ -86,13 +86,19 @@ function decrement() {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 select-none">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
     <!-- State jika buku tidak ditemukan -->
     <div
       v-if="!book"
       class="text-center py-20 bg-white border-3 border-black rounded-[2px] shadow-neo p-8"
     >
-      <div class="text-4xl mb-3">📖</div>
+      <div class="w-16 h-16 mx-auto mb-4 bg-neo-yellow border-2 border-black rounded-[2px] shadow-neo flex items-center justify-center">
+        <svg class="w-8 h-8 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z" />
+          <path d="M6 6h10" />
+          <path d="M6 10h10" />
+        </svg>
+      </div>
       <h2 class="font-outfit font-black text-2xl md:text-3xl">Buku Tidak Ditemukan</h2>
       <p class="font-sans text-sm text-muted-foreground mt-2">Buku yang Anda cari mungkin sedang tidak tersedia dalam katalog kami.</p>
       <button
@@ -247,7 +253,11 @@ function decrement() {
                 class="neubrutal-btn flex-1 bg-white text-black border-2 border-black py-3 px-5 rounded-[2px] font-outfit font-black text-sm shadow-neo-sm hover:bg-yellow-50 active:translate-x-0.5 active:translate-y-0.5 flex items-center justify-center gap-2"
                 @click="handleAddToCart"
               >
-                <span>🛒</span>
+                <svg class="w-4 h-4 text-black shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="8" cy="21" r="1" />
+                  <circle cx="19" cy="21" r="1" />
+                  <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+                </svg>
                 <span>Tambah ke Keranjang</span>
               </button>
 
@@ -264,10 +274,20 @@ function decrement() {
           <!-- Jaminan Pengiriman Rapi -->
           <div class="pt-3 border-t border-black/10 flex flex-wrap items-center gap-y-2 gap-x-6 text-xs font-sans font-semibold text-muted-foreground">
             <span class="flex items-center gap-1.5 text-black">
-              🚚 <span>Free ongkir min. Rp150.000</span>
+              <svg class="w-4 h-4 text-black shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="1" y="3" width="15" height="13" />
+                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                <circle cx="5.5" cy="18.5" r="2.5" />
+                <circle cx="18.5" cy="18.5" r="2.5" />
+              </svg>
+              <span>Free ongkir min. Rp150.000</span>
             </span>
             <span class="flex items-center gap-1.5 text-black">
-              🛡️ <span>Garansi tukar baru jika cacat</span>
+              <svg class="w-4 h-4 text-black shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                <path d="m9 12 2 2 4-4" />
+              </svg>
+              <span>Garansi tukar baru jika cacat</span>
             </span>
           </div>
         </div>
@@ -282,7 +302,11 @@ function decrement() {
             @click="toggleAccordion('sinopsis')"
           >
             <span class="flex items-center gap-2.5">
-              <span>📖</span>
+              <svg class="w-5 h-5 text-black shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z" />
+                <path d="M6 6h10" />
+                <path d="M6 10h10" />
+              </svg>
               <span>Sinopsis & Ulasan Buku</span>
             </span>
             <span
@@ -308,7 +332,10 @@ function decrement() {
             @click="toggleAccordion('spesifikasi')"
           >
             <span class="flex items-center gap-2.5">
-              <span>📋</span>
+              <svg class="w-5 h-5 text-black shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+              </svg>
               <span>Spesifikasi & Detail Cetakan</span>
             </span>
             <span
@@ -343,7 +370,10 @@ function decrement() {
             @click="toggleAccordion('pengiriman')"
           >
             <span class="flex items-center gap-2.5">
-              <span>🛡️</span>
+              <svg class="w-5 h-5 text-black shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                <path d="m9 12 2 2 4-4" />
+              </svg>
               <span>Jaminan Orisinalitas & Pengiriman Aman</span>
             </span>
             <span

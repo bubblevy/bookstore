@@ -1,0 +1,263 @@
+<script setup>
+import { ref } from 'vue'
+import { useRouter, useRoute, RouterLink } from 'vue-router'
+import { useStore } from '@/composables/useStore'
+import AuthLayout from './AuthLayout.vue'
+
+const router = useRouter()
+const route = useRoute()
+const { login, loginWithGoogle } = useStore()
+
+const email = ref('')
+const password = ref('')
+const rememberMe = ref(true)
+const showPassword = ref(false)
+const errorMessage = ref('')
+const isLoading = ref(false)
+
+function redirectAfterAuth() {
+  const redirect = route.query.redirect || '/'
+  router.push(redirect)
+}
+
+function handleLogin() {
+  errorMessage.value = ''
+
+  if (!email.value.trim() || !password.value) {
+    errorMessage.value = 'Silakan isi email dan password Anda'
+    return
+  }
+
+  // Basic email pattern check
+  if (!email.value.includes('@') || !email.value.includes('.')) {
+    errorMessage.value = 'Format email tidak valid'
+    return
+  }
+
+  if (password.value.length < 6) {
+    errorMessage.value = 'Password minimal 6 karakter'
+    return
+  }
+
+  isLoading.value = true
+  setTimeout(() => {
+    const rawName = email.value.split('@')[0]
+    const displayName = rawName.replace(/[._-]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+
+    login(displayName, email.value.trim())
+    isLoading.value = false
+    redirectAfterAuth()
+  }, 400)
+}
+
+function handleGoogleLogin() {
+  isLoading.value = true
+  setTimeout(() => {
+    loginWithGoogle('Budi Pratama', 'budi.pratama@gmail.com')
+    isLoading.value = false
+    redirectAfterAuth()
+  }, 400)
+}
+</script>
+
+<template>
+  <AuthLayout mode="login">
+    <div class="flex flex-col justify-between h-full">
+      <div>
+        <!-- Header -->
+        <div class="mb-5">
+          <h1
+            class="font-outfit font-black text-2xl sm:text-3xl tracking-tight leading-tight text-black"
+          >
+            Masuk ke Akun
+          </h1>
+          <p class="font-sans text-xs sm:text-sm font-semibold text-muted-foreground mt-1">
+            Akses rak buku impian dan nikmati kemudahan bertransaksi.
+          </p>
+        </div>
+
+        <!-- Google Button -->
+        <button
+          type="button"
+          :disabled="isLoading"
+          class="w-full neubrutal-btn bg-white hover:bg-gray-50 text-black border-3 border-black py-3 px-4 rounded-[2px] font-outfit font-black text-sm shadow-neo-sm flex items-center justify-center gap-3 transition-all active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-60"
+          @click="handleGoogleLogin"
+        >
+          <!-- Official Google SVG Icon -->
+          <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path
+              fill="#4285F4"
+              d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17Z"
+            />
+            <path
+              fill="#34A853"
+              d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24Z"
+            />
+            <path
+              fill="#FBBC05"
+              d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.97 0 12s.45 3.82 1.25 5.42l4.03-3.15Z"
+            />
+            <path
+              fill="#EA4335"
+              d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98Z"
+            />
+          </svg>
+          <span>Lanjutkan dengan Google</span>
+        </button>
+
+        <!-- Clean Divider -->
+        <div class="relative my-5 flex items-center">
+          <div class="flex-1 border-t-2 border-black/15"></div>
+          <span
+            class="px-3 font-outfit font-black text-[11px] text-muted-foreground uppercase tracking-widest bg-white"
+          >
+            Atau Masuk dengan Email
+          </span>
+          <div class="flex-1 border-t-2 border-black/15"></div>
+        </div>
+
+        <!-- Error Alert -->
+        <div
+          v-if="errorMessage"
+          class="mb-4 bg-red-50 border-2 border-red-600 p-3 rounded-[2px] flex items-center gap-2.5 text-red-700"
+        >
+          <svg
+            class="w-4 h-4 shrink-0"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <span class="font-outfit font-bold text-xs">{{ errorMessage }}</span>
+        </div>
+
+        <!-- Form -->
+        <form class="space-y-4" @submit.prevent="handleLogin">
+          <!-- Email -->
+          <label class="block space-y-1.5">
+            <span
+              class="font-outfit font-black text-xs uppercase tracking-wide flex items-center justify-between"
+            >
+              <span>Alamat Email</span>
+            </span>
+            <div class="relative">
+              <input
+                v-model="email"
+                type="email"
+                required
+                autocomplete="email"
+                placeholder="nama@email.com"
+                class="w-full bg-white border-3 border-black rounded-[2px] px-3.5 py-2.5 sm:py-3 font-outfit font-bold text-sm outline-none shadow-neo-sm focus:shadow-neo transition-all placeholder:text-gray-400 placeholder:font-medium"
+              />
+            </div>
+          </label>
+
+          <!-- Password -->
+          <label class="block space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="font-outfit font-black text-xs uppercase tracking-wide">Password</span>
+              <a
+                href="#"
+                class="font-sans text-[11px] font-bold text-neo-violet hover:underline"
+                @click.prevent="
+                  errorMessage = 'Fitur reset password telah dikirim ke email bantuan admin.'
+                "
+              >
+                Lupa password?
+              </a>
+            </div>
+            <div class="relative">
+              <input
+                v-model="password"
+                :type="showPassword ? 'text' : 'password'"
+                required
+                autocomplete="current-password"
+                placeholder="Masukkan password Anda"
+                class="w-full bg-white border-3 border-black rounded-[2px] px-3.5 py-2.5 sm:py-3 pr-11 font-outfit font-bold text-sm outline-none shadow-neo-sm focus:shadow-neo transition-all placeholder:text-gray-400 placeholder:font-medium"
+              />
+              <button
+                type="button"
+                class="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-gray-500 hover:text-black rounded-[2px]"
+                :aria-label="showPassword ? 'Sembunyikan password' : 'Lihat password'"
+                @click="showPassword = !showPassword"
+              >
+                <!-- Eye open / closed SVG -->
+                <svg
+                  v-if="showPassword"
+                  class="w-4 h-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path
+                    d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
+                  />
+                  <line x1="1" y1="1" x2="23" y2="23" />
+                </svg>
+                <svg
+                  v-else
+                  class="w-4 h-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </button>
+            </div>
+          </label>
+
+          <!-- Remember Me Checkbox -->
+          <div class="flex items-center justify-between pt-1">
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                v-model="rememberMe"
+                type="checkbox"
+                class="w-4 h-4 rounded-[2px] border-2 border-black accent-neo-violet cursor-pointer"
+              />
+              <span class="font-sans text-xs font-semibold text-gray-700"
+                >Ingat saya di perangkat ini</span
+              >
+            </label>
+          </div>
+
+          <!-- Submit Button -->
+          <button
+            type="submit"
+            :disabled="isLoading"
+            class="w-full neubrutal-btn bg-neo-yellow text-black border-3 border-black py-3.5 rounded-[2px] font-outfit font-black text-sm sm:text-base shadow-neo hover:bg-yellow-300 flex items-center justify-center gap-2 transition-all active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-60 mt-2"
+          >
+            <span v-if="!isLoading">Masuk ke Akun</span>
+            <span v-else>Memproses...</span>
+          </button>
+        </form>
+      </div>
+
+      <!-- Footer switch to Register -->
+      <div class="mt-6 pt-4 bg-[#F8F8F6] border-2 border-black/10 rounded-[2px] p-3 text-center">
+        <p class="font-sans text-xs font-semibold text-muted-foreground">
+          Belum memiliki akun?
+          <RouterLink
+            to="/register"
+            class="font-outfit font-black text-neo-violet hover:text-black underline ml-1"
+          >
+            Daftar Sekarang
+          </RouterLink>
+        </p>
+      </div>
+    </div>
+  </AuthLayout>
+</template>
