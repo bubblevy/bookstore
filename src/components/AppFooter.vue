@@ -15,7 +15,7 @@ const currentYear = new Date().getFullYear()
           <div class="flex items-center gap-2.5">
             <div class="flex flex-col">
               <div class="flex items-center gap-1.5">
-                <span class="font-outfit font-black text-xl tracking-tight leading-none text-neo-violet"
+                <span class="font-outfit font-black text-3xl tracking-tight leading-none text-white"
                   >BOOKSTORE</span
                 >
               </div>
@@ -26,10 +26,8 @@ const currentYear = new Date().getFullYear()
             </div>
           </div>
 
-          <p
-            class="font-sans text-xs sm:text-sm font-semibold text-white/70 leading-relaxed max-w-sm"
-          >
-            Menghadirkan buku-buku pilihan langsung dari penerbit resmi untuk memperkaya pengalaman
+          <p class="font-sans text-sm font-semibold text-white/70 leading-relaxed max-w-sm">
+            Menghadirkan Buku-buku pilihan langsung dari penerbit resmi untuk memperkaya pengalaman
             membacamu. Dijamin 100% original dan dikemas ekstra aman sampai ke tanganmu.
           </p>
 
@@ -95,10 +93,10 @@ const currentYear = new Date().getFullYear()
 
         <!-- Kolom Belanja -->
         <div>
-          <h4 class="font-outfit font-black text-sm uppercase tracking-wider mb-4 text-neo-violet">
+          <h4 class="font-outfit font-black text-sm uppercase tracking-wider mb-4 text-white">
             Koleksi Buku
           </h4>
-          <ul class="space-y-2.5 font-sans text-xs sm:text-sm font-bold text-white/70">
+          <ul class="space-y-2.5 font-sans text-sm font-bold text-white/70">
             <li><a href="#katalog" class="hover:text-white transition-colors">Semua Buku</a></li>
             <li>
               <a href="#kategori" class="hover:text-white transition-colors">Fiksi Populer</a>
@@ -117,10 +115,10 @@ const currentYear = new Date().getFullYear()
 
         <!-- Kolom Layanan & Info -->
         <div>
-          <h4 class="font-outfit font-black text-sm uppercase tracking-wider mb-4 text-neo-violet">
+          <h4 class="font-outfit font-black text-sm uppercase tracking-wider mb-4 text-white">
             Layanan
           </h4>
-          <ul class="space-y-2.5 font-sans text-xs sm:text-sm font-bold text-white/70">
+          <ul class="space-y-2.5 font-sans text-sm font-bold text-white/70">
             <li><a href="#ulasan" class="hover:text-white transition-colors">Ulasan Pembeli</a></li>
             <li><a href="#" class="hover:text-white transition-colors">Garansi Pengembalian</a></li>
             <li><a href="#" class="hover:text-white transition-colors">Kebijakan Privasi</a></li>
@@ -130,12 +128,12 @@ const currentYear = new Date().getFullYear()
 
         <!-- Kolom Lokasi Toko: Hanya Alamat & Jam Buka tanpa emoji atau ekstra text -->
         <div>
-          <h4 class="font-outfit font-black text-sm uppercase tracking-wider mb-4 text-neo-violet">
+          <h4 class="font-outfit font-black text-sm uppercase tracking-wider mb-4 text-white">
             Offline Store
           </h4>
-          <div class="space-y-3 font-sans text-xs sm:text-sm font-bold text-white/80">
+          <div class="space-y-3 font-sans text-sm font-bold text-white/80">
             <div>
-              <p class="text-[11px] font-black uppercase tracking-wider text-neo-violet/90 mb-0.5">
+              <p class="text-[11px] font-black uppercase tracking-wider text-white/90 mb-0.5">
                 Alamat
               </p>
               <p class="leading-relaxed text-white/70">
@@ -143,7 +141,7 @@ const currentYear = new Date().getFullYear()
               </p>
             </div>
             <div>
-              <p class="text-[11px] font-black uppercase tracking-wider text-neo-violet/90 mb-0.5">
+              <p class="text-[11px] font-black uppercase tracking-wider text-white/90 mb-0.5">
                 Jam Buka
               </p>
               <p class="leading-relaxed text-white/70">Setiap Hari: 09.00 – 22.00 WIB</p>
@@ -154,7 +152,7 @@ const currentYear = new Date().getFullYear()
 
       <!-- Bottom Bar: Rapi & Bersih -->
       <div
-        class="pt-6 border-t-2 border-white/20 flex flex-col sm:flex-row items-center justify-between gap-1 font-sans text-xs font-bold text-white/70"
+        class="pt-6 border-t-2 border-white/20 flex flex-col sm:flex-row items-center justify-between gap-1 font-sans text-sm font-bold text-white/70"
       >
         <p>&copy; {{ currentYear }} BookStore Indonesia. All rights reserved.</p>
         <div class="text-white/60">
