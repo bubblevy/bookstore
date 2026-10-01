@@ -524,7 +524,7 @@
             href="#katalog"
             class="neubrutal-btn bg-black text-white border-3 border-black py-3.5 px-7 rounded-[2px] font-outfit font-black text-sm shadow-neo hover:bg-neutral-900 active:translate-x-0.5 active:translate-y-0.5"
           >
-            Lihat Koleksi Rekomendasi →
+            Lihat Koleksi Rekomendasi
           </a>
           <span class="font-outfit font-bold text-xs uppercase tracking-wider text-black">
             ✓ Garansi Edisi Asli 100%

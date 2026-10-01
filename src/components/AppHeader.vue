@@ -58,7 +58,7 @@ defineExpose({ closeMobile })
         <router-link to="/" class="flex items-center gap-2.5 group" @click="closeMobile">
           <div class="flex flex-col">
             <div class="flex items-center gap-1.5">
-              <span class="font-outfit font-black text-xl md:text-2xl tracking-tight leading-none text-neo-violet"
+              <span class="font-outfit font-black text-2xl md:text-2xl tracking-tight leading-none text-black"
                 >BOOKSTORE</span
               >
             </div>

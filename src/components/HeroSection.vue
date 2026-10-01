@@ -2,7 +2,7 @@
 
 <template>
   <section
-    class="w-full bg-neo-violet text-white border-b-4 border-black pt-28 sm:pt-0 py-14 sm:py-20 lg:py-24 select-none relative overflow-hidden"
+    class="w-full bg-neo-violet text-white border-b-4 border-black pt-20 sm:pt-0 py-14 sm:py-20 lg:py-24 select-none relative overflow-hidden"
     aria-labelledby="hero-title"
   >
     <div class="absolute inset-0 pointer-events-none select-none overflow-hidden">
@@ -39,7 +39,7 @@
             class="font-outfit font-black text-4xl sm:text-5xl md:text-6xl tracking-tight leading-[0.98] text-white"
           >
             BACA LEBIH DALAM.<br />
-            <span class="relative inline-block mt-2">
+            <span class="relative inline-block mt-2.5">
               <span
                 class="bg-neo-yellow text-black border-3 md:border-4 border-black px-3 sm:px-4 py-1 inline-block -rotate-1 rounded-[2px] shadow-[5px_5px_0px_0px_#000]"
               >
@@ -51,7 +51,7 @@
           <p
             class="font-sans text-base sm:text-lg md:text-xl font-semibold text-white/90 leading-relaxed max-w-xl"
           >
-            Temukan ragam buku pilihan dari penerbit terkemuka untuk menemani perjalanan belajarmu.
+            Temukan buku pilihan dari penerbit terkemuka untuk menemani perjalanan belajarmu.
             Jaminan buku edisi asli dengan pengiriman aman ke seluruh Indonesia.
           </p>
 
