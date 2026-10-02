@@ -4,19 +4,17 @@ import { RouterLink } from 'vue-router'
 defineProps({
   mode: {
     type: String,
-    required: true, // 'login' | 'register'
+    required: true,
   },
 })
 </script>
 
 <template>
-  <!-- Full container width matching Header & Footer max-w-7xl -->
   <div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pe-5 lg:pe-9 py-6 md:py-10">
-    <!-- Top: Back button aligned with grid -->
     <div class="mb-5">
       <RouterLink
         to="/"
-        class="neubrutal-btn inline-flex items-center gap-2 bg-white border-2 border-black px-3.5 py-1.5 rounded-[2px] font-outfit font-black text-xs shadow-neo-sm hover:bg-yellow-50 transition-all active:translate-x-0.5 active:translate-y-0.5"
+        class="neubrutal-btn inline-flex items-center gap-2 bg-white border-2 border-black px-3.5 py-1.5 rounded-[2px] font-outfit font-black text-xs shadow-neo-sm hover:bg-gray-100 transition-all active:translate-x-0.5 active:translate-y-0.5"
       >
         <svg
           class="w-4 h-4 text-black shrink-0"
@@ -34,27 +32,21 @@ defineProps({
       </RouterLink>
     </div>
 
-    <!-- Unified Split Container: Left is Form, Right is Background Layout (Not a separate card!) -->
     <div
       class="w-full bg-white border-3 md:border-4 border-black rounded-[2px] shadow-neo grid grid-cols-1 lg:grid-cols-12 overflow-hidden items-stretch"
     >
-      <!-- Left: Form section (7 cols on lg, perfectly equal height) -->
       <div class="lg:col-span-6 p-6 sm:p-8 md:p-10 flex flex-col justify-between">
         <slot />
       </div>
 
-      <!-- Right: Background layout section (5 cols on lg, seamless background panel - NOT a card) -->
       <div
         class="hidden lg:flex lg:col-span-6 bg-neo-violet text-white p-6 sm:p-8 md:p-10 border-t-4 lg:border-t-0 lg:border-l-4 border-black flex-col justify-between relative overflow-hidden"
       >
-        <!-- Background subtle dot pattern -->
         <div
           class="absolute inset-0 pointer-events-none opacity-10 bg-[radial-gradient(#fff_1.5px,transparent_1.5px)] [background-size:18px_18px]"
         ></div>
 
-        <!-- Top and Main Info -->
         <div class="relative z-10">
-          <!-- Top badge -->
           <div class="mb-4">
             <span
               class="inline-flex items-center gap-1.5 bg-neo-yellow text-black border-2 border-black px-3 py-0.5 rounded-[2px] font-outfit font-black text-[11px] uppercase tracking-wider shadow-neo-sm"
@@ -76,7 +68,6 @@ defineProps({
             </span>
           </div>
 
-          <!-- Title & description -->
           <h2
             class="font-outfit font-black text-2xl sm:text-3xl xl:text-4xl tracking-tight leading-tight mb-3"
           >
@@ -94,7 +85,6 @@ defineProps({
             }}
           </p>
 
-          <!-- Feature items (Seamless rows on background, zero emoji, not nested cards) -->
           <div class="space-y-3">
             <div class="flex items-center gap-3.5 bg-black/20 p-3 rounded-[2px] backdrop-blur-xs">
               <div
@@ -183,7 +173,6 @@ defineProps({
           </div>
         </div>
 
-        <!-- Bottom Quote (Pinned to bottom with mt-auto) -->
         <div
           class="relative z-10 border-t-2 border-white/20 pt-4 mt-6 flex items-center justify-between text-xs sm:text-sm text-white/80 font-sans"
         >

@@ -1,19 +1,15 @@
 <script setup></script>
 
 <template>
-  <!-- Full-width alternating background band (Luminous Yellow) with Bookstore Ornaments -->
   <section
     id="vibe-section"
     class="w-full bg-neo-yellow border-b-4 border-black py-16 relative overflow-hidden"
   >
-    <!-- Background Bookstore Ornaments & Literary Accents -->
     <div class="absolute inset-0 pointer-events-none select-none overflow-hidden">
-      <!-- Subtle dot grid -->
       <div
         class="absolute inset-0 opacity-[0.08] bg-[radial-gradient(#000_1.5px,transparent_1.5px)] [background-size:24px_24px]"
       ></div>
 
-      <!-- Giant Literary Quotation Mark Watermark -->
       <span
         class="absolute -top-10 left-6 text-black/10 font-outfit font-black text-[180px] leading-none select-none"
         >"</span
@@ -23,14 +19,12 @@
         >"</span
       >
 
-      <!-- Floating literary symbols -->
       <span class="absolute top-12 left-1/3 text-neo-violet text-3xl font-black opacity-50">✦</span>
       <span class="absolute bottom-12 left-1/4 text-neo-orange text-3xl font-black opacity-50"
         >★</span
       >
       <span class="absolute top-8 right-1/4 text-black text-2xl font-black opacity-20">✦</span>
 
-      <!-- reading Bookmark Watermark -->
       <div
         class="absolute bottom-4 right-1/3 opacity-15 border-2 border-black px-2 py-0.5 rounded-[2px] text-[10px] font-outfit font-black uppercase tracking-wider"
       >
@@ -39,13 +33,11 @@
     </div>
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-      <!-- Books: image first on mobile, second on desktop -->
       <div
         data-aos="zoom-in"
         class="lg:hidden flex justify-center items-center pointer-events-none select-none order-first mb-6"
       >
         <div class="relative w-full max-w-[360px] h-[280px] flex items-center justify-center">
-          <!-- Book 1 (Left Behind - Wisdom Violet - Rubah/Fox Illustration) -->
           <div
             class="absolute w-[140px] aspect-[3/4.2] bg-neo-violet text-white border-4 border-black rounded-[2px] p-3 shadow-neo transform -rotate-12 -translate-x-12 translate-y-2 flex flex-col justify-between"
           >
@@ -94,7 +86,6 @@
             </div>
           </div>
 
-          <!-- Book 3 (Right Behind - Vibrant Orange - Burung Merpati / Bird in Flight) -->
           <div
             class="absolute w-[140px] aspect-[3/4.2] bg-neo-orange text-white border-4 border-black rounded-[2px] p-3 shadow-neo transform rotate-12 translate-x-12 translate-y-1 flex flex-col justify-between"
           >
@@ -136,7 +127,6 @@
             </div>
           </div>
 
-          <!-- Book 2 (Center Front - Clean White - Tanaman Daun Monstera / Botanical Leaf) -->
           <div
             class="relative w-[155px] aspect-[3/4.2] bg-white text-black border-4 border-black rounded-[2px] p-4 shadow-neo-lg z-20 flex flex-col justify-between"
           >
@@ -239,9 +229,7 @@
         </div>
       </div>
 
-      <!-- Desktop layout: text left, books right -->
       <div class="hidden lg:grid grid-cols-12 gap-10 lg:gap-14 items-center">
-        <!-- Left: Bookstore Curatorial Philosophy -->
         <div data-aos="fade-right" class="col-span-6 space-y-5">
           <h2
             class="font-outfit font-black text-3xl sm:text-4xl md:text-5xl lg:text-6xl tracking-tight leading-[0.98] text-black"
@@ -277,7 +265,6 @@
           </div>
         </div>
 
-        <!-- Right: 3 Large Modern Illustrated Books -->
         <div
           data-aos="fade-left"
           data-aos-delay="150"
@@ -286,7 +273,6 @@
           <div
             class="relative w-full max-w-[520px] lg:max-w-[600px] h-[420px] lg:h-[480px] flex items-center justify-center"
           >
-            <!-- Book 1 (Left Behind - Wisdom Violet - Rubah/Fox Illustration) -->
             <div
               class="absolute w-[230px] lg:w-[280px] aspect-[3/4.2] bg-neo-violet text-white border-4 border-black rounded-[2px] p-4 shadow-neo transform -rotate-12 -translate-x-28 translate-y-4 flex flex-col justify-between"
             >
@@ -355,7 +341,6 @@
               </div>
             </div>
 
-            <!-- Book 3 (Right Behind - Vibrant Orange - Burung Merpati / Bird in Flight) -->
             <div
               class="absolute w-[230px] lg:w-[280px] aspect-[3/4.2] bg-neo-orange text-white border-4 border-black rounded-[2px] p-4 shadow-neo transform rotate-12 translate-x-28 translate-y-2 flex flex-col justify-between"
             >
@@ -397,7 +382,6 @@
               </div>
             </div>
 
-            <!-- Book 2 (Center Front - Clean White - Tanaman Daun Monstera / Botanical Leaf) -->
             <div
               class="relative w-[260px] lg:w-[310px] aspect-[3/4.2] bg-white text-black border-4 border-black rounded-[2px] p-5 shadow-neo-lg z-20 flex flex-col justify-between"
             >
@@ -501,7 +485,6 @@
         </div>
       </div>
 
-      <!-- Mobile text content (below the image) -->
       <div class="lg:hidden space-y-5">
         <h2
           class="font-outfit font-black text-3xl sm:text-4xl tracking-tight leading-[0.98] text-black"

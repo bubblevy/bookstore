@@ -17,7 +17,7 @@ onMounted(() => {
           if (observer) observer.disconnect()
         }
       },
-      { threshold: 0.05, rootMargin: '80px 0px -40px 0px' }
+      { threshold: 0.05, rootMargin: '80px 0px -40px 0px' },
     )
     observer.observe(sectionRef.value)
   } else {
@@ -67,20 +67,16 @@ watch(activeFilter, () => {
 </script>
 
 <template>
-  <!-- Full-width alternating background band (Neutral Background) with Bookstore Ornaments -->
   <section
     id="katalog"
     ref="sectionRef"
     class="w-full bg-background border-b-4 border-black py-16 md:py-20 scroll-mt-20 relative overflow-hidden"
   >
-    <!-- Background Bookstore Ornaments & Literary Accents -->
     <div class="absolute inset-0 pointer-events-none select-none overflow-hidden">
-      <!-- Subtle dot grid -->
       <div
         class="absolute inset-0 opacity-[0.05] bg-[radial-gradient(#000_1.5px,transparent_1.5px)] [background-size:24px_24px]"
       ></div>
 
-      <!-- Left Watermark: Open book outline -->
       <svg
         viewBox="0 0 100 80"
         class="absolute -left-12 top-1/4 w-80 h-64 opacity-[0.035] text-black"
@@ -92,7 +88,6 @@ watch(activeFilter, () => {
         <line x1="50" y1="20" x2="50" y2="72" />
       </svg>
 
-      <!-- Right Watermark: Book spine stack -->
       <div
         class="absolute -right-8 bottom-20 opacity-[0.04] text-black flex flex-col gap-2 rotate-6"
       >
@@ -102,7 +97,6 @@ watch(activeFilter, () => {
         <div class="w-60 h-9 border-2 border-black bg-black"></div>
       </div>
 
-      <!-- Floating literary symbols -->
       <span class="absolute top-10 right-[12%] text-neo-violet text-3xl font-black opacity-40"
         >✦</span
       >
@@ -116,7 +110,6 @@ watch(activeFilter, () => {
         >★</span
       >
 
-      <!-- Subtle barcode & ISBN stamp -->
       <div
         class="absolute top-6 right-8 hidden lg:flex items-center gap-2 opacity-25 border border-black px-2 py-0.5 rounded-[2px] text-[10px] font-outfit font-black tracking-widest uppercase"
       >
@@ -126,7 +119,6 @@ watch(activeFilter, () => {
     </div>
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-      <!-- Section Header: Professional bookstore editorial -->
       <div data-aos="fade-up" class="mb-8 md:mb-12">
         <div>
           <span
@@ -148,7 +140,6 @@ watch(activeFilter, () => {
         </div>
       </div>
 
-      <!-- Filter tabs: horizontal scroll, breaks past container edges -->
       <div
         data-aos="fade-up"
         data-aos-delay="80"
@@ -163,7 +154,7 @@ watch(activeFilter, () => {
               :class="
                 activeFilter === filter
                   ? 'bg-neo-yellow text-black'
-                  : 'bg-white hover:bg-gray-50 text-black'
+                  : 'bg-white hover:bg-gray-100 text-black'
               "
               @click="activeFilter = filter"
             >
@@ -173,7 +164,6 @@ watch(activeFilter, () => {
         </div>
       </div>
 
-      <!-- Books Grid: Clean, Spaced, Uncluttered -->
       <div
         :key="`${activeFilter}-${isSectionVisible}`"
         class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6"
@@ -187,7 +177,6 @@ watch(activeFilter, () => {
         />
       </div>
 
-      <!-- Load More Button -->
       <div v-if="hasMore" class="mt-10 sm:mt-12 text-center">
         <button
           class="neubrutal-btn bg-neo-yellow text-black border-3 border-black py-3 px-8 rounded-[2px] font-outfit font-black text-xs sm:text-sm shadow-neo hover:bg-yellow-300 active:translate-x-0.5 active:translate-y-0.5 inline-flex items-center gap-2"
@@ -208,7 +197,6 @@ watch(activeFilter, () => {
         ✦ Seluruh {{ filteredBooks.length }} buku dalam kategori ini telah ditampilkan ✦
       </div>
 
-      <!-- Empty state if no books in category -->
       <div
         v-if="filteredBooks.length === 0"
         class="text-center py-16 bg-white border-3 border-black rounded-[2px] shadow-neo p-8 mt-6"

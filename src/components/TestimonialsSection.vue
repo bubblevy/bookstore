@@ -31,14 +31,11 @@ const testimonials = [
 </script>
 
 <template>
-  <!-- Full-width alternating background band (White matching Categories Section) with Bookstore Ornaments -->
   <section
     id="ulasan"
     class="w-full bg-white text-black border-b-4 border-black py-16 md:py-20 scroll-mt-20 relative overflow-hidden"
   >
-    <!-- Subtle background bookstore decorative elements -->
     <div class="absolute inset-0 pointer-events-none select-none overflow-hidden">
-      <!-- Subtle dot grid -->
       <div
         class="absolute inset-0 opacity-[0.05] bg-[radial-gradient(#000_1.5px,transparent_1.5px)] [background-size:24px_24px]"
       ></div>
@@ -54,7 +51,6 @@ const testimonials = [
         >★</span
       >
 
-      <!-- Giant Quotation watermark -->
       <span
         class="absolute -top-12 right-20 text-black/5 font-outfit font-black text-[160px] leading-none select-none"
         >“</span
@@ -62,7 +58,6 @@ const testimonials = [
     </div>
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-      <!-- Section Header -->
       <div data-aos="fade-up" class="text-center space-y-2 mb-10 md:mb-14">
         <span
           class="inline-block bg-neo-yellow text-black mb-3 border-2 border-black px-3.5 py-1 rounded-[2px] font-outfit font-black text-xs uppercase tracking-wider shadow-neo-sm"
@@ -81,7 +76,6 @@ const testimonials = [
         </p>
       </div>
 
-      <!-- Testimonial Cards: Clean, High-Contrast Neubrutalist Cards -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
         <article
           v-for="(t, idx) in testimonials"
@@ -102,12 +96,10 @@ const testimonials = [
               </span>
             </div>
 
-            <!-- Quote Header -->
             <h3 class="font-outfit font-black text-sm sm:text-base leading-snug uppercase mb-2.5">
               "{{ t.quote }}"
             </h3>
 
-            <!-- Text -->
             <p
               class="font-sans text-xs sm:text-sm font-semibold text-muted-foreground leading-relaxed"
             >
@@ -115,7 +107,6 @@ const testimonials = [
             </p>
           </div>
 
-          <!-- Author Info -->
           <div class="mt-6 pt-4 border-t-2 border-dashed border-black/15 flex items-center gap-3">
             <div
               class="w-9 h-9 rounded-[2px] bg-neo-violet text-white border-2 border-black flex items-center justify-center font-outfit font-black text-xs shadow-neo-sm shrink-0"

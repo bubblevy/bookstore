@@ -9,7 +9,6 @@ const app = createApp(App)
 app.use(router)
 app.mount('#app')
 
-// Initialize AOS after Vue mounts the DOM elements
 setTimeout(() => {
   AOS.init({
     duration: 600,

@@ -17,6 +17,16 @@ function openMobile() {
   openSidebar()
 }
 
+function handleLogout() {
+  userMenuOpen.value = false
+  logout()
+}
+
+function handleMobileLogout() {
+  closeMobile()
+  logout()
+}
+
 function navigateToSection(hash) {
   closeMobile()
   if (router.currentRoute.value.path !== '/') {
@@ -38,7 +48,6 @@ function handleSearchClick() {
   openModal('search')
 }
 
-// Global keyboard shortcut for search (Ctrl+K or Cmd+K)
 function handleKeydown(e) {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
     e.preventDefault()
@@ -59,16 +68,15 @@ defineExpose({ closeMobile, openMobile })
 
 <template>
   <div class="sticky top-0 z-40 select-none">
-    <!-- Main Navigation Bar: Consistent Container Width with Footer -->
     <header class="bg-white border-b-4 border-black">
       <div
         class="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 lg:px-8 py-3 md:py-3.5"
       >
-        <!-- Brand -->
         <router-link to="/" class="flex items-center gap-2.5 group" @click="closeMobile">
           <div class="flex flex-col">
             <div class="flex items-center gap-1.5">
-              <span class="font-outfit font-black text-2xl md:text-2xl tracking-tight leading-none text-black"
+              <span
+                class="font-outfit font-black text-2xl md:text-2xl tracking-tight leading-none text-black"
                 >BOOKSTORE</span
               >
             </div>
@@ -79,7 +87,6 @@ defineExpose({ closeMobile, openMobile })
           </div>
         </router-link>
 
-        <!-- Desktop nav -->
         <nav class="hidden lg:flex items-center gap-7 font-outfit font-black text-sm">
           <a href="#katalog" class="link-under-link hover:text-neo-violet">Katalog Buku</a>
           <a href="#kategori" class="link-under-link hover:text-neo-violet">Kategori</a>
@@ -87,11 +94,9 @@ defineExpose({ closeMobile, openMobile })
           <a href="#kontak" class="link-under-link hover:text-neo-violet">Kontak</a>
         </nav>
 
-        <!-- Right actions -->
         <div class="flex items-center gap-2 sm:gap-3">
-          <!-- Search trigger: lengthened on desktop, uniform w-10 h-10 on mobile -->
           <button
-            class="neubrutal-btn bg-white border-2 md:border-3 border-black w-10 h-10 md:w-64 lg:w-80 md:px-3.5 rounded-[2px] shadow-neo-sm hover:bg-yellow-50 flex items-center justify-center md:justify-between shrink-0 transition-all"
+            class="neubrutal-btn bg-white border-2 md:border-3 border-black w-10 h-10 md:w-64 lg:w-80 md:px-3.5 rounded-[2px] shadow-neo-sm hover:bg-gray-100 flex items-center justify-center md:justify-between shrink-0 transition-all"
             aria-label="Cari buku"
             @click="handleSearchClick"
           >
@@ -122,7 +127,6 @@ defineExpose({ closeMobile, openMobile })
             </kbd>
           </button>
 
-          <!-- Cart button: new modern cart icon, no CART text on any device, badge flies above icon, uniform w-10 h-10 on mobile -->
           <button
             class="relative neubrutal-btn bg-neo-yellow text-black border-2 md:border-3 border-black w-10 h-10 rounded-[2px] shadow-neo-sm hover:bg-yellow-300 flex items-center justify-center shrink-0"
             aria-label="Buka keranjang belanja"
@@ -143,7 +147,7 @@ defineExpose({ closeMobile, openMobile })
                 d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"
               />
             </svg>
-            <!-- Badge flying above icon -->
+
             <span
               v-if="cartBadge > 0"
               class="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-black text-white border-2 border-black rounded-full text-[10px] font-outfit font-black flex items-center justify-center leading-none pointer-events-none shadow-[1px_1px_0px_0px_#fff]"
@@ -152,7 +156,6 @@ defineExpose({ closeMobile, openMobile })
             </span>
           </button>
 
-          <!-- Auth: HIDDEN ON MOBILE to give space to the hamburger menu -->
           <div v-if="!state.isLoggedIn" class="hidden md:flex items-center gap-2">
             <router-link
               to="/login"
@@ -191,16 +194,15 @@ defineExpose({ closeMobile, openMobile })
               <div class="border-t border-black my-1"></div>
               <button
                 class="w-full text-left px-3 py-2 rounded-[2px] font-outfit font-bold text-xs hover:bg-neo-yellow hover:text-black"
-                @click="userMenuOpen = false; logout()"
+                @click="handleLogout"
               >
                 Keluar
               </button>
             </div>
           </div>
 
-          <!-- Mobile menu hamburger button: EXACT SAME SIZE w-10 h-10 on mobile -->
           <button
-            class="lg:hidden neubrutal-btn bg-white w-10 h-10 rounded-[2px] border-2 border-black shadow-neo-sm flex items-center justify-center shrink-0 hover:bg-neo-yellow transition-colors"
+            class="lg:hidden neubrutal-btn bg-white w-10 h-10 rounded-[2px] border-2 border-black shadow-neo-sm flex items-center justify-center shrink-0 hover:bg-gray-100 transition-colors"
             aria-label="Buka menu navigasi"
             @click="openMobile"
           >
@@ -218,7 +220,6 @@ defineExpose({ closeMobile, openMobile })
       </div>
     </header>
 
-    <!-- Mobile Drawer Backdrop -->
     <transition
       enter-active-class="transition-opacity duration-200"
       leave-active-class="transition-opacity duration-200"
@@ -232,7 +233,6 @@ defineExpose({ closeMobile, openMobile })
       ></div>
     </transition>
 
-    <!-- Mobile Drawer Panel -->
     <transition name="drawer">
       <div
         v-if="state.isSidebarOpen"
@@ -242,7 +242,8 @@ defineExpose({ closeMobile, openMobile })
           <router-link to="/" class="flex items-center gap-2" @click="closeMobile">
             <div class="flex flex-col">
               <div class="flex items-center gap-1.5">
-                <span class="font-outfit font-black text-2xl md:text-xl tracking-tight leading-none text-black"
+                <span
+                  class="font-outfit font-black text-2xl md:text-xl tracking-tight leading-none text-black"
                   >BOOKSTORE</span
                 >
               </div>
@@ -298,7 +299,6 @@ defineExpose({ closeMobile, openMobile })
           >
         </nav>
 
-        <!-- Mobile Drawer Footer -->
         <div class="p-5 mt-auto bg-white border-t-4 border-black">
           <div v-if="!state.isLoggedIn" class="flex flex-col gap-2.5">
             <router-link
@@ -310,7 +310,7 @@ defineExpose({ closeMobile, openMobile })
             </router-link>
             <router-link
               to="/register"
-              class="w-full neubrutal-btn bg-white text-black border-3 border-black py-3 rounded-[2px] font-outfit font-black text-center shadow-neo block hover:bg-gray-50"
+              class="w-full neubrutal-btn bg-white text-black border-3 border-black py-3 rounded-[2px] font-outfit font-black text-center shadow-neo block hover:bg-gray-100"
               @click="closeMobile"
             >
               Daftar Akun Baru
@@ -327,7 +327,7 @@ defineExpose({ closeMobile, openMobile })
             </div>
             <button
               class="neubrutal-btn bg-neo-yellow text-black border-2 border-black px-3 py-1.5 rounded-[2px] font-outfit font-black text-xs hover:bg-yellow-300 shadow-neo-sm"
-              @click="closeMobile(); logout()"
+              @click="handleMobileLogout"
             >
               Keluar
             </button>

@@ -72,7 +72,7 @@
 
             <a
               href="#kategori"
-              class="neubrutal-btn bg-white text-black border-3 border-black py-3.5 px-6 rounded-[2px] font-outfit font-black text-sm md:text-base shadow-neo hover:bg-yellow-50 active:translate-x-0.5 active:translate-y-0.5 flex items-center justify-center"
+              class="neubrutal-btn bg-white text-black border-3 border-black py-3.5 px-6 rounded-[2px] font-outfit font-black text-sm md:text-base shadow-neo hover:bg-gray-100 active:translate-x-0.5 active:translate-y-0.5 flex items-center justify-center"
             >
               Kategori Pilihan
             </a>
@@ -95,21 +95,17 @@
           </div>
         </div>
 
-        <!-- Right Column: 4-Block Staggered Brick Puzzle (Tata Bata Tidak Sejajar Panjang-Pendek, Total 4 Ujung) -->
         <div
           data-aos="fade-left"
           data-aos-delay="150"
           class="hidden md:flex md:col-span-6 justify-end items-center relative py-4 lg:py-6 pe-1 select-none pointer-events-none"
         >
           <div class="grid grid-cols-2 gap-4 lg:gap-5 w-full max-w-[440px] lg:max-w-[490px]">
-            <!-- Column 1 (Kiri): Atas PANJANG, Bawah PENDEK -->
             <div class="flex flex-col gap-4 lg:gap-5">
-              <!-- Block 1: PANJANG / TINGGI (Kuning - Burung Hantu) -->
               <div
                 style="background-color: rgb(255, 158, 193); color: rgb(0, 0, 0)"
                 class="w-full h-[230px] lg:h-[260px] text-black border-3 md:border-4 border-black rounded-[2px] p-3.5 sm:p-4 shadow-[6px_6px_0px_0px_#000] flex flex-col justify-between"
               >
-                <!-- Header stripe -->
                 <div class="flex items-center justify-between border-b-2 border-black pb-2">
                   <div class="flex gap-1.5">
                     <span class="w-2.5 h-2.5 rounded-full bg-black"></span>
@@ -121,7 +117,6 @@
                   >
                 </div>
 
-                <!-- Center Illustration: Burung Hantu (Owl) -->
                 <div class="w-full flex-1 flex items-center justify-center p-1">
                   <svg
                     viewBox="0 0 100 100"
@@ -184,15 +179,12 @@
                   </svg>
                 </div>
 
-                <!-- Footer stripe -->
                 <div class="h-2 w-full bg-black rounded-[1px]"></div>
               </div>
 
-              <!-- Block 2: PENDEK (Lime - Ikan Paus) -->
               <div
                 class="w-full h-[150px] lg:h-[170px] bg-neo-lime text-black border-3 md:border-4 border-black rounded-[2px] p-3 shadow-[6px_6px_0px_0px_#000] flex flex-col justify-between"
               >
-                <!-- Mini Header -->
                 <div class="flex items-center justify-between border-b-2 border-black pb-1">
                   <span class="w-8 h-1.5 bg-black"></span>
                   <span
@@ -201,7 +193,6 @@
                   >
                 </div>
 
-                <!-- Illustration: Ikan Paus (Whale) -->
                 <div class="w-full flex-1 flex items-center justify-center p-1">
                   <svg
                     viewBox="0 0 100 65"
@@ -252,7 +243,6 @@
                   </svg>
                 </div>
 
-                <!-- Mini Footer -->
                 <div class="flex gap-1">
                   <span class="w-2 h-2 rounded-full bg-black"></span>
                   <span class="w-2 h-2 rounded-full bg-black"></span>
@@ -260,13 +250,10 @@
               </div>
             </div>
 
-            <!-- Column 2 (Kanan): Atas PENDEK, Bawah PANJANG (Berselang-seling tata bata) -->
             <div class="flex flex-col gap-4 lg:gap-5">
-              <!-- Block 3: PENDEK (Putih - Buah Jeruk Segar) -->
               <div
                 class="w-full h-[150px] lg:h-[170px] bg-white text-black border-3 md:border-4 border-black rounded-[2px] p-3 shadow-[6px_6px_0px_0px_#000] flex flex-col justify-between"
               >
-                <!-- Mini Header -->
                 <div class="flex items-center justify-between border-b-2 border-black pb-1">
                   <span
                     class="font-outfit font-black text-[10px] uppercase tracking-widest bg-black text-white px-1.5 py-0.5 rounded-[1px]"
@@ -275,7 +262,6 @@
                   <span class="w-8 h-1.5 bg-black"></span>
                 </div>
 
-                <!-- Illustration: Buah Jeruk (Citrus Fruit) -->
                 <div class="w-full flex-1 flex items-center justify-center p-1">
                   <svg
                     viewBox="0 0 100 80"
@@ -311,18 +297,15 @@
                   </svg>
                 </div>
 
-                <!-- Mini Footer -->
                 <div class="flex gap-1 justify-end">
                   <span class="w-2 h-2 rounded-full bg-black"></span>
                   <span class="w-2 h-2 rounded-full bg-black"></span>
                 </div>
               </div>
 
-              <!-- Block 4: PANJANG / TINGGI (Oranye - Kucing Membaca Buku) -->
               <div
                 class="w-full h-[230px] lg:h-[260px] bg-neo-orange text-black border-3 md:border-4 border-black rounded-[2px] p-3.5 sm:p-4 shadow-[6px_6px_0px_0px_#000] flex flex-col justify-between"
               >
-                <!-- Header stripe -->
                 <div class="flex items-center justify-between border-b-2 border-black pb-2">
                   <span
                     class="font-outfit font-black text-[10px] uppercase tracking-widest bg-black text-white px-1.5 py-0.5 rounded-[1px]"
@@ -334,7 +317,6 @@
                   </div>
                 </div>
 
-                <!-- Center Illustration: Kucing Membaca Buku -->
                 <div class="w-full flex-1 flex items-center justify-center p-1">
                   <svg
                     viewBox="0 0 100 100"
@@ -415,7 +397,6 @@
                   </svg>
                 </div>
 
-                <!-- Footer stripe -->
                 <div class="h-2 w-full bg-black rounded-[1px]"></div>
               </div>
             </div>

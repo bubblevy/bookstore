@@ -78,7 +78,6 @@ function handleGoogleRegister() {
   <AuthLayout mode="register">
     <div class="flex flex-col justify-between h-full">
       <div>
-        <!-- Header -->
         <div class="mb-5">
           <h1
             class="font-outfit font-black text-2xl sm:text-3xl tracking-tight leading-tight text-black"
@@ -90,14 +89,12 @@ function handleGoogleRegister() {
           </p>
         </div>
 
-        <!-- Google Button -->
         <button
           type="button"
           :disabled="isLoading"
-          class="w-full neubrutal-btn bg-white hover:bg-gray-50 text-black border-3 border-black py-3 px-4 rounded-[2px] font-outfit font-black text-sm shadow-neo-sm flex items-center justify-center gap-3 transition-all active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-60"
+          class="w-full neubrutal-btn bg-white hover:bg-gray-100 text-black border-3 border-black py-3 px-4 rounded-[2px] font-outfit font-black text-sm shadow-neo-sm flex items-center justify-center gap-3 transition-all active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-60"
           @click="handleGoogleRegister"
         >
-          <!-- Official Google SVG Icon -->
           <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path
               fill="#4285F4"
@@ -119,7 +116,6 @@ function handleGoogleRegister() {
           <span>Daftar dengan Google</span>
         </button>
 
-        <!-- Clean Divider -->
         <div class="relative my-4 flex items-center">
           <div class="flex-1 border-t-2 border-black/15"></div>
           <span
@@ -130,12 +126,13 @@ function handleGoogleRegister() {
           <div class="flex-1 border-t-2 border-black/15"></div>
         </div>
 
-        <!-- Error Alert (Merah) -->
         <div
           v-if="errorMessage"
           class="mb-4 bg-red-500 text-white border-3 border-black p-3 rounded-[2px] shadow-neo-sm flex items-center gap-2.5"
         >
-          <div class="w-6 h-6 rounded-[2px] bg-black text-white border border-black flex items-center justify-center shrink-0">
+          <div
+            class="w-6 h-6 rounded-[2px] bg-black text-white border border-black flex items-center justify-center shrink-0"
+          >
             <svg
               class="w-3.5 h-3.5"
               viewBox="0 0 24 24"
@@ -153,9 +150,7 @@ function handleGoogleRegister() {
           <span class="font-outfit font-black text-xs">{{ errorMessage }}</span>
         </div>
 
-        <!-- Form -->
         <form class="space-y-3.5" @submit.prevent="handleRegister">
-          <!-- Name -->
           <label class="block space-y-1">
             <span class="font-outfit font-black text-xs uppercase tracking-wide">Nama Lengkap</span>
             <input
@@ -168,7 +163,6 @@ function handleGoogleRegister() {
             />
           </label>
 
-          <!-- Email -->
           <label class="block space-y-1">
             <span class="font-outfit font-black text-xs uppercase tracking-wide">Alamat Email</span>
             <input
@@ -181,7 +175,6 @@ function handleGoogleRegister() {
             />
           </label>
 
-          <!-- Password -->
           <label class="block space-y-1">
             <span class="font-outfit font-black text-xs uppercase tracking-wide"
               >Password (Min. 8 Karakter)</span
@@ -233,7 +226,6 @@ function handleGoogleRegister() {
             </div>
           </label>
 
-          <!-- Confirm Password -->
           <label class="block space-y-1">
             <span class="font-outfit font-black text-xs uppercase tracking-wide"
               >Ulangi Password</span
@@ -285,7 +277,6 @@ function handleGoogleRegister() {
             </div>
           </label>
 
-          <!-- Agree Terms Checkbox -->
           <label class="flex items-start gap-2 cursor-pointer select-none pt-1">
             <input
               v-model="agreeTerms"
@@ -301,7 +292,6 @@ function handleGoogleRegister() {
             </span>
           </label>
 
-          <!-- Submit Button -->
           <button
             type="submit"
             :disabled="isLoading"
@@ -313,7 +303,6 @@ function handleGoogleRegister() {
         </form>
       </div>
 
-      <!-- Footer switch to Login -->
       <div class="mt-5 pt-4 bg-[#F8F8F6] border-2 border-black/10 rounded-[2px] p-3 text-center">
         <p class="font-sans text-xs font-semibold text-muted-foreground">
           Sudah memiliki akun?
