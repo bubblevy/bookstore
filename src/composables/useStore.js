@@ -22,6 +22,9 @@ const state = reactive({
   // Cart slide-over drawer state
   isCartOpen: false,
 
+  // Mobile sidebar drawer state
+  isSidebarOpen: false,
+
   // Auth state
   isLoggedIn: false,
   userName: '',
@@ -129,6 +132,19 @@ function toggleCart() {
   state.isCartOpen = !state.isCartOpen
 }
 
+// Sidebar actions
+function openSidebar() {
+  state.isSidebarOpen = true
+}
+
+function closeSidebar() {
+  state.isSidebarOpen = false
+}
+
+function toggleSidebar() {
+  state.isSidebarOpen = !state.isSidebarOpen
+}
+
 // Modal actions
 function openModal(name, payload = null) {
   state.activeModal = name
@@ -195,6 +211,9 @@ export function useStore() {
     openCart,
     closeCart,
     toggleCart,
+    openSidebar,
+    closeSidebar,
+    toggleSidebar,
     openModal,
     closeModal,
     login,

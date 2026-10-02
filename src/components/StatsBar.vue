@@ -1,7 +1,7 @@
 <script setup>
 const stats = [
-  { value: '50.000+', label: 'PEMBACA AKTIF', sub: 'Komunitas buku terpercaya' },
-  { value: '1.500+', label: 'JUDUL KURASI', sub: 'Sastra, sains & filsafat' },
+  { value: '10.000+', label: 'BUKU TERJUAL', sub: 'Dipercaya oleh ribuan pembaca' },
+  { value: '1.500+', label: 'JUDUL BUKU', sub: 'Sastra, sains, filsafat dan banyak lagi' },
   { value: '100%', label: 'EDISI ASLI', sub: 'Penerbit resmi & bergaransi' },
   { value: '24 JAM', label: 'PROSES KILAT', sub: 'Pengiriman aman se-Indonesia' },
 ]

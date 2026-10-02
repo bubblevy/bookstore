@@ -4,28 +4,39 @@ import { useRouter } from 'vue-router'
 import { useStore } from '@/composables/useStore'
 
 const router = useRouter()
-const { state, cartCount, openCart, openModal, logout } = useStore()
-const mobileOpen = ref(false)
+const { state, cartCount, openCart, openModal, logout, openSidebar, closeSidebar } = useStore()
 const userMenuOpen = ref(false)
 
 const cartBadge = computed(() => cartCount())
 
 function closeMobile() {
-  mobileOpen.value = false
+  closeSidebar()
+}
+
+function openMobile() {
+  openSidebar()
+}
+
+function navigateToSection(hash) {
+  closeMobile()
+  if (router.currentRoute.value.path !== '/') {
+    router.push({ path: '/', hash }).then(() => {
+      setTimeout(() => {
+        const el = document.querySelector(hash)
+        if (el) el.scrollIntoView({ behavior: 'smooth' })
+      }, 150)
+    })
+  } else {
+    const el = document.querySelector(hash)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
 }
 
 function handleSearchClick() {
   openModal('search')
 }
-
-// Disable body scroll when mobile menu is open
-watch(mobileOpen, (val) => {
-  if (val) {
-    document.body.style.overflow = 'hidden'
-  } else {
-    document.body.style.overflow = ''
-  }
-})
 
 // Global keyboard shortcut for search (Ctrl+K or Cmd+K)
 function handleKeydown(e) {
@@ -40,11 +51,10 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  document.body.style.overflow = ''
   window.removeEventListener('keydown', handleKeydown)
 })
 
-defineExpose({ closeMobile })
+defineExpose({ closeMobile, openMobile })
 </script>
 
 <template>
@@ -192,7 +202,7 @@ defineExpose({ closeMobile })
           <button
             class="lg:hidden neubrutal-btn bg-white w-10 h-10 rounded-[2px] border-2 border-black shadow-neo-sm flex items-center justify-center shrink-0 hover:bg-neo-yellow transition-colors"
             aria-label="Buka menu navigasi"
-            @click="mobileOpen = true"
+            @click="openMobile"
           >
             <svg
               class="w-5 h-5"
@@ -216,7 +226,7 @@ defineExpose({ closeMobile })
       leave-to-class="opacity-0"
     >
       <div
-        v-if="mobileOpen"
+        v-if="state.isSidebarOpen"
         class="fixed inset-0 bg-black/60 z-50 backdrop-blur-xs lg:hidden"
         @click="closeMobile"
       ></div>
@@ -225,14 +235,14 @@ defineExpose({ closeMobile })
     <!-- Mobile Drawer Panel -->
     <transition name="drawer">
       <div
-        v-if="mobileOpen"
-        class="fixed inset-y-0 left-0 w-full max-w-xs sm:max-w-sm bg-background z-50 lg:hidden border-r-4 border-black shadow-[8px_0_0_0_#000] flex flex-col"
+        v-if="state.isSidebarOpen"
+        class="fixed inset-y-0 left-0 w-full max-w-[280px] sm:max-w-xs md:max-w-sm bg-background z-50 lg:hidden border-r-3 sm:border-r-4 border-black shadow-[6px_0px_0px_0px_#000] sm:shadow-[8px_0px_0px_0px_#000] flex flex-col"
       >
         <div class="flex items-center justify-between p-4 sm:p-5 border-b-4 border-black bg-white">
           <router-link to="/" class="flex items-center gap-2" @click="closeMobile">
             <div class="flex flex-col">
               <div class="flex items-center gap-1.5">
-                <span class="font-outfit font-black text-lg md:text-xl tracking-tight leading-none text-neo-violet"
+                <span class="font-outfit font-black text-2xl md:text-xl tracking-tight leading-none text-black"
                   >BOOKSTORE</span
                 >
               </div>
@@ -265,25 +275,25 @@ defineExpose({ closeMobile })
           <a
             href="#katalog"
             class="py-3 border-b-2 border-black/10 hover:text-neo-violet"
-            @click="closeMobile"
+            @click="navigateToSection('#katalog')"
             >Katalog Buku</a
           >
           <a
             href="#kategori"
             class="py-3 border-b-2 border-black/10 hover:text-neo-violet"
-            @click="closeMobile"
+            @click="navigateToSection('#kategori')"
             >Kategori</a
           >
           <a
             href="#ulasan"
             class="py-3 border-b-2 border-black/10 hover:text-neo-violet"
-            @click="closeMobile"
+            @click="navigateToSection('#ulasan')"
             >Ulasan Pembeli</a
           >
           <a
             href="#kontak"
             class="py-3 border-b-2 border-black/10 hover:text-neo-violet"
-            @click="closeMobile"
+            @click="navigateToSection('#kontak')"
             >Kontak</a
           >
         </nav>
@@ -293,7 +303,7 @@ defineExpose({ closeMobile })
           <div v-if="!state.isLoggedIn" class="flex flex-col gap-2.5">
             <router-link
               to="/login"
-              class="w-full neubrutal-btn bg-neo-yellow text-black border-3 border-black py-3 rounded-[2px] font-outfit font-black text-center shadow-neo block"
+              class="w-full neubrutal-btn bg-neo-yellow text-black border-3 border-black py-3 rounded-[2px] font-outfit font-black text-center shadow-neo block hover:bg-yellow-300"
               @click="closeMobile"
             >
               Masuk ke Akun
