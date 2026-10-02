@@ -1,11 +1,35 @@
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, onUnmounted, watch } from 'vue'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import CartDrawer from '@/components/CartDrawer.vue'
 import SearchModal from '@/components/SearchModal.vue'
 import QuickViewModal from '@/components/QuickViewModal.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
+import { useStore } from '@/composables/useStore'
+
+const { state } = useStore()
+
+// Lock body scrolling whenever search, cart drawer, sidebar, or any modal is open
+watch(
+  () => state.isCartOpen || state.isSidebarOpen || Boolean(state.activeModal),
+  (isLocked) => {
+    if (typeof document !== 'undefined') {
+      if (isLocked) {
+        document.body.style.overflow = 'hidden'
+      } else {
+        document.body.style.overflow = ''
+      }
+    }
+  },
+  { immediate: true }
+)
+
+onUnmounted(() => {
+  if (typeof document !== 'undefined') {
+    document.body.style.overflow = ''
+  }
+})
 
 onMounted(() => {
   if (typeof IntersectionObserver === 'undefined') return

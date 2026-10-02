@@ -11,7 +11,7 @@ defineProps({
 
 <template>
   <!-- Full container width matching Header & Footer max-w-7xl -->
-  <div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pe-6 lg:pe-10 py-6 md:py-10">
+  <div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pe-5 lg:pe-9 py-6 md:py-10">
     <!-- Top: Back button aligned with grid -->
     <div class="mb-5">
       <RouterLink
@@ -36,7 +36,7 @@ defineProps({
 
     <!-- Unified Split Container: Left is Form, Right is Background Layout (Not a separate card!) -->
     <div
-      class="w-full bg-white border-3 md:border-4 border-black rounded-[2px] shadow-neo-lg grid grid-cols-1 lg:grid-cols-12 overflow-hidden items-stretch"
+      class="w-full bg-white border-3 md:border-4 border-black rounded-[2px] shadow-neo grid grid-cols-1 lg:grid-cols-12 overflow-hidden items-stretch"
     >
       <!-- Left: Form section (7 cols on lg, perfectly equal height) -->
       <div class="lg:col-span-6 p-6 sm:p-8 md:p-10 flex flex-col justify-between">

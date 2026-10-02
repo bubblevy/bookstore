@@ -130,25 +130,27 @@ function handleGoogleRegister() {
           <div class="flex-1 border-t-2 border-black/15"></div>
         </div>
 
-        <!-- Error Alert -->
+        <!-- Error Alert (Merah) -->
         <div
           v-if="errorMessage"
-          class="mb-4 bg-red-50 border-2 border-red-600 p-3 rounded-[2px] flex items-center gap-2.5 text-red-700"
+          class="mb-4 bg-red-500 text-white border-3 border-black p-3 rounded-[2px] shadow-neo-sm flex items-center gap-2.5"
         >
-          <svg
-            class="w-4 h-4 shrink-0"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-          </svg>
-          <span class="font-outfit font-bold text-xs">{{ errorMessage }}</span>
+          <div class="w-6 h-6 rounded-[2px] bg-black text-white border border-black flex items-center justify-center shrink-0">
+            <svg
+              class="w-3.5 h-3.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="3"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+          </div>
+          <span class="font-outfit font-black text-xs">{{ errorMessage }}</span>
         </div>
 
         <!-- Form -->
