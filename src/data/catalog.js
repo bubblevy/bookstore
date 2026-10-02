@@ -1,6 +1,3 @@
-// Static seed data for the bookstore UI matching Neubrutalism theme & palette
-// Palette accents: Wisdom Violet (#8847F5), Luminous Yellow (#D8FA00), Vibrant Orange (#FF7B29), Lime (#CBFF00)
-
 export const categories = [
   {
     id: 'fiksi',

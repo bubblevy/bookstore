@@ -3,14 +3,12 @@ const currentYear = new Date().getFullYear()
 </script>
 
 <template>
-  <!-- Full-width Footer matching exact horizontal container width of Header -->
   <footer
     id="kontak"
     class="w-full bg-[#111111] text-white border-t-4 border-black pt-12 md:pt-16 pb-8"
   >
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div data-aos="fade-up" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 mb-12">
-        <!-- Brand Column (2 cols on lg) -->
         <div class="lg:col-span-2 space-y-4">
           <div class="flex items-center gap-2.5">
             <div class="flex flex-col">
@@ -31,7 +29,6 @@ const currentYear = new Date().getFullYear()
             membacamu. Dijamin 100% original dan dikemas ekstra aman sampai ke tanganmu.
           </p>
 
-          <!-- Social media: SVG icons without text -->
           <div class="flex items-center gap-2.5 pt-2">
             <a
               href="https://instagram.com"
@@ -91,7 +88,6 @@ const currentYear = new Date().getFullYear()
           </div>
         </div>
 
-        <!-- Kolom Belanja -->
         <div>
           <h4 class="font-outfit font-black text-sm uppercase tracking-wider mb-4 text-white">
             Koleksi Buku
@@ -113,7 +109,6 @@ const currentYear = new Date().getFullYear()
           </ul>
         </div>
 
-        <!-- Kolom Layanan & Info -->
         <div>
           <h4 class="font-outfit font-black text-sm uppercase tracking-wider mb-4 text-white">
             Layanan
@@ -126,7 +121,6 @@ const currentYear = new Date().getFullYear()
           </ul>
         </div>
 
-        <!-- Kolom Lokasi Toko: Hanya Alamat & Jam Buka tanpa emoji atau ekstra text -->
         <div>
           <h4 class="font-outfit font-black text-sm uppercase tracking-wider mb-4 text-white">
             Offline Store
@@ -150,7 +144,6 @@ const currentYear = new Date().getFullYear()
         </div>
       </div>
 
-      <!-- Bottom Bar: Rapi & Bersih -->
       <div
         class="pt-6 border-t-2 border-white/20 flex flex-col sm:flex-row items-center justify-between gap-1 font-sans text-sm font-bold text-white/70"
       >

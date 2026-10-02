@@ -31,7 +31,6 @@ function goToDetail() {
     class="group bg-white border-3 border-black rounded-[2px] shadow-neo transition-all duration-200 hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-neo-md flex flex-col justify-between overflow-hidden cursor-pointer"
     @click="goToDetail"
   >
-    <!-- Compact cover container (not too tall) -->
     <div
       class="relative w-full aspect-[4/3.4] bg-background border-b-3 border-black p-2.5 sm:p-3 flex items-center justify-center overflow-hidden"
     >
@@ -46,7 +45,6 @@ function goToDetail() {
         />
       </div>
 
-      <!-- Clean genre badge -->
       <span
         class="absolute bottom-2 left-2 bg-black text-white px-2 py-0.5 rounded-[2px] font-outfit font-bold text-[9px] uppercase tracking-wide"
       >
@@ -54,7 +52,6 @@ function goToDetail() {
       </span>
     </div>
 
-    <!-- Content / Meta: compact, concise, proportional -->
     <div class="p-3 sm:p-3.5 flex flex-col flex-1 justify-between gap-2">
       <div>
         <h3
@@ -71,7 +68,6 @@ function goToDetail() {
         </div>
       </div>
 
-      <!-- Clean Price only (no buy icon/button on card) -->
       <div class="pt-2 border-t border-black/10 flex items-center justify-between">
         <span class="font-outfit font-black text-sm sm:text-base text-black">
           {{ formattedPrice }}

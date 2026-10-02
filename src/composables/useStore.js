@@ -1,10 +1,6 @@
-// Reactive global store using Vue's reactivity primitives.
-// Manages cart, modals, drawer, and notifications.
-
 import { reactive, readonly } from 'vue'
 
 const state = reactive({
-  // Cart state
   cart: [
     {
       id: 'b1',
@@ -19,26 +15,20 @@ const state = reactive({
     },
   ],
 
-  // Cart slide-over drawer state
   isCartOpen: false,
 
-  // Mobile sidebar drawer state
   isSidebarOpen: false,
 
-  // Auth state
   isLoggedIn: false,
   userName: '',
   userEmail: '',
 
-  // Active modal: null | 'login' | 'quickview' | 'search'
   activeModal: null,
   modalPayload: null,
 
-  // Search filter
   searchQuery: '',
 })
 
-// Toast notifications
 let toastListeners = new Set()
 let toastId = 0
 
@@ -47,7 +37,7 @@ function showToast(message, options = {}) {
   const toast = {
     id,
     message,
-    type: options.type || 'info', // 'info' | 'success' | 'error'
+    type: options.type || 'info',
   }
   toastListeners.forEach((fn) => fn(toast))
   return id
@@ -58,7 +48,6 @@ function onToast(fn) {
   return () => toastListeners.delete(fn)
 }
 
-// Cart actions
 function addToCart(book, options = {}) {
   const format = options.format || book.format || 'Soft Cover'
   const qty = options.quantity || 1
@@ -119,7 +108,6 @@ function deselectAllItems() {
   })
 }
 
-// Drawer actions
 function openCart() {
   state.isCartOpen = true
 }
@@ -132,7 +120,6 @@ function toggleCart() {
   state.isCartOpen = !state.isCartOpen
 }
 
-// Sidebar actions
 function openSidebar() {
   state.isSidebarOpen = true
 }
@@ -145,7 +132,6 @@ function toggleSidebar() {
   state.isSidebarOpen = !state.isSidebarOpen
 }
 
-// Modal actions
 function openModal(name, payload = null) {
   state.activeModal = name
   state.modalPayload = payload
@@ -156,7 +142,6 @@ function closeModal() {
   state.modalPayload = null
 }
 
-// Auth actions
 function login(name, email = '') {
   state.isLoggedIn = true
   state.userName = name
@@ -185,13 +170,13 @@ function logout() {
   showToast('Anda telah keluar.', { type: 'info' })
 }
 
-// Selectors
 const cartCount = () => state.cart.reduce((sum, item) => sum + item.quantity, 0)
-const cartTotal = () =>
-  state.cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
+const cartTotal = () => state.cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
 const selectedCount = () => state.cart.filter((item) => item.selected).length
 const selectedTotal = () =>
-  state.cart.filter((item) => item.selected).reduce((sum, item) => sum + item.price * item.quantity, 0)
+  state.cart
+    .filter((item) => item.selected)
+    .reduce((sum, item) => sum + item.price * item.quantity, 0)
 const selectedItems = () => state.cart.filter((item) => item.selected)
 
 export { showToast, onToast }

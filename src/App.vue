@@ -10,7 +10,6 @@ import { useStore } from '@/composables/useStore'
 
 const { state } = useStore()
 
-// Lock body scrolling whenever search, cart drawer, sidebar, or any modal is open
 watch(
   () => state.isCartOpen || state.isSidebarOpen || Boolean(state.activeModal),
   (isLocked) => {
@@ -22,7 +21,7 @@ watch(
       }
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 onUnmounted(() => {
@@ -54,14 +53,15 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col bg-background font-sans text-foreground selection:bg-neo-yellow selection:text-black">
+  <div
+    class="min-h-screen flex flex-col bg-background font-sans text-foreground selection:bg-neo-yellow selection:text-black"
+  >
     <AppHeader />
     <main class="flex-1">
       <router-view />
     </main>
     <AppFooter />
 
-    <!-- Global Interactive Overlays -->
     <CartDrawer />
     <SearchModal />
     <QuickViewModal />
