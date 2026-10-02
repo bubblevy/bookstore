@@ -63,7 +63,7 @@ const testimonials = [
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
       <!-- Section Header -->
-      <div class="text-center space-y-2 mb-10 md:mb-14">
+      <div data-aos="fade-up" class="text-center space-y-2 mb-10 md:mb-14">
         <span
           class="inline-block bg-neo-yellow text-black mb-3 border-2 border-black px-3.5 py-1 rounded-[2px] font-outfit font-black text-xs uppercase tracking-wider shadow-neo-sm"
         >
@@ -84,8 +84,10 @@ const testimonials = [
       <!-- Testimonial Cards: Clean, High-Contrast Neubrutalist Cards -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
         <article
-          v-for="t in testimonials"
+          v-for="(t, idx) in testimonials"
           :key="t.id"
+          data-aos="fade-up"
+          :data-aos-delay="idx * 100"
           class="bg-background text-black border-3 border-black rounded-[2px] p-6 shadow-neo hover:-translate-y-1 hover:shadow-neo-md transition-all flex flex-col justify-between"
         >
           <div>

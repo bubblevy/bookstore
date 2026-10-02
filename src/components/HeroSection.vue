@@ -36,6 +36,7 @@
         <div class="md:col-span-6 space-y-6">
           <h1
             id="hero-title"
+            data-aos="fade-up"
             class="font-outfit font-black text-4xl sm:text-5xl md:text-6xl tracking-tight leading-[0.98] text-white"
           >
             BACA LEBIH DALAM.<br />
@@ -49,13 +50,19 @@
           </h1>
 
           <p
+            data-aos="fade-up"
+            data-aos-delay="100"
             class="font-sans text-base sm:text-lg md:text-xl font-semibold text-white/90 leading-relaxed max-w-xl"
           >
             Temukan buku pilihan dari penerbit terkemuka untuk menemani perjalanan belajarmu.
             Jaminan buku edisi asli dengan pengiriman aman ke seluruh Indonesia.
           </p>
 
-          <div class="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+          <div
+            data-aos="fade-up"
+            data-aos-delay="200"
+            class="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-4"
+          >
             <a
               href="#katalog"
               class="neubrutal-btn bg-black text-white border-3 border-black py-3.5 px-7 rounded-[2px] font-outfit font-black text-base shadow-neo flex items-center justify-center gap-2 hover:bg-neutral-900 active:translate-x-0.5 active:translate-y-0.5"
@@ -72,6 +79,8 @@
           </div>
 
           <div
+            data-aos="fade-up"
+            data-aos-delay="300"
             class="pt-4 border-t-2 border-white/20 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-outfit font-bold text-white/90"
           >
             <span class="flex items-center gap-1.5">
@@ -88,6 +97,8 @@
 
         <!-- Right Column: 4-Block Staggered Brick Puzzle (Tata Bata Tidak Sejajar Panjang-Pendek, Total 4 Ujung) -->
         <div
+          data-aos="fade-left"
+          data-aos-delay="150"
           class="hidden md:flex md:col-span-6 justify-end items-center relative py-4 lg:py-6 pe-1 select-none pointer-events-none"
         >
           <div class="grid grid-cols-2 gap-4 lg:gap-5 w-full max-w-[440px] lg:max-w-[490px]">

@@ -5,6 +5,8 @@ import BookCover from './BookCover.vue'
 
 const props = defineProps({
   book: { type: Object, required: true },
+  delay: { type: Number, default: 0 },
+  animate: { type: Boolean, default: true },
 })
 
 const router = useRouter()
@@ -24,7 +26,9 @@ function goToDetail() {
 
 <template>
   <article
-    class="group bg-white border-3 border-black rounded-[2px] shadow-neo transition-all duration-150 hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-neo-md flex flex-col justify-between overflow-hidden cursor-pointer"
+    :class="animate ? 'book-card-animate' : 'book-card-hidden'"
+    :style="animate && delay ? { animationDelay: `${delay}ms` } : {}"
+    class="group bg-white border-3 border-black rounded-[2px] shadow-neo transition-all duration-200 hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-neo-md flex flex-col justify-between overflow-hidden cursor-pointer"
     @click="goToDetail"
   >
     <!-- Compact cover container (not too tall) -->
@@ -79,3 +83,25 @@ function goToDetail() {
     </div>
   </article>
 </template>
+
+<style scoped>
+@keyframes cardFadeUp {
+  0% {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.book-card-hidden {
+  opacity: 0;
+  transform: translateY(24px);
+}
+
+.book-card-animate {
+  animation: cardFadeUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+</style>

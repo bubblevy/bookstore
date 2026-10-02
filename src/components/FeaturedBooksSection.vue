@@ -1,7 +1,33 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import BookCard from './BookCard.vue'
 import { featuredBooks } from '@/data/catalog'
+import AOS from 'aos'
+
+const sectionRef = ref(null)
+const isSectionVisible = ref(false)
+let observer = null
+
+onMounted(() => {
+  if ('IntersectionObserver' in window && sectionRef.value) {
+    observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          isSectionVisible.value = true
+          if (observer) observer.disconnect()
+        }
+      },
+      { threshold: 0.05, rootMargin: '80px 0px -40px 0px' }
+    )
+    observer.observe(sectionRef.value)
+  } else {
+    isSectionVisible.value = true
+  }
+})
+
+onUnmounted(() => {
+  if (observer) observer.disconnect()
+})
 
 const activeFilter = ref('Semua')
 const filters = [
@@ -34,6 +60,9 @@ function loadMore() {
 
 watch(activeFilter, () => {
   visibleCount.value = 8
+  nextTick(() => {
+    AOS.refreshHard()
+  })
 })
 </script>
 
@@ -41,6 +70,7 @@ watch(activeFilter, () => {
   <!-- Full-width alternating background band (Neutral Background) with Bookstore Ornaments -->
   <section
     id="katalog"
+    ref="sectionRef"
     class="w-full bg-background border-b-4 border-black py-16 md:py-20 scroll-mt-20 relative overflow-hidden"
   >
     <!-- Background Bookstore Ornaments & Literary Accents -->
@@ -97,7 +127,7 @@ watch(activeFilter, () => {
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
       <!-- Section Header: Professional bookstore editorial -->
-      <div class="mb-8 md:mb-12">
+      <div data-aos="fade-up" class="mb-8 md:mb-12">
         <div>
           <span
             class="inline-block bg-neo-yellow border-2 border-black px-3 py-0.5 rounded-[2px] font-outfit font-black text-xs uppercase tracking-wider shadow-neo-sm mb-3"
@@ -120,6 +150,8 @@ watch(activeFilter, () => {
 
       <!-- Filter tabs: horizontal scroll, breaks past container edges -->
       <div
+        data-aos="fade-up"
+        data-aos-delay="80"
         class="relative mb-8 md:mb-10 -mx-4 px-4 sm:-mx-16 sm:px-16 lg:-mx-24 lg:px-24 xl:-mx-36 xl:px-36"
       >
         <div class="overflow-x-auto scrollbar-hide pb-1">
@@ -142,8 +174,17 @@ watch(activeFilter, () => {
       </div>
 
       <!-- Books Grid: Clean, Spaced, Uncluttered -->
-      <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-        <BookCard v-for="book in visibleBooks" :key="book.id" :book="book" />
+      <div
+        :key="`${activeFilter}-${isSectionVisible}`"
+        class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6"
+      >
+        <BookCard
+          v-for="(book, idx) in visibleBooks"
+          :key="`${activeFilter}-${book.id}`"
+          :book="book"
+          :animate="isSectionVisible"
+          :delay="(idx % 8) * 90"
+        />
       </div>
 
       <!-- Load More Button -->

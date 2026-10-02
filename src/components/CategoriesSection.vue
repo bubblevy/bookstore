@@ -70,7 +70,7 @@ import BookArt from './BookArt.vue'
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
       <!-- Section Header -->
-      <div class="mb-8 md:mb-12">
+      <div data-aos="fade-up" class="mb-8 md:mb-12">
         <span
           class="inline-block bg-neo-lime border-2 border-black px-3 py-0.5 rounded-[2px] font-outfit font-black text-xs uppercase tracking-wider shadow-neo-sm mb-3"
         >
@@ -90,9 +90,12 @@ import BookArt from './BookArt.vue'
       <!-- Category Grid: Clean 6 Cards -->
       <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-5">
         <a
-          v-for="cat in categories"
+          v-for="(cat, idx) in categories"
           :key="cat.name"
           href="#katalog"
+          data-aos="fade-up"
+          :data-aos-delay="idx * 150"
+          :style="`transition-delay: ${idx * 150}ms !important`"
           class="group bg-background border-3 border-black rounded-[2px] p-4 shadow-neo flex flex-col items-center text-center gap-3 hover:-translate-y-1 hover:shadow-neo-md transition-all"
         >
           <!-- Category icon with badge styling -->

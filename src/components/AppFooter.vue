@@ -9,7 +9,7 @@ const currentYear = new Date().getFullYear()
     class="w-full bg-[#111111] text-white border-t-4 border-black pt-12 md:pt-16 pb-8"
   >
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 mb-12">
+      <div data-aos="fade-up" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 mb-12">
         <!-- Brand Column (2 cols on lg) -->
         <div class="lg:col-span-2 space-y-4">
           <div class="flex items-center gap-2.5">

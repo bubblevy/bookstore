@@ -41,6 +41,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
       <!-- Books: image first on mobile, second on desktop -->
       <div
+        data-aos="zoom-in"
         class="lg:hidden flex justify-center items-center pointer-events-none select-none order-first mb-6"
       >
         <div class="relative w-full max-w-[360px] h-[280px] flex items-center justify-center">
@@ -241,7 +242,7 @@
       <!-- Desktop layout: text left, books right -->
       <div class="hidden lg:grid grid-cols-12 gap-10 lg:gap-14 items-center">
         <!-- Left: Bookstore Curatorial Philosophy -->
-        <div class="col-span-6 space-y-5">
+        <div data-aos="fade-right" class="col-span-6 space-y-5">
           <h2
             class="font-outfit font-black text-3xl sm:text-4xl md:text-5xl lg:text-6xl tracking-tight leading-[0.98] text-black"
           >
@@ -278,6 +279,8 @@
 
         <!-- Right: 3 Large Modern Illustrated Books -->
         <div
+          data-aos="fade-left"
+          data-aos-delay="150"
           class="col-span-6 flex justify-center items-center py-6 pointer-events-none select-none"
         >
           <div
