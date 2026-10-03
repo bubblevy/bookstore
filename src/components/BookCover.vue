@@ -20,6 +20,9 @@ const themeMap = {
     subText: '#D8FA00',
     spine: '#6F2ED6',
     accent: '#D8FA00',
+    tagText: '#D8FA00',
+    badgeBg: '#D8FA00',
+    badgeText: '#000000',
   },
   yellow: {
     bg: '#D8FA00',
@@ -27,6 +30,9 @@ const themeMap = {
     subText: '#000000',
     spine: '#BCE000',
     accent: '#8847F5',
+    tagText: '#D8FA00',
+    badgeBg: '#8847F5',
+    badgeText: '#FFFFFF',
   },
   orange: {
     bg: '#FF7B29',
@@ -34,18 +40,33 @@ const themeMap = {
     subText: '#CBFF00',
     spine: '#E86312',
     accent: '#CBFF00',
+    tagText: '#CBFF00',
+    badgeBg: '#CBFF00',
+    badgeText: '#000000',
   },
-  lime: { bg: '#CBFF00', text: '#000000', subText: '#000000', spine: '#B5E600', accent: '#8847F5' },
+  lime: {
+    bg: '#CBFF00',
+    text: '#000000',
+    subText: '#000000',
+    spine: '#B5E600',
+    accent: '#8847F5',
+    tagText: '#000000',
+    badgeBg: '#000000',
+    badgeText: '#FFFFFF',
+  },
   black: {
-    bg: '#000000',
-    text: '#D8FA00',
-    subText: '#FFFFFF',
-    spine: '#222222',
-    accent: '#FF7B29',
+    bg: '#18181B',
+    text: '#FFFFFF',
+    subText: '#D4D4D8',
+    spine: '#27272A',
+    accent: '#E4E4E7',
+    tagText: '#FFFFFF',
+    badgeBg: '#FFFFFF',
+    badgeText: '#000000',
   },
 }
 
-const colors = computed(() => themeMap[props.theme] || themeMap.violet)
+const colors = computed(() => themeMap[props.theme] || themeMap.black)
 const accentColor = computed(() => props.accent || colors.value.accent)
 </script>
 
@@ -95,7 +116,7 @@ const accentColor = computed(() => props.accent || colors.value.accent)
       font-family="Outfit, sans-serif"
       font-weight="900"
       font-size="8"
-      fill="#D8FA00"
+      :fill="colors.tagText || '#D8FA00'"
       letter-spacing="1.5"
     >
       EDISI RESMI
@@ -108,7 +129,7 @@ const accentColor = computed(() => props.accent || colors.value.accent)
         width="52"
         height="20"
         rx="4"
-        fill="#D8FA00"
+        :fill="colors.badgeBg || '#D8FA00'"
         stroke="#000"
         stroke-width="2"
       />
@@ -119,7 +140,7 @@ const accentColor = computed(() => props.accent || colors.value.accent)
         font-family="Outfit, sans-serif"
         font-weight="900"
         font-size="8"
-        fill="#000"
+        :fill="colors.badgeText || '#000000'"
         letter-spacing="0.5"
       >
         {{ badge.slice(0, 8) }}

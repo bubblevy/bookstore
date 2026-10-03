@@ -34,6 +34,24 @@ const router = createRouter({
       component: () => import('@/views/RegisterView.vue'),
     },
     {
+      path: '/dashboard',
+      name: 'user-dashboard',
+      component: () => import('@/views/UserDashboardView.vue'),
+    },
+    {
+      path: '/user/dashboard',
+      redirect: '/dashboard',
+    },
+    {
+      path: '/admin',
+      name: 'admin-dashboard',
+      component: () => import('@/views/AdminDashboardView.vue'),
+    },
+    {
+      path: '/admin/dashboard',
+      redirect: '/admin',
+    },
+    {
       path: '/:pathMatch(.*)*',
       redirect: '/',
     },
