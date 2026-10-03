@@ -5,7 +5,8 @@ import { useStore } from '@/composables/useStore'
 import BookCover from '@/components/BookCover.vue'
 
 const router = useRouter()
-const { state, updateQuantity, removeFromCart, clearCart, showToast } = useStore()
+const { state, updateQuantity, removeFromCart, clearCart, showToast, addOrder, validateVoucher } =
+  useStore()
 
 const items = computed(() => state.cart.filter((item) => item.selected))
 const subtotal = computed(() =>
@@ -65,13 +66,19 @@ const form = ref({
 })
 
 const orderSuccess = ref(false)
+const createdOrderId = ref('')
+const appliedVoucherCode = ref('')
+const voucherDiscount = ref(0)
 
 function applyPromo() {
-  if (promoCode.value.toUpperCase() === 'NEOBOOK' || promoCode.value.toUpperCase() === 'DISKON10') {
+  const result = validateVoucher(promoCode.value, subtotal.value)
+  if (result.valid) {
     discountApplied.value = true
-    showToast('Kupon diskon 10% berhasil dipasang!', { type: 'success' })
+    appliedVoucherCode.value = result.voucher.code
+    voucherDiscount.value = result.discountAmount
+    showToast(result.message, { type: 'success' })
   } else {
-    showToast('Kode kupon tidak valid. Coba kode: "NEOBOOK"', { type: 'error' })
+    showToast(result.message, { type: 'error' })
   }
 }
 
@@ -84,8 +91,47 @@ function placeOrder() {
     showToast('Tidak ada item yang dipilih', { type: 'error' })
     return
   }
+
+  const courierMap = {
+    jne: 'JNE Express (REG)',
+    sicepat: 'SiCepat (BEST)',
+    jnt: 'J&T Express (EZ)',
+    pos: 'Pos Indonesia Kilat',
+  }
+  const paymentMap = {
+    cod: 'Bayar di Tempat (COD)',
+    transfer: 'Transfer Bank BCA (Virtual Account Midtrans)',
+    ewallet: 'E-Wallet (OVO / GoPay)',
+    qris: 'QRIS Realtime (Midtrans)',
+  }
+
+  const newOrder = addOrder({
+    name: form.value.name,
+    phone: form.value.phone,
+    address: form.value.address,
+    city: form.value.city,
+    postalCode: form.value.postalCode,
+    courierName: courierMap[form.value.courier] || form.value.courier,
+    paymentName: paymentMap[form.value.payment] || form.value.payment,
+    voucherCode: appliedVoucherCode.value,
+    items: items.value.map((it) => ({
+      id: it.id,
+      title: it.title,
+      author: it.author,
+      price: it.price,
+      theme: it.theme || 'violet',
+      format: it.format,
+      quantity: it.quantity,
+    })),
+    subtotal: subtotal.value,
+    discount: voucherDiscount.value || discountAmount.value,
+    shipping: shippingCost.value,
+    total: subtotal.value - (voucherDiscount.value || discountAmount.value) + shippingCost.value,
+  })
+
+  createdOrderId.value = newOrder.id
   orderSuccess.value = true
-  showToast('Pesanan berhasil dibuat! Terima kasih telah berbelanja di BookStore.', {
+  showToast(`Pesanan #${newOrder.id} berhasil diproses.`, {
     type: 'success',
   })
   clearCart()
@@ -147,17 +193,27 @@ function decrement(item) {
           <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
         </svg>
       </div>
-      <h2 class="font-outfit font-black text-3xl mb-3">PESANAN BERHASIL!</h2>
+      <h2 class="font-outfit font-black text-3xl mb-2">PESANAN BERHASIL!</h2>
+      <div v-if="createdOrderId" class="inline-block bg-neo-yellow border-2 border-black px-3.5 py-1 text-xs font-outfit font-black mb-3 shadow-neo-sm">
+        NO. INVOICE: {{ createdOrderId }}
+      </div>
       <p class="font-sans text-muted-foreground mb-8 max-w-md mx-auto">
-        Terima kasih telah berbelanja di BookStore. Pesananmu akan segera diproses dan dikirimkan ke
-        alamat yang tertera.
+        Terima kasih telah berbelanja di BookStore. Pesananmu telah masuk antrean proses gudang dan statusnya dapat dipantau langsung di Dashboard.
       </p>
-      <button
-        class="neubrutal-btn bg-neo-yellow text-black border-3 border-black py-3.5 px-10 font-outfit font-black text-base shadow-neo"
-        @click="router.push({ name: 'home' })"
-      >
-        Lanjut Belanja →
-      </button>
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+        <button
+          class="w-full sm:w-auto neubrutal-btn bg-neo-yellow text-black border-3 border-black py-3 px-8 font-outfit font-black text-sm sm:text-base shadow-neo hover:bg-yellow-300"
+          @click="router.push('/dashboard')"
+        >
+          Lihat di Dashboard Pesanan →
+        </button>
+        <button
+          class="w-full sm:w-auto neubrutal-btn bg-white text-black border-3 border-black py-3 px-8 font-outfit font-black text-sm sm:text-base shadow-neo hover:bg-gray-100"
+          @click="router.push({ name: 'home' })"
+        >
+          Lanjut Belanja
+        </button>
+      </div>
     </div>
 
     <div v-else class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">

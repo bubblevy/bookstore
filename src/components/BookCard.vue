@@ -35,9 +35,16 @@ function goToDetail() {
       class="relative w-full aspect-[4/3.4] bg-background border-b-3 border-black p-2.5 sm:p-3 flex items-center justify-center overflow-hidden"
     >
       <div
-        class="w-full h-full max-w-[130px] sm:max-w-[145px] transition-transform duration-200 group-hover:scale-103"
+        class="w-full h-full max-w-[130px] sm:max-w-[145px] transition-transform duration-200 group-hover:scale-103 flex items-center justify-center"
       >
+        <img
+          v-if="book.coverImage"
+          :src="book.coverImage"
+          :alt="book.title"
+          class="w-full h-full object-cover border-2 border-black rounded-[2px] shadow-neo-sm"
+        />
         <BookCover
+          v-else
           :theme="book.theme"
           :title="book.title"
           :author="book.author"
