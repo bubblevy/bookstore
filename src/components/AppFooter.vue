@@ -1,5 +1,12 @@
 <script setup>
+import { useRouter } from 'vue-router'
+
 const currentYear = new Date().getFullYear()
+const router = useRouter()
+
+function goToSection(hash) {
+  router.push({ path: '/', hash })
+}
 </script>
 
 <template>
@@ -93,18 +100,45 @@ const currentYear = new Date().getFullYear()
             Koleksi Buku
           </h4>
           <ul class="space-y-2.5 font-sans text-sm font-bold text-white/70">
-            <li><a href="#katalog" class="hover:text-white transition-colors">Semua Buku</a></li>
             <li>
-              <a href="#kategori" class="hover:text-white transition-colors">Fiksi Populer</a>
+              <a
+                href="/#katalog"
+                class="hover:text-white transition-colors"
+                @click.prevent="goToSection('#katalog')"
+                >Semua Buku</a
+              >
             </li>
             <li>
-              <a href="#kategori" class="hover:text-white transition-colors">Pengembangan Diri</a>
+              <a
+                href="/#kategori"
+                class="hover:text-white transition-colors"
+                @click.prevent="goToSection('#kategori')"
+                >Fiksi Populer</a
+              >
             </li>
             <li>
-              <a href="#kategori" class="hover:text-white transition-colors">Sci-Fi & Filsafat</a>
+              <a
+                href="/#kategori"
+                class="hover:text-white transition-colors"
+                @click.prevent="goToSection('#kategori')"
+                >Pengembangan Diri</a
+              >
             </li>
             <li>
-              <a href="#kategori" class="hover:text-white transition-colors">Seni & Desain</a>
+              <a
+                href="/#kategori"
+                class="hover:text-white transition-colors"
+                @click.prevent="goToSection('#kategori')"
+                >Sci-Fi & Filsafat</a
+              >
+            </li>
+            <li>
+              <a
+                href="/#kategori"
+                class="hover:text-white transition-colors"
+                @click.prevent="goToSection('#kategori')"
+                >Seni & Desain</a
+              >
             </li>
           </ul>
         </div>
@@ -114,7 +148,14 @@ const currentYear = new Date().getFullYear()
             Layanan
           </h4>
           <ul class="space-y-2.5 font-sans text-sm font-bold text-white/70">
-            <li><a href="#ulasan" class="hover:text-white transition-colors">Ulasan Pembeli</a></li>
+            <li>
+              <a
+                href="/#ulasan"
+                class="hover:text-white transition-colors"
+                @click.prevent="goToSection('#ulasan')"
+                >Ulasan Pembeli</a
+              >
+            </li>
             <li><a href="#" class="hover:text-white transition-colors">Garansi Pengembalian</a></li>
             <li><a href="#" class="hover:text-white transition-colors">Kebijakan Privasi</a></li>
             <li><a href="#" class="hover:text-white transition-colors">Syarat & Ketentuan</a></li>

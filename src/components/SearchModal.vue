@@ -1,23 +1,45 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useStore } from '@/composables/useStore'
-import { featuredBooks } from '@/data/catalog'
+import { api } from '@/lib/api'
+import { mapBook } from '@/lib/mappers'
 import BookCover from './BookCover.vue'
 
 const router = useRouter()
-const { state, closeModal, addToCart } = useStore()
+const { state, closeModal, addToCart, showToast } = useStore()
 const query = ref('')
+const searchResults = ref([])
+const searching = ref(false)
+let debounceTimer = null
+let requestId = 0
 
-const searchResults = computed(() => {
-  if (!query.value.trim()) return []
-  const q = query.value.toLowerCase().trim()
-  return featuredBooks.filter(
-    (b) =>
-      b.title.toLowerCase().includes(q) ||
-      b.author.toLowerCase().includes(q) ||
-      b.category.toLowerCase().includes(q),
-  )
+watch(query, (value) => {
+  clearTimeout(debounceTimer)
+  const keyword = value.trim()
+
+  if (!keyword) {
+    requestId += 1
+    searchResults.value = []
+    searching.value = false
+    return
+  }
+
+  debounceTimer = setTimeout(async () => {
+    const currentRequest = ++requestId
+    searching.value = true
+    try {
+      const response = await api.books({ search: keyword, per_page: 20 })
+      if (currentRequest !== requestId) return
+      searchResults.value = (response.data || []).map(mapBook)
+    } catch (error) {
+      if (currentRequest !== requestId) return
+      searchResults.value = []
+      showToast(error?.message || 'Gagal mencari buku', { type: 'error' })
+    } finally {
+      if (currentRequest === requestId) searching.value = false
+    }
+  }, 300)
 })
 
 const popularChips = [
@@ -37,13 +59,13 @@ function selectChip(chip) {
   }
 }
 
-function selectBook(id) {
+function selectBook(slug) {
   closeModal()
-  router.push({ name: 'book-detail', params: { id } })
+  router.push({ name: 'book-detail', params: { id: slug } })
 }
 
-function quickAdd(book) {
-  addToCart(book)
+async function quickAdd(book) {
+  await addToCart(book)
   closeModal()
 }
 
@@ -58,6 +80,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  clearTimeout(debounceTimer)
   window.removeEventListener('keydown', onKeydown)
 })
 </script>
@@ -205,7 +228,7 @@ onUnmounted(() => {
             </div>
 
             <div
-              v-else-if="searchResults.length === 0"
+              v-else-if="!searching && searchResults.length === 0"
               class="text-center py-8 sm:py-10 bg-white border-2 sm:border-3 border-black p-4 shadow-neo-sm"
             >
               <div
@@ -242,7 +265,7 @@ onUnmounted(() => {
               v-for="book in searchResults"
               :key="book.id"
               class="bg-white border-2 border-black p-2.5 sm:p-3 shadow-neo-sm hover:shadow-neo transition-all flex items-center gap-3 sm:gap-3.5 hover:bg-gray-100 cursor-pointer rounded-[2px]"
-              @click="selectBook(book.id)"
+              @click="selectBook(book.slug)"
             >
               <div
                 class="w-12 h-16 sm:w-14 sm:h-18 shrink-0 border-2 border-black shadow-neo-sm overflow-hidden bg-background"
@@ -262,21 +285,6 @@ onUnmounted(() => {
                       class="bg-black text-white px-1.5 py-0.2 font-outfit font-black text-[9px] uppercase tracking-wider rounded-[1px]"
                     >
                       {{ book.category }}
-                    </span>
-                    <span
-                      v-if="book.rating"
-                      class="font-sans text-[10px] font-bold text-muted-foreground flex items-center gap-0.5"
-                    >
-                      <svg
-                        class="w-3 h-3 text-yellow-500 fill-yellow-400 shrink-0"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <polygon
-                          points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
-                        />
-                      </svg>
-                      <span>{{ book.rating }}</span>
                     </span>
                   </div>
 

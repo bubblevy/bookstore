@@ -1,5 +1,6 @@
 <script setup>
-import { onMounted, nextTick } from 'vue'
+import { onMounted, nextTick, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import HeroSection from '@/components/HeroSection.vue'
 import StatsBar from '@/components/StatsBar.vue'
 import FeaturedBooksSection from '@/components/FeaturedBooksSection.vue'
@@ -8,13 +9,30 @@ import CategoriesSection from '@/components/CategoriesSection.vue'
 import TestimonialsSection from '@/components/TestimonialsSection.vue'
 import AOS from 'aos'
 
+const route = useRoute()
+
+function scrollToHash() {
+  if (!route.hash) return
+  nextTick(() => {
+    setTimeout(() => {
+      document.querySelector(route.hash)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    }, 60)
+  })
+}
+
 onMounted(() => {
   nextTick(() => {
     setTimeout(() => {
       AOS.refreshHard()
     }, 100)
   })
+  scrollToHash()
 })
+
+watch(() => route.hash, scrollToHash)
 </script>
 
 <template>

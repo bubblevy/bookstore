@@ -6,7 +6,7 @@ import AuthLayout from './AuthLayout.vue'
 
 const router = useRouter()
 const route = useRoute()
-const { register, loginWithGoogle } = useStore()
+const { register } = useStore()
 
 const name = ref('')
 const email = ref('')
@@ -18,12 +18,7 @@ const showConfirmPassword = ref(false)
 const errorMessage = ref('')
 const isLoading = ref(false)
 
-function redirectAfterAuth() {
-  const redirect = route.query.redirect || '/'
-  router.push(redirect)
-}
-
-function handleRegister() {
+async function handleRegister() {
   errorMessage.value = ''
 
   if (!name.value.trim() || !email.value.trim() || !password.value || !confirmPassword.value) {
@@ -46,6 +41,11 @@ function handleRegister() {
     return
   }
 
+  if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(password.value)) {
+    errorMessage.value = 'Password harus mengandung huruf besar, huruf kecil, angka, dan simbol'
+    return
+  }
+
   if (password.value !== confirmPassword.value) {
     errorMessage.value = 'Konfirmasi password tidak cocok'
     return
@@ -57,20 +57,22 @@ function handleRegister() {
   }
 
   isLoading.value = true
-  setTimeout(() => {
-    register(name.value.trim(), email.value.trim())
-    isLoading.value = false
-    redirectAfterAuth()
-  }, 400)
+  const success = await register(name.value.trim(), email.value.trim(), password.value)
+  isLoading.value = false
+
+  if (!success) {
+    errorMessage.value = 'Pendaftaran gagal. Periksa data atau coba lagi.'
+    return
+  }
+
+  router.push({
+    name: 'login',
+    query: route.query.redirect ? { redirect: route.query.redirect } : {},
+  })
 }
 
 function handleGoogleRegister() {
-  isLoading.value = true
-  setTimeout(() => {
-    loginWithGoogle('Budi Pratama', 'budi.pratama@gmail.com')
-    isLoading.value = false
-    redirectAfterAuth()
-  }, 400)
+  window.location.assign('/api/v1/auth/google/login')
 }
 </script>
 

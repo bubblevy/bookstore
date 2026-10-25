@@ -1,6 +1,12 @@
 <script setup>
-import { categories } from '@/data/catalog'
+import { computed, ref } from 'vue'
+import { useStore } from '@/composables/useStore'
+import { assetUrl } from '@/lib/assets'
 import BookArt from './BookArt.vue'
+
+const { state } = useStore()
+const categories = computed(() => state.categories)
+const failedImages = ref({})
 </script>
 
 <template>
@@ -79,7 +85,22 @@ import BookArt from './BookArt.vue'
         </p>
       </div>
 
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-5">
+      <div
+        v-if="state.categoriesLoading"
+        class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-5"
+      >
+        <div
+          v-for="n in 6"
+          :key="`cat-skeleton-${n}`"
+          class="bg-background border-3 border-black rounded-[2px] p-4 shadow-neo flex flex-col items-center text-center gap-3 animate-pulse"
+        >
+          <div class="w-14 h-14 rounded-[2px] border-2 border-black bg-gray-200"></div>
+          <div class="w-20 h-3 bg-gray-200 rounded"></div>
+          <div class="w-12 h-2.5 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+
+      <div v-else class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-5">
         <a
           v-for="(cat, idx) in categories"
           :key="cat.name"
@@ -90,10 +111,17 @@ import BookArt from './BookArt.vue'
           class="group bg-background border-3 border-black rounded-[2px] p-4 shadow-neo flex flex-col items-center text-center gap-3 hover:-translate-y-1 hover:shadow-neo-md transition-all"
         >
           <div
-            class="w-14 h-14 rounded-[2px] border-2 border-black flex items-center justify-center p-2.5 shadow-neo-sm group-hover:scale-105 transition-transform"
-            :style="{ backgroundColor: cat.bg, color: cat.text }"
+            class="w-14 h-14 rounded-[2px] border-2 border-black flex items-center justify-center overflow-hidden shadow-neo-sm group-hover:scale-105 transition-transform bg-white"
           >
-            <BookArt :name="cat.icon" />
+            <img
+              v-if="cat.image && !failedImages[cat.id]"
+              :src="assetUrl(cat.image)"
+              :alt="cat.name"
+              class="w-full h-full object-cover"
+              loading="lazy"
+              @error="failedImages[cat.id] = true"
+            />
+            <BookArt v-else :name="cat.icon" />
           </div>
 
           <div>

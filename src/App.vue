@@ -8,7 +8,7 @@ import QuickViewModal from '@/components/QuickViewModal.vue'
 import ToastNotification from '@/components/ToastNotification.vue'
 import { useStore } from '@/composables/useStore'
 
-const { state } = useStore()
+const { state, bootstrap } = useStore()
 
 watch(
   () => state.isCartOpen || state.isSidebarOpen || Boolean(state.activeModal),
@@ -31,6 +31,8 @@ onUnmounted(() => {
 })
 
 onMounted(() => {
+  bootstrap()
+
   if (typeof IntersectionObserver === 'undefined') return
   const observer = new IntersectionObserver(
     (entries) => {

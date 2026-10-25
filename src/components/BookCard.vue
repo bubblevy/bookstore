@@ -1,6 +1,8 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useStore } from '@/composables/useStore'
+import { assetUrl } from '@/lib/assets'
 import BookCover from './BookCover.vue'
 
 const props = defineProps({
@@ -10,6 +12,35 @@ const props = defineProps({
 })
 
 const router = useRouter()
+const { state, toggleWishlist, isWishlisted } = useStore()
+const imgError = ref(false)
+const imgLoaded = ref(false)
+let imgTimer = null
+
+onMounted(() => {
+  imgTimer = setTimeout(() => {
+    if (!imgLoaded.value) imgError.value = true
+  }, 2500)
+})
+
+onUnmounted(() => {
+  if (imgTimer) clearTimeout(imgTimer)
+})
+
+watch(
+  () => props.book.coverImage,
+  () => {
+    imgError.value = false
+    imgLoaded.value = false
+  },
+)
+
+const coverUrl = computed(() => assetUrl(props.book.coverImage))
+const wishlisted = computed(() => isWishlisted(props.book.id))
+const discount = computed(() => Number(props.book.discount) || 0)
+const hasDiscount = computed(
+  () => discount.value > 0 && Number(props.book.originalPrice) > Number(props.book.price),
+)
 
 const formattedPrice = computed(() =>
   new Intl.NumberFormat('id-ID', {
@@ -18,9 +49,17 @@ const formattedPrice = computed(() =>
     minimumFractionDigits: 0,
   }).format(props.book.price),
 )
+const formattedOriginal = computed(() =>
+  new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+  }).format(props.book.originalPrice),
+)
+const soldLabel = computed(() => `${Number(props.book.sold) || 0} terjual`)
 
 function goToDetail() {
-  router.push({ name: 'book-detail', params: { id: props.book.id } })
+  router.push({ name: 'book-detail', params: { id: props.book.slug || props.book.id } })
 }
 </script>
 
@@ -38,10 +77,13 @@ function goToDetail() {
         class="w-full h-full max-w-[130px] sm:max-w-[145px] transition-transform duration-200 group-hover:scale-103 flex items-center justify-center"
       >
         <img
-          v-if="book.coverImage"
-          :src="book.coverImage"
+          v-if="coverUrl && !imgError"
+          :src="coverUrl"
           :alt="book.title"
           class="w-full h-full object-cover border-2 border-black rounded-[2px] shadow-neo-sm"
+          loading="lazy"
+          @load="imgLoaded = true"
+          @error="imgError = true"
         />
         <BookCover
           v-else
@@ -57,6 +99,35 @@ function goToDetail() {
       >
         {{ book.category }}
       </span>
+
+      <span
+        v-if="hasDiscount"
+        class="absolute top-2 left-2 bg-neo-yellow text-black border-2 border-black px-2 py-0.5 rounded-[2px] font-outfit font-black text-[10px] shadow-neo-sm"
+      >
+        -{{ discount }}%
+      </span>
+
+      <button
+        v-if="state.isLoggedIn"
+        type="button"
+        class="absolute top-2 right-2 w-8 h-8 bg-white border-2 border-black rounded-full flex items-center justify-center shadow-neo-sm hover:bg-neo-pink"
+        :aria-label="wishlisted ? 'Hapus dari wishlist' : 'Tambah ke wishlist'"
+        @click.stop="toggleWishlist(book)"
+      >
+        <svg
+          class="w-4 h-4"
+          :class="wishlisted ? 'fill-red-500 text-red-500' : 'fill-none text-black'"
+          stroke="currentColor"
+          stroke-width="2.2"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z"
+          />
+        </svg>
+      </button>
     </div>
 
     <div class="p-3 sm:p-3.5 flex flex-col flex-1 justify-between gap-2">
@@ -71,15 +142,25 @@ function goToDetail() {
         </p>
 
         <div class="flex items-center gap-1.5 mt-1.5 text-xs font-sans">
-          <span class="text-muted-foreground text-[11px]">{{ book.sold }} terjual</span>
+          <span class="text-muted-foreground text-[11px]">{{ soldLabel }}</span>
         </div>
       </div>
 
-      <div class="pt-2 border-t border-black/10 flex items-center justify-between">
-        <span class="font-outfit font-black text-sm sm:text-base text-black">
-          {{ formattedPrice }}
-        </span>
-        <span class="font-outfit font-bold text-[11px] text-neo-violet group-hover:underline">
+      <div class="pt-2 border-t border-black/10 flex items-end justify-between gap-2">
+        <div class="min-w-0">
+          <span class="block font-outfit font-black text-sm sm:text-base text-black">
+            {{ formattedPrice }}
+          </span>
+          <span
+            v-if="hasDiscount"
+            class="block font-sans text-[11px] font-bold text-muted-foreground line-through"
+          >
+            {{ formattedOriginal }}
+          </span>
+        </div>
+        <span
+          class="font-outfit font-bold text-[11px] text-neo-violet group-hover:underline shrink-0"
+        >
           Detail →
         </span>
       </div>

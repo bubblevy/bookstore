@@ -1,8 +1,10 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import BookCard from './BookCard.vue'
-import { featuredBooks } from '@/data/catalog'
+import { useStore } from '@/composables/useStore'
 import AOS from 'aos'
+
+const { state } = useStore()
 
 const sectionRef = ref(null)
 const isSectionVisible = ref(false)
@@ -30,7 +32,7 @@ onUnmounted(() => {
 })
 
 const activeFilter = ref('Semua')
-const filters = [
+const fallbackFilters = [
   'Semua',
   'Fiksi Populer',
   'Self-Growth',
@@ -39,11 +41,16 @@ const filters = [
   'Seni & Desain',
 ]
 
+const filters = computed(() => {
+  if (!state.categories.length) return fallbackFilters
+  return ['Semua', ...state.categories.map((category) => category.name)]
+})
+
 const visibleCount = ref(8)
 
 const filteredBooks = computed(() => {
-  if (activeFilter.value === 'Semua') return featuredBooks
-  return featuredBooks.filter((b) => b.category === activeFilter.value)
+  if (activeFilter.value === 'Semua') return state.books
+  return state.books.filter((book) => book.category === activeFilter.value)
 })
 
 const visibleBooks = computed(() => {
@@ -165,6 +172,26 @@ watch(activeFilter, () => {
       </div>
 
       <div
+        v-if="state.catalogLoading"
+        class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6"
+      >
+        <div
+          v-for="n in 8"
+          :key="`book-skeleton-${n}`"
+          class="bg-white border-3 border-black rounded-[2px] shadow-neo overflow-hidden animate-pulse"
+        >
+          <div class="aspect-[4/3.4] bg-gray-200 border-b-3 border-black"></div>
+          <div class="p-3.5 space-y-2.5">
+            <div class="h-3.5 bg-gray-200 rounded w-4/5"></div>
+            <div class="h-3 bg-gray-200 rounded w-2/5"></div>
+            <div class="h-3 bg-gray-200 rounded w-1/3"></div>
+            <div class="h-5 bg-gray-200 rounded w-1/2 mt-3"></div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        v-else
         :key="`${activeFilter}-${isSectionVisible}`"
         class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6"
       >
@@ -177,7 +204,7 @@ watch(activeFilter, () => {
         />
       </div>
 
-      <div v-if="hasMore" class="mt-10 sm:mt-12 text-center">
+      <div v-if="!state.catalogLoading && hasMore" class="mt-10 sm:mt-12 text-center">
         <button
           class="neubrutal-btn bg-neo-yellow text-black border-3 border-black py-3 px-8 rounded-[2px] font-outfit font-black text-xs sm:text-sm shadow-neo hover:bg-yellow-300 active:translate-x-0.5 active:translate-y-0.5 inline-flex items-center gap-2"
           @click="loadMore"
@@ -191,14 +218,14 @@ watch(activeFilter, () => {
       </div>
 
       <div
-        v-else-if="filteredBooks.length > 8"
+        v-else-if="!state.catalogLoading && filteredBooks.length > 8"
         class="mt-10 text-center text-xs font-outfit font-bold text-muted-foreground uppercase tracking-wider"
       >
         ✦ Seluruh {{ filteredBooks.length }} buku dalam kategori ini telah ditampilkan ✦
       </div>
 
       <div
-        v-if="filteredBooks.length === 0"
+        v-if="!state.catalogLoading && filteredBooks.length === 0"
         class="text-center py-16 bg-white border-3 border-black rounded-[2px] shadow-neo p-8 mt-6"
       >
         <div class="text-4xl mb-3">🔍</div>
