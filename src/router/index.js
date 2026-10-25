@@ -41,6 +41,24 @@ const router = createRouter({
       component: () => import('@/views/ResetPasswordView.vue'),
     },
     {
+      path: '/garansi-pengembalian',
+      name: 'return-policy',
+      component: () => import('@/views/PolicyView.vue'),
+      meta: { policy: 'returns' },
+    },
+    {
+      path: '/kebijakan-privasi',
+      name: 'privacy-policy',
+      component: () => import('@/views/PolicyView.vue'),
+      meta: { policy: 'privacy' },
+    },
+    {
+      path: '/syarat-ketentuan',
+      name: 'terms',
+      component: () => import('@/views/PolicyView.vue'),
+      meta: { policy: 'terms' },
+    },
+    {
       path: '/dashboard',
       name: 'user-dashboard',
       component: () => import('@/views/UserDashboardView.vue'),
@@ -92,7 +110,8 @@ const router = createRouter({
     },
     {
       path: '/:pathMatch(.*)*',
-      redirect: '/',
+      name: 'not-found',
+      component: () => import('@/views/NotFoundView.vue'),
     },
   ],
   scrollBehavior(to, from, savedPosition) {
@@ -131,7 +150,8 @@ router.beforeEach(async (to) => {
       }
       session.setRole('admin')
     } catch {
-      return { name: 'login', query: { redirect: to.fullPath } }
+      session.clear()
+      return { name: 'home' }
     }
   }
 })

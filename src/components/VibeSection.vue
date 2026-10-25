@@ -7,7 +7,7 @@
   >
     <div class="absolute inset-0 pointer-events-none select-none overflow-hidden">
       <div
-        class="absolute inset-0 opacity-[0.08] bg-[radial-gradient(#000_1.5px,transparent_1.5px)] [background-size:24px_24px]"
+        class="absolute inset-0 opacity-[0.08] bg-[radial-gradient(var(--color-black)_1.5px,transparent_1.5px)] [background-size:24px_24px]"
       ></div>
 
       <span
@@ -51,33 +51,53 @@
                 class="w-full h-full max-h-[110px]"
                 xmlns="http://www.w3.org/2000/svg"
               >
-                <polygon points="20,15 35,42 12,38" fill="#FF7B29" stroke="#000" stroke-width="3" />
-                <polygon points="80,15 65,42 88,38" fill="#FF7B29" stroke="#000" stroke-width="3" />
-                <polygon points="23,22 32,38 18,36" fill="#FFFFFF" />
-                <polygon points="77,22 68,38 82,36" fill="#FFFFFF" />
+                <polygon
+                  points="20,15 35,42 12,38"
+                  fill="var(--color-orange)"
+                  stroke="var(--color-black)"
+                  stroke-width="3"
+                />
+                <polygon
+                  points="80,15 65,42 88,38"
+                  fill="var(--color-orange)"
+                  stroke="var(--color-black)"
+                  stroke-width="3"
+                />
+                <polygon points="23,22 32,38 18,36" fill="var(--color-white)" />
+                <polygon points="77,22 68,38 82,36" fill="var(--color-white)" />
                 <polygon
                   points="50,28 85,55 50,90 15,55"
-                  fill="#FF7B29"
-                  stroke="#000"
+                  fill="var(--color-orange)"
+                  stroke="var(--color-black)"
                   stroke-width="3.5"
                 />
-                <polygon points="50,60 82,55 50,88" fill="#FFFFFF" stroke="#000" stroke-width="2" />
-                <polygon points="50,60 18,55 50,88" fill="#FFFFFF" stroke="#000" stroke-width="2" />
+                <polygon
+                  points="50,60 82,55 50,88"
+                  fill="var(--color-white)"
+                  stroke="var(--color-black)"
+                  stroke-width="2"
+                />
+                <polygon
+                  points="50,60 18,55 50,88"
+                  fill="var(--color-white)"
+                  stroke="var(--color-black)"
+                  stroke-width="2"
+                />
                 <path
                   d="M 32 48 Q 40 45 42 50"
-                  stroke="#000"
+                  stroke="var(--color-black)"
                   stroke-width="3"
                   fill="none"
                   stroke-linecap="round"
                 />
                 <path
                   d="M 68 48 Q 60 45 58 50"
-                  stroke="#000"
+                  stroke="var(--color-black)"
                   stroke-width="3"
                   fill="none"
                   stroke-linecap="round"
                 />
-                <circle cx="50" cy="84" r="5" fill="#000" />
+                <circle cx="50" cy="84" r="5" fill="var(--color-black)" />
               </svg>
             </div>
             <div class="border-t-2 border-white/30 pt-1.5 flex justify-between">
@@ -101,22 +121,37 @@
               >
                 <path
                   d="M 22 55 Q 35 48 50 48 Q 45 22 25 20 Q 38 32 60 42 Q 80 38 88 52 Q 78 58 68 56 Q 72 70 82 80 Q 62 70 52 60 Q 32 68 22 55 Z"
-                  fill="#FFFFFF"
-                  stroke="#000"
+                  fill="var(--color-white)"
+                  stroke="var(--color-black)"
                   stroke-width="3.5"
                   stroke-linejoin="round"
                 />
-                <path d="M 38 30 Q 48 38 58 44" stroke="#000" stroke-width="2.5" fill="none" />
-                <path d="M 44 26 Q 52 34 62 42" stroke="#000" stroke-width="2.5" fill="none" />
-                <circle cx="80" cy="49" r="2.5" fill="#000" />
-                <path d="M 88 52 Q 94 50 96 46" stroke="#000" stroke-width="2" fill="none" />
+                <path
+                  d="M 38 30 Q 48 38 58 44"
+                  stroke="var(--color-black)"
+                  stroke-width="2.5"
+                  fill="none"
+                />
+                <path
+                  d="M 44 26 Q 52 34 62 42"
+                  stroke="var(--color-black)"
+                  stroke-width="2.5"
+                  fill="none"
+                />
+                <circle cx="80" cy="49" r="2.5" fill="var(--color-black)" />
+                <path
+                  d="M 88 52 Q 94 50 96 46"
+                  stroke="var(--color-black)"
+                  stroke-width="2"
+                  fill="none"
+                />
                 <ellipse
                   cx="96"
                   cy="45"
                   rx="3"
                   ry="2"
-                  fill="#D8FA00"
-                  stroke="#000"
+                  fill="var(--color-yellow)"
+                  stroke="var(--color-black)"
                   stroke-width="1.5"
                 />
               </svg>
@@ -143,15 +178,15 @@
               >
                 <path
                   d="M 50 92 C 50 75 48 30 50 14"
-                  stroke="#000"
+                  stroke="var(--color-black)"
                   stroke-width="4"
                   fill="none"
                   stroke-linecap="round"
                 />
                 <path
                   d="M 50 14 C 75 20 85 45 80 75 C 75 88 60 90 50 90 C 40 90 25 88 20 75 C 15 45 25 20 50 14 Z"
-                  fill="#CBFF00"
-                  stroke="#000"
+                  fill="var(--color-lime)"
+                  stroke="var(--color-black)"
                   stroke-width="3.5"
                 />
                 <ellipse
@@ -160,8 +195,8 @@
                   rx="8"
                   ry="3.5"
                   transform="rotate(-25 36 40)"
-                  fill="#FFFFFF"
-                  stroke="#000"
+                  fill="var(--color-white)"
+                  stroke="var(--color-black)"
                   stroke-width="2.5"
                 />
                 <ellipse
@@ -170,8 +205,8 @@
                   rx="9"
                   ry="4"
                   transform="rotate(-15 33 54)"
-                  fill="#FFFFFF"
-                  stroke="#000"
+                  fill="var(--color-white)"
+                  stroke="var(--color-black)"
                   stroke-width="2.5"
                 />
                 <ellipse
@@ -180,8 +215,8 @@
                   rx="8"
                   ry="3.5"
                   transform="rotate(-5 36 68)"
-                  fill="#FFFFFF"
-                  stroke="#000"
+                  fill="var(--color-white)"
+                  stroke="var(--color-black)"
                   stroke-width="2.5"
                 />
                 <ellipse
@@ -190,8 +225,8 @@
                   rx="8"
                   ry="3.5"
                   transform="rotate(25 64 40)"
-                  fill="#FFFFFF"
-                  stroke="#000"
+                  fill="var(--color-white)"
+                  stroke="var(--color-black)"
                   stroke-width="2.5"
                 />
                 <ellipse
@@ -200,8 +235,8 @@
                   rx="9"
                   ry="4"
                   transform="rotate(15 67 54)"
-                  fill="#FFFFFF"
-                  stroke="#000"
+                  fill="var(--color-white)"
+                  stroke="var(--color-black)"
                   stroke-width="2.5"
                 />
                 <ellipse
@@ -210,11 +245,18 @@
                   rx="8"
                   ry="3.5"
                   transform="rotate(5 64 68)"
-                  fill="#FFFFFF"
-                  stroke="#000"
+                  fill="var(--color-white)"
+                  stroke="var(--color-black)"
                   stroke-width="2.5"
                 />
-                <line x1="50" y1="18" x2="50" y2="88" stroke="#000" stroke-width="2.5" />
+                <line
+                  x1="50"
+                  y1="18"
+                  x2="50"
+                  y2="88"
+                  stroke="var(--color-black)"
+                  stroke-width="2.5"
+                />
               </svg>
             </div>
             <div class="border-t-3 border-black pt-1.5 flex items-center justify-between">
@@ -237,7 +279,7 @@
             PENGALAMAN MEMBACA<br />
             <span class="inline-block mt-2">
               <span
-                class="bg-neo-violet text-white border-3 md:border-4 border-black px-4 py-1 inline-block -rotate-1 rounded-[2px] shadow-[5px_5px_0px_0px_#000]"
+                class="bg-neo-violet text-white border-3 md:border-4 border-black px-4 py-1 inline-block -rotate-1 rounded-[2px] shadow-[5px_5px_0px_0px_var(--color-black)]"
               >
                 YANG OTENTIK.
               </span>
@@ -288,51 +330,51 @@
                 >
                   <polygon
                     points="20,15 35,42 12,38"
-                    fill="#FF7B29"
-                    stroke="#000"
+                    fill="var(--color-orange)"
+                    stroke="var(--color-black)"
                     stroke-width="3"
                   />
                   <polygon
                     points="80,15 65,42 88,38"
-                    fill="#FF7B29"
-                    stroke="#000"
+                    fill="var(--color-orange)"
+                    stroke="var(--color-black)"
                     stroke-width="3"
                   />
-                  <polygon points="23,22 32,38 18,36" fill="#FFFFFF" />
-                  <polygon points="77,22 68,38 82,36" fill="#FFFFFF" />
+                  <polygon points="23,22 32,38 18,36" fill="var(--color-white)" />
+                  <polygon points="77,22 68,38 82,36" fill="var(--color-white)" />
                   <polygon
                     points="50,28 85,55 50,90 15,55"
-                    fill="#FF7B29"
-                    stroke="#000"
+                    fill="var(--color-orange)"
+                    stroke="var(--color-black)"
                     stroke-width="3.5"
                   />
                   <polygon
                     points="50,60 82,55 50,88"
-                    fill="#FFFFFF"
-                    stroke="#000"
+                    fill="var(--color-white)"
+                    stroke="var(--color-black)"
                     stroke-width="2"
                   />
                   <polygon
                     points="50,60 18,55 50,88"
-                    fill="#FFFFFF"
-                    stroke="#000"
+                    fill="var(--color-white)"
+                    stroke="var(--color-black)"
                     stroke-width="2"
                   />
                   <path
                     d="M 32 48 Q 40 45 42 50"
-                    stroke="#000"
+                    stroke="var(--color-black)"
                     stroke-width="3"
                     fill="none"
                     stroke-linecap="round"
                   />
                   <path
                     d="M 68 48 Q 60 45 58 50"
-                    stroke="#000"
+                    stroke="var(--color-black)"
                     stroke-width="3"
                     fill="none"
                     stroke-linecap="round"
                   />
-                  <circle cx="50" cy="84" r="5" fill="#000" />
+                  <circle cx="50" cy="84" r="5" fill="var(--color-black)" />
                 </svg>
               </div>
               <div class="border-t-2 border-white/30 pt-2 flex justify-between">
@@ -356,22 +398,37 @@
                 >
                   <path
                     d="M 22 55 Q 35 48 50 48 Q 45 22 25 20 Q 38 32 60 42 Q 80 38 88 52 Q 78 58 68 56 Q 72 70 82 80 Q 62 70 52 60 Q 32 68 22 55 Z"
-                    fill="#FFFFFF"
-                    stroke="#000"
+                    fill="var(--color-white)"
+                    stroke="var(--color-black)"
                     stroke-width="3.5"
                     stroke-linejoin="round"
                   />
-                  <path d="M 38 30 Q 48 38 58 44" stroke="#000" stroke-width="2.5" fill="none" />
-                  <path d="M 44 26 Q 52 34 62 42" stroke="#000" stroke-width="2.5" fill="none" />
-                  <circle cx="80" cy="49" r="2.5" fill="#000" />
-                  <path d="M 88 52 Q 94 50 96 46" stroke="#000" stroke-width="2" fill="none" />
+                  <path
+                    d="M 38 30 Q 48 38 58 44"
+                    stroke="var(--color-black)"
+                    stroke-width="2.5"
+                    fill="none"
+                  />
+                  <path
+                    d="M 44 26 Q 52 34 62 42"
+                    stroke="var(--color-black)"
+                    stroke-width="2.5"
+                    fill="none"
+                  />
+                  <circle cx="80" cy="49" r="2.5" fill="var(--color-black)" />
+                  <path
+                    d="M 88 52 Q 94 50 96 46"
+                    stroke="var(--color-black)"
+                    stroke-width="2"
+                    fill="none"
+                  />
                   <ellipse
                     cx="96"
                     cy="45"
                     rx="3"
                     ry="2"
-                    fill="#D8FA00"
-                    stroke="#000"
+                    fill="var(--color-yellow)"
+                    stroke="var(--color-black)"
                     stroke-width="1.5"
                   />
                 </svg>
@@ -398,15 +455,15 @@
                 >
                   <path
                     d="M 50 92 C 50 75 48 30 50 14"
-                    stroke="#000"
+                    stroke="var(--color-black)"
                     stroke-width="4"
                     fill="none"
                     stroke-linecap="round"
                   />
                   <path
                     d="M 50 14 C 75 20 85 45 80 75 C 75 88 60 90 50 90 C 40 90 25 88 20 75 C 15 45 25 20 50 14 Z"
-                    fill="#CBFF00"
-                    stroke="#000"
+                    fill="var(--color-lime)"
+                    stroke="var(--color-black)"
                     stroke-width="3.5"
                   />
                   <ellipse
@@ -415,8 +472,8 @@
                     rx="8"
                     ry="3.5"
                     transform="rotate(-25 36 40)"
-                    fill="#FFFFFF"
-                    stroke="#000"
+                    fill="var(--color-white)"
+                    stroke="var(--color-black)"
                     stroke-width="2.5"
                   />
                   <ellipse
@@ -425,8 +482,8 @@
                     rx="9"
                     ry="4"
                     transform="rotate(-15 33 54)"
-                    fill="#FFFFFF"
-                    stroke="#000"
+                    fill="var(--color-white)"
+                    stroke="var(--color-black)"
                     stroke-width="2.5"
                   />
                   <ellipse
@@ -435,8 +492,8 @@
                     rx="8"
                     ry="3.5"
                     transform="rotate(-5 36 68)"
-                    fill="#FFFFFF"
-                    stroke="#000"
+                    fill="var(--color-white)"
+                    stroke="var(--color-black)"
                     stroke-width="2.5"
                   />
                   <ellipse
@@ -445,8 +502,8 @@
                     rx="8"
                     ry="3.5"
                     transform="rotate(25 64 40)"
-                    fill="#FFFFFF"
-                    stroke="#000"
+                    fill="var(--color-white)"
+                    stroke="var(--color-black)"
                     stroke-width="2.5"
                   />
                   <ellipse
@@ -455,8 +512,8 @@
                     rx="9"
                     ry="4"
                     transform="rotate(15 67 54)"
-                    fill="#FFFFFF"
-                    stroke="#000"
+                    fill="var(--color-white)"
+                    stroke="var(--color-black)"
                     stroke-width="2.5"
                   />
                   <ellipse
@@ -465,11 +522,18 @@
                     rx="8"
                     ry="3.5"
                     transform="rotate(5 64 68)"
-                    fill="#FFFFFF"
-                    stroke="#000"
+                    fill="var(--color-white)"
+                    stroke="var(--color-black)"
                     stroke-width="2.5"
                   />
-                  <line x1="50" y1="18" x2="50" y2="88" stroke="#000" stroke-width="2.5" />
+                  <line
+                    x1="50"
+                    y1="18"
+                    x2="50"
+                    y2="88"
+                    stroke="var(--color-black)"
+                    stroke-width="2.5"
+                  />
                 </svg>
               </div>
               <div class="border-t-3 border-black pt-2 flex items-center justify-between">
@@ -492,7 +556,7 @@
           PENGALAMAN MEMBACA<br />
           <span class="inline-block mt-2">
             <span
-              class="bg-neo-violet text-white border-3 border-black px-4 py-1 inline-block -rotate-1 rounded-[2px] shadow-[5px_5px_0px_0px_#000]"
+              class="bg-neo-violet text-white border-3 border-black px-4 py-1 inline-block -rotate-1 rounded-[2px] shadow-[5px_5px_0px_0px_var(--color-black)]"
             >
               YANG OTENTIK.
             </span>

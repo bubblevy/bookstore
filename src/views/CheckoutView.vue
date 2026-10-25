@@ -8,7 +8,7 @@ import BookCover from '@/components/BookCover.vue'
 import PaymentInstructions from '@/components/PaymentInstructions.vue'
 
 const router = useRouter()
-const { state, bootstrap, refreshCart, updateQuantity, showToast } = useStore()
+const { state, bootstrap, refreshCart, updateQuantity, showToast, isCartPending } = useStore()
 
 const form = ref({
   courier: '',
@@ -47,6 +47,7 @@ const shippingCost = computed(() => {
 const promoCode = ref('')
 const discountApplied = ref(false)
 const discountAmount = ref(0)
+const applyingPromo = ref(false)
 
 const finalTotal = computed(
   () => subtotal.value - discountAmount.value + shippingCost.value + adminFee.value,
@@ -464,7 +465,9 @@ async function applyPromo() {
     showToast('Tidak ada item yang dipilih', { type: 'error' })
     return
   }
+  if (applyingPromo.value) return
 
+  applyingPromo.value = true
   try {
     const response = await api.checkDiscount(
       code,
@@ -484,6 +487,8 @@ async function applyPromo() {
         : error?.message || 'Kode kupon tidak valid',
       { type: 'error' },
     )
+  } finally {
+    applyingPromo.value = false
   }
 }
 
@@ -1148,7 +1153,8 @@ watch(orderSuccess, (value) => {
                   <div class="flex items-center justify-between mt-1.5">
                     <div class="flex items-center border-2 border-black bg-white shadow-neo-sm">
                       <button
-                        class="w-6 h-6 flex items-center justify-center font-outfit font-black text-[11px] border-r border-black"
+                        :disabled="isCartPending(item.id) || item.quantity <= 1"
+                        class="w-6 h-6 flex items-center justify-center font-outfit font-black text-[11px] border-r border-black disabled:opacity-40"
                         :class="
                           item.quantity <= 1
                             ? 'text-gray-300 cursor-not-allowed'
@@ -1159,11 +1165,12 @@ watch(orderSuccess, (value) => {
                       >
                         −
                       </button>
-                      <span class="w-7 text-center font-outfit font-black text-[11px]">{{
-                        item.quantity
-                      }}</span>
+                      <span class="w-7 text-center font-outfit font-black text-[11px]">
+                        {{ isCartPending(item.id) ? '…' : item.quantity }}
+                      </span>
                       <button
-                        class="w-6 h-6 flex items-center justify-center font-outfit font-black text-[11px] hover:bg-gray-100 border-l border-black"
+                        :disabled="isCartPending(item.id)"
+                        class="w-6 h-6 flex items-center justify-center font-outfit font-black text-[11px] hover:bg-gray-100 border-l border-black disabled:opacity-40"
                         @click="updateQuantity(item.id, item.quantity + 1)"
                       >
                         +
@@ -1197,10 +1204,11 @@ watch(orderSuccess, (value) => {
                   class="flex-1 bg-background border-2 border-black px-3 py-2 font-outfit font-bold text-xs uppercase outline-none shadow-neo-sm"
                 />
                 <button
-                  class="neubrutal-btn bg-neo-yellow text-black border-2 border-black px-4 py-2 font-outfit font-black text-xs shadow-neo-sm hover:bg-yellow-300"
+                  :disabled="applyingPromo"
+                  class="neubrutal-btn bg-neo-yellow text-black border-2 border-black px-4 py-2 font-outfit font-black text-xs shadow-neo-sm hover:bg-yellow-300 disabled:opacity-60"
                   @click="applyPromo"
                 >
-                  Pasang
+                  {{ applyingPromo ? 'Memasang...' : 'Pasang' }}
                 </button>
               </div>
 
@@ -1259,7 +1267,14 @@ watch(orderSuccess, (value) => {
             </div>
 
             <p class="font-sans text-[11px] font-bold text-muted-foreground text-center">
-              Dengan membuat pesanan, kamu menyetujui Syarat & Ketentuan serta Kebijakan Privasi
+              Dengan membuat pesanan, kamu menyetujui
+              <RouterLink to="/syarat-ketentuan" target="_blank" class="underline hover:text-black"
+                >Syarat & Ketentuan</RouterLink
+              >
+              serta
+              <RouterLink to="/kebijakan-privasi" target="_blank" class="underline hover:text-black"
+                >Kebijakan Privasi</RouterLink
+              >
               BookStore.
             </p>
           </div>

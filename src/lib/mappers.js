@@ -24,6 +24,7 @@ export function mapCategory(raw = {}, index = 0) {
     slug: raw.slug || '',
     name: raw.name || 'Kategori',
     count: `${raw.total_books ?? 0} Buku`,
+    totalBooks: Number(raw.total_books) || 0,
     description: '',
     icon: style.icon,
     theme: style.theme,

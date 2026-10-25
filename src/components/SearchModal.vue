@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useStore } from '@/composables/useStore'
 import { api } from '@/lib/api'
@@ -11,6 +11,7 @@ const { state, closeModal, addToCart, showToast } = useStore()
 const query = ref('')
 const searchResults = ref([])
 const searching = ref(false)
+const addingId = ref(null)
 let debounceTimer = null
 let requestId = 0
 
@@ -42,14 +43,17 @@ watch(query, (value) => {
   }, 300)
 })
 
-const popularChips = [
-  'Laskar Pelangi',
-  'Atomic Habits',
-  'Bumi Manusia',
-  'Self-Growth',
-  'Pramoedya',
-  'Fiksi',
-]
+const popularChips = computed(() =>
+  [...state.books]
+    .sort(
+      (a, b) =>
+        (Number(b.sold) || 0) - (Number(a.sold) || 0) ||
+        String(a.title).localeCompare(String(b.title)),
+    )
+    .slice(0, 4)
+    .map((book) => book.title)
+    .filter(Boolean),
+)
 
 function selectChip(chip) {
   if (query.value === chip) {
@@ -65,8 +69,14 @@ function selectBook(slug) {
 }
 
 async function quickAdd(book) {
-  await addToCart(book)
-  closeModal()
+  if (addingId.value !== null) return
+  addingId.value = book.id
+  try {
+    await addToCart(book)
+    closeModal()
+  } finally {
+    addingId.value = null
+  }
 }
 
 function onKeydown(e) {
@@ -94,7 +104,7 @@ onUnmounted(() => {
     >
       <transition name="modal-pop" appear>
         <div
-          class="w-full max-w-2xl bg-background border-3 sm:border-4 border-black p-4 sm:p-6 shadow-neo sm:shadow-[8px_8px_0px_0px_#000] md:shadow-[10px_10px_0px_0px_#000] flex flex-col min-h-[390px] sm:min-h-[430px] max-h-[85vh]"
+          class="w-full max-w-2xl bg-background border-3 sm:border-4 border-black p-4 sm:p-6 shadow-neo sm:shadow-[8px_8px_0px_0px_var(--color-black)] md:shadow-[10px_10px_0px_0px_var(--color-black)] flex flex-col min-h-[390px] sm:min-h-[430px] max-h-[85vh]"
         >
           <div class="flex items-center justify-between mb-3.5 sm:mb-4">
             <span
@@ -164,7 +174,7 @@ onUnmounted(() => {
             </button>
           </div>
 
-          <div class="mb-3.5 sm:mb-4">
+          <div v-if="popularChips.length" class="mb-3.5 sm:mb-4">
             <div class="flex items-center gap-1.5 mb-2">
               <svg
                 class="w-4 h-4 text-black shrink-0"
@@ -223,7 +233,7 @@ onUnmounted(() => {
               </div>
               <p class="font-outfit font-black text-sm text-black">Cari Buku Favoritmu</p>
               <p class="font-sans text-xs text-muted-foreground mt-0.5 max-w-[240px]">
-                Ketik kata kunci di atas atau pilih salah satu tren pencarian populer.
+                Ketik kata kunci di atas untuk mulai mencari buku favoritmu.
               </p>
             </div>
 
@@ -311,7 +321,8 @@ onUnmounted(() => {
                     }}
                   </span>
                   <button
-                    class="neubrutal-btn bg-neo-yellow hover:bg-yellow-300 text-black border-2 border-black py-1 px-2.5 font-outfit font-black text-[10px] sm:text-xs shadow-neo-sm flex items-center gap-1 shrink-0 active:translate-x-0.5 active:translate-y-0.5"
+                    :disabled="addingId === book.id"
+                    class="neubrutal-btn bg-neo-yellow hover:bg-yellow-300 text-black border-2 border-black py-1 px-2.5 font-outfit font-black text-[10px] sm:text-xs shadow-neo-sm flex items-center gap-1 shrink-0 active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-60"
                     @click.stop="quickAdd(book)"
                   >
                     <svg
@@ -329,7 +340,7 @@ onUnmounted(() => {
                         d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"
                       />
                     </svg>
-                    <span>+ Keranjang</span>
+                    <span>{{ addingId === book.id ? '...' : '+ Keranjang' }}</span>
                   </button>
                 </div>
               </div>

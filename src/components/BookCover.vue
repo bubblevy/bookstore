@@ -15,54 +15,54 @@ const props = defineProps({
 
 const themeMap = {
   violet: {
-    bg: '#8847F5',
-    text: '#FFFFFF',
-    subText: '#D8FA00',
-    spine: '#6F2ED6',
-    accent: '#D8FA00',
-    tagText: '#D8FA00',
-    badgeBg: '#D8FA00',
-    badgeText: '#000000',
+    bg: 'var(--color-violet)',
+    text: 'var(--color-white)',
+    subText: 'var(--color-yellow)',
+    spine: 'var(--color-violet-dark)',
+    accent: 'var(--color-yellow)',
+    tagText: 'var(--color-yellow)',
+    badgeBg: 'var(--color-yellow)',
+    badgeText: 'var(--color-black)',
   },
   yellow: {
-    bg: '#D8FA00',
-    text: '#000000',
-    subText: '#000000',
-    spine: '#BCE000',
-    accent: '#8847F5',
-    tagText: '#D8FA00',
-    badgeBg: '#8847F5',
-    badgeText: '#FFFFFF',
+    bg: 'var(--color-yellow)',
+    text: 'var(--color-black)',
+    subText: 'var(--color-black)',
+    spine: 'var(--color-yellow-dark)',
+    accent: 'var(--color-violet)',
+    tagText: 'var(--color-yellow)',
+    badgeBg: 'var(--color-violet)',
+    badgeText: 'var(--color-white)',
   },
   orange: {
-    bg: '#FF7B29',
-    text: '#FFFFFF',
-    subText: '#CBFF00',
-    spine: '#E86312',
-    accent: '#CBFF00',
-    tagText: '#CBFF00',
-    badgeBg: '#CBFF00',
-    badgeText: '#000000',
+    bg: 'var(--color-orange)',
+    text: 'var(--color-white)',
+    subText: 'var(--color-lime)',
+    spine: 'var(--color-orange-dark)',
+    accent: 'var(--color-lime)',
+    tagText: 'var(--color-lime)',
+    badgeBg: 'var(--color-lime)',
+    badgeText: 'var(--color-black)',
   },
   lime: {
-    bg: '#CBFF00',
-    text: '#000000',
-    subText: '#000000',
-    spine: '#B5E600',
-    accent: '#8847F5',
-    tagText: '#000000',
-    badgeBg: '#000000',
-    badgeText: '#FFFFFF',
+    bg: 'var(--color-lime)',
+    text: 'var(--color-black)',
+    subText: 'var(--color-black)',
+    spine: 'var(--color-lime-dark)',
+    accent: 'var(--color-violet)',
+    tagText: 'var(--color-black)',
+    badgeBg: 'var(--color-black)',
+    badgeText: 'var(--color-white)',
   },
   black: {
-    bg: '#18181B',
-    text: '#FFFFFF',
-    subText: '#D4D4D8',
-    spine: '#27272A',
-    accent: '#E4E4E7',
-    tagText: '#FFFFFF',
-    badgeBg: '#FFFFFF',
-    badgeText: '#000000',
+    bg: 'var(--color-zinc-900)',
+    text: 'var(--color-white)',
+    subText: 'var(--color-zinc-300)',
+    spine: 'var(--color-zinc-800)',
+    accent: 'var(--color-zinc-200)',
+    tagText: 'var(--color-white)',
+    badgeBg: 'var(--color-white)',
+    badgeText: 'var(--color-black)',
   },
 }
 
@@ -83,7 +83,7 @@ const accentColor = computed(() => props.accent || colors.value.accent)
       height="242"
       rx="10"
       :fill="colors.bg"
-      stroke="#000"
+      stroke="var(--color-black)"
       stroke-width="4"
     />
 
@@ -94,7 +94,7 @@ const accentColor = computed(() => props.accent || colors.value.accent)
       height="242"
       rx="6"
       :fill="colors.spine"
-      stroke="#000"
+      stroke="var(--color-black)"
       stroke-width="4"
     />
     <line
@@ -102,13 +102,13 @@ const accentColor = computed(() => props.accent || colors.value.accent)
       y1="12"
       x2="12"
       y2="238"
-      stroke="#FFFFFF"
+      stroke="var(--color-white)"
       stroke-width="2"
       stroke-linecap="round"
       stroke-dasharray="8 6"
     />
 
-    <rect x="32" y="16" width="60" height="16" rx="4" fill="#000" />
+    <rect x="32" y="16" width="60" height="16" rx="4" fill="var(--color-black)" />
     <text
       x="62"
       y="28"
@@ -116,7 +116,7 @@ const accentColor = computed(() => props.accent || colors.value.accent)
       font-family="Outfit, sans-serif"
       font-weight="900"
       font-size="8"
-      :fill="colors.tagText || '#D8FA00'"
+      :fill="colors.tagText || 'var(--color-yellow)'"
       letter-spacing="1.5"
     >
       EDISI RESMI
@@ -129,8 +129,8 @@ const accentColor = computed(() => props.accent || colors.value.accent)
         width="52"
         height="20"
         rx="4"
-        :fill="colors.badgeBg || '#D8FA00'"
-        stroke="#000"
+        :fill="colors.badgeBg || 'var(--color-yellow)'"
+        stroke="var(--color-black)"
         stroke-width="2"
       />
       <text
@@ -140,7 +140,7 @@ const accentColor = computed(() => props.accent || colors.value.accent)
         font-family="Outfit, sans-serif"
         font-weight="900"
         font-size="8"
-        :fill="colors.badgeText || '#000000'"
+        :fill="colors.badgeText || 'var(--color-black)'"
         letter-spacing="0.5"
       >
         {{ badge.slice(0, 8) }}
@@ -177,7 +177,7 @@ const accentColor = computed(() => props.accent || colors.value.accent)
     </g>
 
     <g transform="translate(56, 108)">
-      <rect x="6" y="6" width="94" height="66" rx="6" fill="#000" />
+      <rect x="6" y="6" width="94" height="66" rx="6" fill="var(--color-black)" />
 
       <rect
         x="0"
@@ -185,23 +185,33 @@ const accentColor = computed(() => props.accent || colors.value.accent)
         width="94"
         height="66"
         rx="6"
-        fill="#FFFFFF"
-        stroke="#000"
+        fill="var(--color-white)"
+        stroke="var(--color-black)"
         stroke-width="3"
       />
 
-      <circle cx="47" cy="33" r="22" :fill="accentColor" stroke="#000" stroke-width="2.5" />
+      <circle
+        cx="47"
+        cy="33"
+        r="22"
+        :fill="accentColor"
+        stroke="var(--color-black)"
+        stroke-width="2.5"
+      />
 
-      <path d="M 47 18 L 51 29 L 62 33 L 51 37 L 47 48 L 43 37 L 32 33 L 43 29 Z" fill="#000" />
-      <circle cx="47" cy="33" r="3" fill="#FFFFFF" />
+      <path
+        d="M 47 18 L 51 29 L 62 33 L 51 37 L 47 48 L 43 37 L 32 33 L 43 29 Z"
+        fill="var(--color-black)"
+      />
+      <circle cx="47" cy="33" r="3" fill="var(--color-white)" />
 
-      <line x1="8" y1="8" x2="16" y2="8" stroke="#000" stroke-width="2" />
-      <line x1="8" y1="8" x2="8" y2="16" stroke="#000" stroke-width="2" />
-      <line x1="86" y1="58" x2="78" y2="58" stroke="#000" stroke-width="2" />
-      <line x1="86" y1="58" x2="86" y2="50" stroke="#000" stroke-width="2" />
+      <line x1="8" y1="8" x2="16" y2="8" stroke="var(--color-black)" stroke-width="2" />
+      <line x1="8" y1="8" x2="8" y2="16" stroke="var(--color-black)" stroke-width="2" />
+      <line x1="86" y1="58" x2="78" y2="58" stroke="var(--color-black)" stroke-width="2" />
+      <line x1="86" y1="58" x2="86" y2="50" stroke="var(--color-black)" stroke-width="2" />
     </g>
 
-    <line x1="32" y1="202" x2="186" y2="202" stroke="#000" stroke-width="2.5" />
+    <line x1="32" y1="202" x2="186" y2="202" stroke="var(--color-black)" stroke-width="2.5" />
 
     <text
       x="109"
@@ -217,15 +227,15 @@ const accentColor = computed(() => props.accent || colors.value.accent)
     </text>
 
     <g transform="translate(142, 230)">
-      <line x1="0" y1="0" x2="0" y2="8" stroke="#000" stroke-width="1.5" />
-      <line x1="3" y1="0" x2="3" y2="8" stroke="#000" stroke-width="2.5" />
-      <line x1="8" y1="0" x2="8" y2="8" stroke="#000" stroke-width="1" />
-      <line x1="12" y1="0" x2="12" y2="8" stroke="#000" stroke-width="3" />
-      <line x1="18" y1="0" x2="18" y2="8" stroke="#000" stroke-width="1.5" />
-      <line x1="24" y1="0" x2="24" y2="8" stroke="#000" stroke-width="2" />
-      <line x1="30" y1="0" x2="30" y2="8" stroke="#000" stroke-width="1.5" />
-      <line x1="36" y1="0" x2="36" y2="8" stroke="#000" stroke-width="2.5" />
-      <line x1="42" y1="0" x2="42" y2="8" stroke="#000" stroke-width="1" />
+      <line x1="0" y1="0" x2="0" y2="8" stroke="var(--color-black)" stroke-width="1.5" />
+      <line x1="3" y1="0" x2="3" y2="8" stroke="var(--color-black)" stroke-width="2.5" />
+      <line x1="8" y1="0" x2="8" y2="8" stroke="var(--color-black)" stroke-width="1" />
+      <line x1="12" y1="0" x2="12" y2="8" stroke="var(--color-black)" stroke-width="3" />
+      <line x1="18" y1="0" x2="18" y2="8" stroke="var(--color-black)" stroke-width="1.5" />
+      <line x1="24" y1="0" x2="24" y2="8" stroke="var(--color-black)" stroke-width="2" />
+      <line x1="30" y1="0" x2="30" y2="8" stroke="var(--color-black)" stroke-width="1.5" />
+      <line x1="36" y1="0" x2="36" y2="8" stroke="var(--color-black)" stroke-width="2.5" />
+      <line x1="42" y1="0" x2="42" y2="8" stroke="var(--color-black)" stroke-width="1" />
     </g>
   </svg>
 </template>

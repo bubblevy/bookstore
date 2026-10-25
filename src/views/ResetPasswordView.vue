@@ -1,8 +1,11 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { api } from '@/lib/api'
 import { useStore } from '@/composables/useStore'
+import { getPasswordStrength } from '@/lib/password'
+import { localizeApiError } from '@/lib/errors'
+import PasswordValidation from '@/components/PasswordValidation.vue'
 import AuthLayout from './AuthLayout.vue'
 
 const route = useRoute()
@@ -16,6 +19,8 @@ const errorMessage = ref('')
 const isLoading = ref(false)
 const isSuccess = ref(false)
 
+const passwordStrength = computed(() => getPasswordStrength(password.value))
+
 async function handleSubmit() {
   errorMessage.value = ''
 
@@ -23,12 +28,8 @@ async function handleSubmit() {
     errorMessage.value = 'Link reset password tidak valid.'
     return
   }
-  if (password.value.length < 8) {
-    errorMessage.value = 'Password baru minimal 8 karakter.'
-    return
-  }
-  if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(password.value)) {
-    errorMessage.value = 'Password harus mengandung huruf besar, huruf kecil, angka, dan simbol.'
+  if (passwordStrength.value.score < 4) {
+    errorMessage.value = 'Password belum cukup kuat. Tambahkan variasi karakter.'
     return
   }
   if (password.value !== confirmPassword.value) {
@@ -43,7 +44,9 @@ async function handleSubmit() {
     showToast('Password berhasil direset. Silakan masuk.', { type: 'success' })
     setTimeout(() => router.replace({ name: 'login' }), 1200)
   } catch (error) {
-    errorMessage.value = error?.message || 'Gagal mereset password. Link mungkin sudah kedaluwarsa.'
+    errorMessage.value =
+      localizeApiError(error?.message, error?.status) ||
+      'Gagal mereset password. Link mungkin sudah kedaluwarsa.'
   } finally {
     isLoading.value = false
   }
@@ -86,7 +89,7 @@ async function handleSubmit() {
               v-model="password"
               type="password"
               autocomplete="new-password"
-              placeholder="Minimal 8 karakter, huruf besar/kecil, angka, simbol"
+              placeholder="Minimal 8 karakter"
               class="w-full bg-white border-2 border-black px-3.5 py-2.5 rounded-[2px] font-sans font-semibold text-sm outline-none shadow-neo-sm focus:shadow-neo transition-shadow"
             />
           </div>
@@ -103,6 +106,8 @@ async function handleSubmit() {
               class="w-full bg-white border-2 border-black px-3.5 py-2.5 rounded-[2px] font-sans font-semibold text-sm outline-none shadow-neo-sm focus:shadow-neo transition-shadow"
             />
           </div>
+
+          <PasswordValidation :password="password" :confirm="confirmPassword" />
 
           <div
             v-if="errorMessage"

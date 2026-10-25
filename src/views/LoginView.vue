@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import { useRouter, useRoute, RouterLink } from 'vue-router'
 import { useStore } from '@/composables/useStore'
 import { api, session } from '@/lib/api'
@@ -23,10 +23,21 @@ const showResendModal = ref(false)
 const resendEmail = ref('')
 const resendLoading = ref(false)
 const resendError = ref('')
+const showResendActivation = ref(false)
+const resendFromQuery = computed(() => {
+  return (
+    String(route.query.activation || '').toLowerCase() === 'resend' ||
+    String(route.query.resend || '') === '1'
+  )
+})
 
 function redirectAfterAuth() {
-  const destination = session.role === 'admin' ? '/admin' : '/dashboard'
-  router.push(destination)
+  const redirect = String(route.query.redirect || '')
+  if (redirect.startsWith('/') && !redirect.startsWith('//')) {
+    router.push(redirect)
+    return
+  }
+  router.push(session.role === 'admin' ? '/admin' : '/dashboard')
 }
 
 async function handleLogin() {
@@ -48,11 +59,21 @@ async function handleLogin() {
   }
 
   isLoading.value = true
-  const success = await login(email.value.trim(), password.value)
+  showResendActivation.value = resendFromQuery.value
+  const result = await login(email.value.trim(), password.value, {
+    remember: rememberMe.value,
+  })
   isLoading.value = false
 
-  if (!success) {
-    errorMessage.value = 'Gagal masuk. Periksa email, password, atau koneksi Anda.'
+  if (result !== true) {
+    if (result === 'inactive') {
+      errorMessage.value = 'Akun belum aktif. Cek email aktivasi Anda.'
+      showResendActivation.value = true
+    } else if (result === 'credentials') {
+      errorMessage.value = 'Email atau password salah.'
+    } else {
+      errorMessage.value = 'Gagal masuk. Periksa email, password, atau koneksi Anda.'
+    }
     return
   }
 
@@ -168,6 +189,8 @@ watch(
 )
 
 onMounted(() => {
+  showResendActivation.value = resendFromQuery.value
+
   if (route.query.error !== 'oauth_failed') return
   setTimeout(() => {
     showToast('Gagal masuk dengan Google. Silakan coba lagi.', { type: 'error' })
@@ -199,19 +222,19 @@ onMounted(() => {
         >
           <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path
-              fill="#4285F4"
+              fill="var(--color-google-blue)"
               d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17Z"
             />
             <path
-              fill="#34A853"
+              fill="var(--color-google-green)"
               d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24Z"
             />
             <path
-              fill="#FBBC05"
+              fill="var(--color-google-yellow)"
               d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.97 0 12s.45 3.82 1.25 5.42l4.03-3.15Z"
             />
             <path
-              fill="#EA4335"
+              fill="var(--color-google-red)"
               d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98Z"
             />
           </svg>
@@ -352,6 +375,7 @@ onMounted(() => {
           </button>
 
           <button
+            v-if="showResendActivation"
             type="button"
             class="w-full text-center font-sans text-[11px] font-bold text-muted-foreground hover:text-black underline mt-2"
             @click="openResendModal"
@@ -361,7 +385,7 @@ onMounted(() => {
         </form>
       </div>
 
-      <div class="mt-6 pt-4 bg-[#F8F8F6] border-2 border-black/10 rounded-[2px] p-3 text-center">
+      <div class="mt-6 pt-4 bg-surface border-2 border-black/10 rounded-[2px] p-3 text-center">
         <p class="font-sans text-xs font-semibold text-muted-foreground">
           Belum memiliki akun?
           <RouterLink
@@ -381,7 +405,7 @@ onMounted(() => {
         @click.self="showForgotModal = false"
       >
         <div
-          class="w-full max-w-sm bg-white border-3 sm:border-4 border-black p-5 sm:p-6 shadow-[6px_6px_0px_0px_#000]"
+          class="w-full max-w-sm bg-white border-3 sm:border-4 border-black p-5 sm:p-6 shadow-[6px_6px_0px_0px_var(--color-black)]"
           role="dialog"
           aria-modal="true"
         >
@@ -428,7 +452,7 @@ onMounted(() => {
         @click.self="showResendModal = false"
       >
         <div
-          class="w-full max-w-sm bg-white border-3 sm:border-4 border-black p-5 sm:p-6 shadow-[6px_6px_0px_0px_#000]"
+          class="w-full max-w-sm bg-white border-3 sm:border-4 border-black p-5 sm:p-6 shadow-[6px_6px_0px_0px_var(--color-black)]"
           role="dialog"
           aria-modal="true"
         >

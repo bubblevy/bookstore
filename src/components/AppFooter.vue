@@ -1,8 +1,32 @@
 <script setup>
-import { useRouter } from 'vue-router'
+import { computed } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
+import { useStore } from '@/composables/useStore'
 
+const { state } = useStore()
 const currentYear = new Date().getFullYear()
 const router = useRouter()
+
+const bookCounts = computed(() => {
+  const map = new Map()
+  for (const book of state.books) {
+    if (!book.category) continue
+    map.set(book.category, (map.get(book.category) || 0) + 1)
+  }
+  return map
+})
+
+// Popular = most books in the category, capped at four, and reactive to admin
+// category changes because it reads the shared store.
+const popularCategories = computed(() =>
+  [...state.categories]
+    .map((category) => ({
+      ...category,
+      score: Number(category.totalBooks) || bookCounts.value.get(category.name) || 0,
+    }))
+    .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
+    .slice(0, 4),
+)
 
 function goToSection(hash) {
   router.push({ path: '/', hash })
@@ -10,10 +34,7 @@ function goToSection(hash) {
 </script>
 
 <template>
-  <footer
-    id="kontak"
-    class="w-full bg-[#111111] text-white border-t-4 border-black pt-12 md:pt-16 pb-8"
-  >
+  <footer id="kontak" class="w-full bg-ink text-white border-t-4 border-black pt-12 md:pt-16 pb-8">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div data-aos="fade-up" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 mb-12">
         <div class="lg:col-span-2 space-y-4">
@@ -41,8 +62,7 @@ function goToSection(hash) {
               href="https://instagram.com"
               target="_blank"
               rel="noopener noreferrer"
-              class="neubrutal-btn w-9 h-9 text-white border-2 border-black rounded-[2px] shadow-neo-sm flex items-center justify-center active:translate-x-0.5 active:translate-y-0.5"
-              style="background-color: #ff9ec1"
+              class="neubrutal-btn w-9 h-9 bg-pink text-white border-2 border-black rounded-[2px] shadow-neo-sm flex items-center justify-center active:translate-x-0.5 active:translate-y-0.5"
               aria-label="Instagram"
               title="Instagram"
             >
@@ -101,44 +121,21 @@ function goToSection(hash) {
           </h4>
           <ul class="space-y-2.5 font-sans text-sm font-bold text-white/70">
             <li>
-              <a
-                href="/#katalog"
-                class="hover:text-white transition-colors"
-                @click.prevent="goToSection('#katalog')"
-                >Semua Buku</a
+              <RouterLink to="/#katalog" class="hover:text-white transition-colors"
+                >Semua Buku</RouterLink
               >
             </li>
-            <li>
-              <a
-                href="/#kategori"
+            <li v-for="category in popularCategories" :key="category.slug || category.name">
+              <RouterLink
+                :to="{
+                  path: '/',
+                  query: { category: category.slug || category.name },
+                  hash: '#katalog',
+                }"
                 class="hover:text-white transition-colors"
-                @click.prevent="goToSection('#kategori')"
-                >Fiksi Populer</a
               >
-            </li>
-            <li>
-              <a
-                href="/#kategori"
-                class="hover:text-white transition-colors"
-                @click.prevent="goToSection('#kategori')"
-                >Pengembangan Diri</a
-              >
-            </li>
-            <li>
-              <a
-                href="/#kategori"
-                class="hover:text-white transition-colors"
-                @click.prevent="goToSection('#kategori')"
-                >Sci-Fi & Filsafat</a
-              >
-            </li>
-            <li>
-              <a
-                href="/#kategori"
-                class="hover:text-white transition-colors"
-                @click.prevent="goToSection('#kategori')"
-                >Seni & Desain</a
-              >
+                {{ category.name }}
+              </RouterLink>
             </li>
           </ul>
         </div>
@@ -156,9 +153,21 @@ function goToSection(hash) {
                 >Ulasan Pembeli</a
               >
             </li>
-            <li><a href="#" class="hover:text-white transition-colors">Garansi Pengembalian</a></li>
-            <li><a href="#" class="hover:text-white transition-colors">Kebijakan Privasi</a></li>
-            <li><a href="#" class="hover:text-white transition-colors">Syarat & Ketentuan</a></li>
+            <li>
+              <RouterLink to="/garansi-pengembalian" class="hover:text-white transition-colors"
+                >Garansi Pengembalian</RouterLink
+              >
+            </li>
+            <li>
+              <RouterLink to="/kebijakan-privasi" class="hover:text-white transition-colors"
+                >Kebijakan Privasi</RouterLink
+              >
+            </li>
+            <li>
+              <RouterLink to="/syarat-ketentuan" class="hover:text-white transition-colors"
+                >Syarat & Ketentuan</RouterLink
+              >
+            </li>
           </ul>
         </div>
 

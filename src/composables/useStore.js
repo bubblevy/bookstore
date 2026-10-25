@@ -2,7 +2,8 @@ import { reactive, readonly } from 'vue'
 import router from '@/router'
 import { api, session } from '@/lib/api'
 import { mapBook, mapBookDetail, mapCartItem, mapCategory } from '@/lib/mappers'
-import { shippingLabel } from '@/lib/shipping'
+import { shippingLabel, ensureCourierCatalog } from '@/lib/shipping'
+import { localizeApiError } from '@/lib/errors'
 
 const BOOK_CACHE_KEY = 'bookstore.book_cache'
 
@@ -75,6 +76,8 @@ const state = reactive({
   ordersLoading: Boolean(session.accessToken),
   wishlist: [],
   wishlistLoading: Boolean(session.accessToken),
+  wishlistPending: [],
+  cartPending: [],
 
   catalogLoading: true,
   cartLoading: Boolean(session.accessToken),
@@ -83,14 +86,19 @@ const state = reactive({
 
 let toastListeners = new Set()
 let toastId = 0
+let recentToast = { key: '', at: 0, id: 0 }
 
 function showToast(message, options = {}) {
+  const type = options.type || 'info'
+  const key = `${type}|${message}`
+  const now = Date.now()
+
+  // Parallel requests often fail together; collapse identical back-to-back toasts.
+  if (recentToast.key === key && now - recentToast.at < 1500) return recentToast.id
+
   const id = ++toastId
-  const toast = {
-    id,
-    message,
-    type: options.type || 'info',
-  }
+  const toast = { id, message, type }
+  recentToast = { key, at: now, id }
   toastListeners.forEach((fn) => fn(toast))
   return id
 }
@@ -101,8 +109,7 @@ function onToast(fn) {
 }
 
 function errorText(error, fallback) {
-  if (error?.status === 429) return 'Terlalu banyak percobaan. Coba lagi sebentar.'
-  return error?.message || fallback
+  return localizeApiError(error?.message, error?.status) || fallback
 }
 
 function clearSession() {
@@ -121,20 +128,45 @@ function clearSession() {
   state.cart = []
   state.orders = []
   state.wishlist = []
+  state.wishlistPending = []
+  state.cartPending = []
   state.cartLoading = false
   state.ordersLoading = false
   state.wishlistLoading = false
   state.addressesLoading = false
 }
 
+let authExpiryHandled = false
+
+function expireSession() {
+  clearSession()
+  if (authExpiryHandled) return
+  authExpiryHandled = true
+
+  showToast('Sesi Anda telah berakhir. Silakan masuk kembali.', { type: 'info' })
+
+  const routeName = String(router.currentRoute.value.name || '')
+  if (routeName && routeName !== 'home') {
+    router.replace({ name: 'home' })
+  }
+
+  setTimeout(() => {
+    authExpiryHandled = false
+  }, 1500)
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('bookstore:auth-expired', expireSession)
+}
+
 function handleAuthFailure(error) {
   if (error?.status !== 401) return false
-  clearSession()
-  showToast('Sesi berakhir. Silakan masuk kembali.', { type: 'info' })
+  expireSession()
   return true
 }
 
 function applyUser(user) {
+  authExpiryHandled = false
   state.isLoggedIn = true
   state.userName = user?.name || 'Pengguna'
   state.userEmail = user?.email || ''
@@ -300,7 +332,7 @@ function mapOrder(detail) {
 async function loadOrders() {
   state.ordersLoading = true
   try {
-    const response = await api.orders()
+    const [response] = await Promise.all([api.orders(), ensureCourierCatalog()])
     const list = response.data || []
     const details = await Promise.all(
       list.map(async (order) => {
@@ -368,13 +400,7 @@ async function changePassword(currentPassword, newPassword, confirmPassword) {
     showToast('Password berhasil diperbarui.', { type: 'success' })
     return true
   } catch (error) {
-    const message = String(error?.message || '')
-    const localized = /current password is incorrect/i.test(message)
-      ? 'Password saat ini salah.'
-      : /strong_password|at least 8 characters/i.test(message)
-        ? 'Password baru minimal 8 karakter dan harus memuat huruf besar, huruf kecil, angka, serta simbol.'
-        : errorText(error, 'Gagal memperbarui password')
-    showToast(localized, { type: 'error' })
+    showToast(errorText(error, 'Gagal memperbarui password'), { type: 'error' })
     return false
   }
 }
@@ -465,11 +491,14 @@ function bootstrap() {
   return bootstrapPromise
 }
 
-async function login(email, password) {
+async function login(email, password, options = {}) {
   try {
     const response = await api.login(email.trim(), password)
     const tokens = response.data || {}
-    session.set({ access_token: tokens.access_token, refresh_token: tokens.refresh_token })
+    session.set(
+      { access_token: tokens.access_token, refresh_token: tokens.refresh_token },
+      { persist: options.remember !== false },
+    )
 
     const me = await api.me()
     applyUser(me.data)
@@ -489,7 +518,9 @@ async function login(email, password) {
           : errorText(error, 'Gagal masuk. Periksa email dan password.'),
       { type: 'error' },
     )
-    return false
+    if (inactive) return 'inactive'
+    if (error?.status === 401) return 'credentials'
+    return 'error'
   }
 }
 
@@ -569,6 +600,8 @@ async function addToCart(book, options = {}) {
 }
 
 async function removeFromCart(id) {
+  if (isCartPending(id)) return
+  state.cartPending.push(id)
   try {
     await api.removeCartItem(id)
     state.cart = state.cart.filter((item) => item.id !== id)
@@ -576,12 +609,14 @@ async function removeFromCart(id) {
   } catch (error) {
     if (handleAuthFailure(error)) return
     showToast(errorText(error, 'Gagal menghapus item dari keranjang'), { type: 'error' })
+  } finally {
+    state.cartPending = state.cartPending.filter((itemId) => itemId !== id)
   }
 }
 
 async function updateQuantity(id, qty) {
   const item = state.cart.find((cartItem) => cartItem.id === id)
-  if (!item) return
+  if (!item || isCartPending(id)) return
 
   const nextQuantity = Math.min(99, Math.floor(Number(qty) || 0))
   if (nextQuantity < 1) return
@@ -593,13 +628,17 @@ async function updateQuantity(id, qty) {
 
   const previousQuantity = item.quantity
   item.quantity = nextQuantity
+  state.cartPending.push(id)
 
   try {
     await api.updateCartItem(id, nextQuantity)
+    showToast('Jumlah item diperbarui.', { type: 'info' })
   } catch (error) {
     item.quantity = previousQuantity
     if (handleAuthFailure(error)) return
     showToast(errorText(error, 'Gagal memperbarui jumlah item'), { type: 'error' })
+  } finally {
+    state.cartPending = state.cartPending.filter((itemId) => itemId !== id)
   }
 }
 
@@ -660,8 +699,9 @@ async function toggleWishlist(book) {
     return false
   }
   const bookId = book?.bookId || book?.id
-  if (!bookId) return false
+  if (!bookId || isWishlistPending(bookId)) return false
 
+  state.wishlistPending.push(bookId)
   try {
     if (isWishlisted(bookId)) {
       await api.removeWishlist(bookId)
@@ -676,6 +716,10 @@ async function toggleWishlist(book) {
   } catch (error) {
     showToast(errorText(error, 'Gagal memperbarui wishlist'), { type: 'error' })
     return false
+  } finally {
+    state.wishlistPending = state.wishlistPending.filter(
+      (pendingId) => String(pendingId) !== String(bookId),
+    )
   }
 }
 
@@ -766,7 +810,6 @@ function closeModal() {
   state.modalPayload = null
 }
 
-// Address methods (API-backed)
 async function resolveAddressArea(city, postalCode) {
   const response = await api.areas(city)
   const areas = response.data || []
@@ -909,6 +952,9 @@ async function reorderBook(order) {
 }
 
 const cartCount = () => state.cart.length
+const isWishlistPending = (bookId) =>
+  state.wishlistPending.some((id) => String(id) === String(bookId))
+const isCartPending = (id) => state.cartPending.some((itemId) => String(itemId) === String(id))
 const selectedCount = () => state.cart.filter((item) => item.selected).length
 const selectedTotal = () =>
   state.cart
@@ -958,6 +1004,8 @@ export function useStore() {
     setDefaultAddress,
     reorderBook,
     cartCount,
+    isWishlistPending,
+    isCartPending,
     selectedCount,
     selectedTotal,
   }

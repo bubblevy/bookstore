@@ -1,33 +1,5 @@
 <script setup>
-const testimonials = [
-  {
-    id: 1,
-    name: 'Dr. Hendra Gunawan',
-    role: 'Dosen & Peneliti Sastra',
-    initials: 'HG',
-    tag: 'PEMBACA TERVERIFIKASI',
-    quote: 'KURASI BUKUNYA SANGAT BERBOBOT DAN LENGKAP.',
-    text: 'Sangat jarang menemukan toko buku daring yang konsisten menyediakan edisi orisinal dengan kurasi karya sastra dan humaniora yang begitu teliti. Pengemasan sangat aman dengan kardus kaku.',
-  },
-  {
-    id: 2,
-    name: 'Siti Sarah, M.Psi',
-    role: 'Psikolog & Pengajar',
-    initials: 'SS',
-    tag: 'PEMBACA SETIA',
-    quote: 'KUALITAS BUKU TERJAGA DENGAN HARGA KOMPETITIF.',
-    text: 'Sudah berulang kali memesan buku referensi untuk bahan ajar dan bacaan pribadi. Koleksi buku pengembangan diri dan psikologinya up-to-date dan 100% cetakan resmi penerbit.',
-  },
-  {
-    id: 3,
-    name: 'Farhan Pratama',
-    role: 'Penulis & Desainer Grafis',
-    initials: 'FP',
-    tag: 'BOOK CLUB HOST',
-    quote: 'PENGALAMAN BELANJA YANG MENYENANGKAN DAN ELEGAN.',
-    text: 'Tampilan antarmukanya berkarakter kuat dan navigasinya sangat intuitif. Pengiriman kilat, buku selalu sampai dalam kondisi mulus tanpa ada lekukan pada sampul.',
-  },
-]
+import { TESTIMONIALS } from '@/data/testimonials'
 </script>
 
 <template>
@@ -37,7 +9,7 @@ const testimonials = [
   >
     <div class="absolute inset-0 pointer-events-none select-none overflow-hidden">
       <div
-        class="absolute inset-0 opacity-[0.05] bg-[radial-gradient(#000_1.5px,transparent_1.5px)] [background-size:24px_24px]"
+        class="absolute inset-0 opacity-[0.05] bg-[radial-gradient(var(--color-black)_1.5px,transparent_1.5px)] [background-size:24px_24px]"
       ></div>
 
       <span class="absolute top-8 left-[5%] text-neo-violet text-3xl font-black opacity-30">✦</span>
@@ -78,7 +50,7 @@ const testimonials = [
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
         <article
-          v-for="(t, idx) in testimonials"
+          v-for="(t, idx) in TESTIMONIALS"
           :key="t.id"
           data-aos="fade-up"
           :data-aos-delay="idx * 100"

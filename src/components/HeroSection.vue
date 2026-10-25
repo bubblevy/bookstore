@@ -27,7 +27,7 @@
         class="absolute -bottom-16 -right-16 w-60 h-60 rounded-full border-4 border-black/20 bg-neo-orange/10"
       ></div>
       <div
-        class="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1.5px,transparent_1.5px)] bg-size:24px_24px"
+        class="absolute inset-0 opacity-10 bg-[radial-gradient(var(--color-white)_1.5px,transparent_1.5px)] bg-size:24px_24px"
       ></div>
     </div>
 
@@ -42,7 +42,7 @@
             BACA LEBIH DALAM.<br />
             <span class="relative inline-block mt-2.5">
               <span
-                class="bg-neo-yellow text-black border-3 md:border-4 border-black px-3 sm:px-4 py-1 inline-block -rotate-1 rounded-[2px] shadow-[5px_5px_0px_0px_#000]"
+                class="bg-neo-yellow text-black border-3 md:border-4 border-black px-3 sm:px-4 py-1 inline-block -rotate-1 rounded-[2px] shadow-[5px_5px_0px_0px_var(--color-black)]"
               >
                 UNTUK IDE YANG LEBIH TAJAM.
               </span>
@@ -103,8 +103,7 @@
           <div class="grid grid-cols-2 gap-4 lg:gap-5 w-full max-w-[440px] lg:max-w-[490px]">
             <div class="flex flex-col gap-4 lg:gap-5">
               <div
-                style="background-color: rgb(255, 158, 193); color: rgb(0, 0, 0)"
-                class="w-full h-[230px] lg:h-[260px] text-black border-3 md:border-4 border-black rounded-[2px] p-3.5 sm:p-4 shadow-[6px_6px_0px_0px_#000] flex flex-col justify-between"
+                class="w-full h-[230px] lg:h-[260px] bg-pink text-black border-3 md:border-4 border-black rounded-[2px] p-3.5 sm:p-4 shadow-neo-md flex flex-col justify-between"
               >
                 <div class="flex items-center justify-between border-b-2 border-black pb-2">
                   <div class="flex gap-1.5">
@@ -128,54 +127,68 @@
                       cy="55"
                       rx="32"
                       ry="36"
-                      fill="#FFFFFF"
-                      stroke="#000"
+                      fill="var(--color-white)"
+                      stroke="var(--color-black)"
                       stroke-width="3"
                     />
                     <path
                       d="M 20 45 C 15 65, 25 80, 35 85"
-                      fill="#000"
-                      stroke="#000"
+                      fill="var(--color-black)"
+                      stroke="var(--color-black)"
                       stroke-width="2"
                     />
                     <path
                       d="M 80 45 C 85 65, 75 80, 65 85"
-                      fill="#000"
-                      stroke="#000"
+                      fill="var(--color-black)"
+                      stroke="var(--color-black)"
                       stroke-width="2"
                     />
                     <path
                       d="M 40 60 Q 50 65 60 60 M 42 70 Q 50 75 58 70"
-                      stroke="#000"
+                      stroke="var(--color-black)"
                       stroke-width="2.5"
                       fill="none"
                       stroke-linecap="round"
                     />
                     <polygon
                       points="26,30 36,15 45,28"
-                      fill="#8847F5"
-                      stroke="#000"
+                      fill="var(--color-violet)"
+                      stroke="var(--color-black)"
                       stroke-width="3"
                     />
                     <polygon
                       points="74,30 64,15 55,28"
-                      fill="#8847F5"
-                      stroke="#000"
+                      fill="var(--color-violet)"
+                      stroke="var(--color-black)"
                       stroke-width="3"
                     />
-                    <circle cx="38" cy="38" r="12" fill="#FFFFFF" stroke="#000" stroke-width="3" />
-                    <circle cx="38" cy="38" r="6" fill="#000" />
-                    <circle cx="40" cy="36" r="2" fill="#FFFFFF" />
-                    <circle cx="62" cy="38" r="12" fill="#FFFFFF" stroke="#000" stroke-width="3" />
-                    <circle cx="62" cy="38" r="6" fill="#000" />
-                    <circle cx="64" cy="36" r="2" fill="#FFFFFF" />
+                    <circle
+                      cx="38"
+                      cy="38"
+                      r="12"
+                      fill="var(--color-white)"
+                      stroke="var(--color-black)"
+                      stroke-width="3"
+                    />
+                    <circle cx="38" cy="38" r="6" fill="var(--color-black)" />
+                    <circle cx="40" cy="36" r="2" fill="var(--color-white)" />
+                    <circle
+                      cx="62"
+                      cy="38"
+                      r="12"
+                      fill="var(--color-white)"
+                      stroke="var(--color-black)"
+                      stroke-width="3"
+                    />
+                    <circle cx="62" cy="38" r="6" fill="var(--color-black)" />
+                    <circle cx="64" cy="36" r="2" fill="var(--color-white)" />
                     <polygon
                       points="50,42 45,50 55,50"
-                      fill="#FF7B29"
-                      stroke="#000"
+                      fill="var(--color-orange)"
+                      stroke="var(--color-black)"
                       stroke-width="2.5"
                     />
-                    <rect x="15" y="88" width="70" height="5" rx="2" fill="#000" />
+                    <rect x="15" y="88" width="70" height="5" rx="2" fill="var(--color-black)" />
                   </svg>
                 </div>
 
@@ -183,7 +196,7 @@
               </div>
 
               <div
-                class="w-full h-[150px] lg:h-[170px] bg-neo-lime text-black border-3 md:border-4 border-black rounded-[2px] p-3 shadow-[6px_6px_0px_0px_#000] flex flex-col justify-between"
+                class="w-full h-[150px] lg:h-[170px] bg-neo-lime text-black border-3 md:border-4 border-black rounded-[2px] p-3 shadow-[6px_6px_0px_0px_var(--color-black)] flex flex-col justify-between"
               >
                 <div class="flex items-center justify-between border-b-2 border-black pb-1">
                   <span class="w-8 h-1.5 bg-black"></span>
@@ -201,41 +214,41 @@
                   >
                     <path
                       d="M 40 12 C 38 4, 30 6, 32 10 M 42 10 C 45 2, 53 4, 50 10"
-                      stroke="#000"
+                      stroke="var(--color-black)"
                       stroke-width="2"
                       fill="none"
                       stroke-linecap="round"
                     />
                     <path
                       d="M 15 32 C 18 16, 55 12, 72 28 C 82 34, 86 30, 89 24 C 86 42, 78 44, 70 42 C 55 50, 26 52, 15 32 Z"
-                      fill="#8847F5"
-                      stroke="#000"
+                      fill="var(--color-violet)"
+                      stroke="var(--color-black)"
                       stroke-width="2.5"
                       stroke-linejoin="round"
                     />
                     <path
                       d="M 20 37 C 28 46, 48 45, 60 40"
-                      stroke="#FFFFFF"
+                      stroke="var(--color-white)"
                       stroke-width="2.5"
                       fill="none"
                     />
                     <path
                       d="M 38 38 C 41 47, 49 50, 46 41"
-                      fill="#FF7B29"
-                      stroke="#000"
+                      fill="var(--color-orange)"
+                      stroke="var(--color-black)"
                       stroke-width="2"
                     />
                     <circle
                       cx="24"
                       cy="28"
                       r="2.5"
-                      fill="#FFFFFF"
-                      stroke="#000"
+                      fill="var(--color-white)"
+                      stroke="var(--color-black)"
                       stroke-width="1.5"
                     />
                     <path
                       d="M 10 58 Q 20 54 30 58 T 50 58 T 70 58 T 90 58"
-                      stroke="#000"
+                      stroke="var(--color-black)"
                       stroke-width="2.5"
                       fill="none"
                       stroke-linecap="round"
@@ -252,7 +265,7 @@
 
             <div class="flex flex-col gap-4 lg:gap-5">
               <div
-                class="w-full h-[150px] lg:h-[170px] bg-white text-black border-3 md:border-4 border-black rounded-[2px] p-3 shadow-[6px_6px_0px_0px_#000] flex flex-col justify-between"
+                class="w-full h-[150px] lg:h-[170px] bg-white text-black border-3 md:border-4 border-black rounded-[2px] p-3 shadow-[6px_6px_0px_0px_var(--color-black)] flex flex-col justify-between"
               >
                 <div class="flex items-center justify-between border-b-2 border-black pb-1">
                   <span
@@ -270,30 +283,65 @@
                   >
                     <path
                       d="M 50 16 C 50 8, 48 4, 46 2"
-                      stroke="#000"
+                      stroke="var(--color-black)"
                       stroke-width="3"
                       fill="none"
                       stroke-linecap="round"
                     />
                     <path
                       d="M 50 10 C 62 5, 72 13, 62 17 C 54 19, 50 13, 50 10 Z"
-                      fill="#CBFF00"
-                      stroke="#000"
+                      fill="var(--color-lime)"
+                      stroke="var(--color-black)"
                       stroke-width="2.5"
                       stroke-linejoin="round"
                     />
-                    <circle cx="50" cy="46" r="26" fill="#FF7B29" stroke="#000" stroke-width="3" />
+                    <circle
+                      cx="50"
+                      cy="46"
+                      r="26"
+                      fill="var(--color-orange)"
+                      stroke="var(--color-black)"
+                      stroke-width="3"
+                    />
                     <path
                       d="M 35 34 A 20 20 0 0 1 65 34"
-                      stroke="#FFFFFF"
+                      stroke="var(--color-white)"
                       stroke-width="2.5"
                       fill="none"
                       stroke-linecap="round"
                     />
-                    <circle cx="50" cy="46" r="14" fill="#D8FA00" stroke="#000" stroke-width="2" />
-                    <line x1="50" y1="32" x2="50" y2="60" stroke="#000" stroke-width="1.5" />
-                    <line x1="36" y1="46" x2="64" y2="46" stroke="#000" stroke-width="1.5" />
-                    <circle cx="50" cy="46" r="3" fill="#FFFFFF" stroke="#000" stroke-width="1.5" />
+                    <circle
+                      cx="50"
+                      cy="46"
+                      r="14"
+                      fill="var(--color-yellow)"
+                      stroke="var(--color-black)"
+                      stroke-width="2"
+                    />
+                    <line
+                      x1="50"
+                      y1="32"
+                      x2="50"
+                      y2="60"
+                      stroke="var(--color-black)"
+                      stroke-width="1.5"
+                    />
+                    <line
+                      x1="36"
+                      y1="46"
+                      x2="64"
+                      y2="46"
+                      stroke="var(--color-black)"
+                      stroke-width="1.5"
+                    />
+                    <circle
+                      cx="50"
+                      cy="46"
+                      r="3"
+                      fill="var(--color-white)"
+                      stroke="var(--color-black)"
+                      stroke-width="1.5"
+                    />
                   </svg>
                 </div>
 
@@ -304,7 +352,7 @@
               </div>
 
               <div
-                class="w-full h-[230px] lg:h-[260px] bg-neo-orange text-black border-3 md:border-4 border-black rounded-[2px] p-3.5 sm:p-4 shadow-[6px_6px_0px_0px_#000] flex flex-col justify-between"
+                class="w-full h-[230px] lg:h-[260px] bg-neo-orange text-black border-3 md:border-4 border-black rounded-[2px] p-3.5 sm:p-4 shadow-[6px_6px_0px_0px_var(--color-black)] flex flex-col justify-between"
               >
                 <div class="flex items-center justify-between border-b-2 border-black pb-2">
                   <span
@@ -325,64 +373,148 @@
                   >
                     <polygon
                       points="32,24 22,8 42,16"
-                      fill="#8847F5"
-                      stroke="#000"
+                      fill="var(--color-violet)"
+                      stroke="var(--color-black)"
                       stroke-width="3"
                     />
                     <polygon
                       points="68,24 78,8 58,16"
-                      fill="#8847F5"
-                      stroke="#000"
+                      fill="var(--color-violet)"
+                      stroke="var(--color-black)"
                       stroke-width="3"
                     />
-                    <circle cx="50" cy="34" r="22" fill="#FFFFFF" stroke="#000" stroke-width="3" />
+                    <circle
+                      cx="50"
+                      cy="34"
+                      r="22"
+                      fill="var(--color-white)"
+                      stroke="var(--color-black)"
+                      stroke-width="3"
+                    />
                     <path
                       d="M 38 32 Q 43 36 48 32"
-                      stroke="#000"
+                      stroke="var(--color-black)"
                       stroke-width="2.5"
                       fill="none"
                       stroke-linecap="round"
                     />
                     <path
                       d="M 52 32 Q 57 36 62 32"
-                      stroke="#000"
+                      stroke="var(--color-black)"
                       stroke-width="2.5"
                       fill="none"
                       stroke-linecap="round"
                     />
-                    <polygon points="50,37 47,40 53,40" fill="#000" />
+                    <polygon points="50,37 47,40 53,40" fill="var(--color-black)" />
                     <path
                       d="M 50 40 L 50 43 M 47 44 Q 50 46 53 44"
-                      stroke="#000"
+                      stroke="var(--color-black)"
                       stroke-width="2"
                       fill="none"
                       stroke-linecap="round"
                     />
-                    <line x1="26" y1="36" x2="36" y2="38" stroke="#000" stroke-width="1.5" />
-                    <line x1="26" y1="42" x2="36" y2="41" stroke="#000" stroke-width="1.5" />
-                    <line x1="74" y1="36" x2="64" y2="38" stroke="#000" stroke-width="1.5" />
-                    <line x1="74" y1="42" x2="64" y2="41" stroke="#000" stroke-width="1.5" />
+                    <line
+                      x1="26"
+                      y1="36"
+                      x2="36"
+                      y2="38"
+                      stroke="var(--color-black)"
+                      stroke-width="1.5"
+                    />
+                    <line
+                      x1="26"
+                      y1="42"
+                      x2="36"
+                      y2="41"
+                      stroke="var(--color-black)"
+                      stroke-width="1.5"
+                    />
+                    <line
+                      x1="74"
+                      y1="36"
+                      x2="64"
+                      y2="38"
+                      stroke="var(--color-black)"
+                      stroke-width="1.5"
+                    />
+                    <line
+                      x1="74"
+                      y1="42"
+                      x2="64"
+                      y2="41"
+                      stroke="var(--color-black)"
+                      stroke-width="1.5"
+                    />
                     <path
                       d="M 24 64 L 50 60 L 76 64 L 76 84 L 50 80 L 24 84 Z"
-                      fill="#CBFF00"
-                      stroke="#000"
+                      fill="var(--color-lime)"
+                      stroke="var(--color-black)"
                       stroke-width="3"
                       stroke-linejoin="round"
                     />
-                    <line x1="50" y1="60" x2="50" y2="80" stroke="#000" stroke-width="2.5" />
-                    <line x1="30" y1="68" x2="45" y2="67" stroke="#000" stroke-width="1.5" />
-                    <line x1="30" y1="73" x2="45" y2="72" stroke="#000" stroke-width="1.5" />
-                    <line x1="30" y1="78" x2="42" y2="77" stroke="#000" stroke-width="1.5" />
-                    <line x1="55" y1="67" x2="70" y2="68" stroke="#000" stroke-width="1.5" />
-                    <line x1="55" y1="72" x2="70" y2="73" stroke="#000" stroke-width="1.5" />
-                    <line x1="58" y1="77" x2="70" y2="78" stroke="#000" stroke-width="1.5" />
+                    <line
+                      x1="50"
+                      y1="60"
+                      x2="50"
+                      y2="80"
+                      stroke="var(--color-black)"
+                      stroke-width="2.5"
+                    />
+                    <line
+                      x1="30"
+                      y1="68"
+                      x2="45"
+                      y2="67"
+                      stroke="var(--color-black)"
+                      stroke-width="1.5"
+                    />
+                    <line
+                      x1="30"
+                      y1="73"
+                      x2="45"
+                      y2="72"
+                      stroke="var(--color-black)"
+                      stroke-width="1.5"
+                    />
+                    <line
+                      x1="30"
+                      y1="78"
+                      x2="42"
+                      y2="77"
+                      stroke="var(--color-black)"
+                      stroke-width="1.5"
+                    />
+                    <line
+                      x1="55"
+                      y1="67"
+                      x2="70"
+                      y2="68"
+                      stroke="var(--color-black)"
+                      stroke-width="1.5"
+                    />
+                    <line
+                      x1="55"
+                      y1="72"
+                      x2="70"
+                      y2="73"
+                      stroke="var(--color-black)"
+                      stroke-width="1.5"
+                    />
+                    <line
+                      x1="58"
+                      y1="77"
+                      x2="70"
+                      y2="78"
+                      stroke="var(--color-black)"
+                      stroke-width="1.5"
+                    />
                     <ellipse
                       cx="36"
                       cy="62"
                       rx="5"
                       ry="4"
-                      fill="#FFFFFF"
-                      stroke="#000"
+                      fill="var(--color-white)"
+                      stroke="var(--color-black)"
                       stroke-width="2"
                     />
                     <ellipse
@@ -390,8 +522,8 @@
                       cy="62"
                       rx="5"
                       ry="4"
-                      fill="#FFFFFF"
-                      stroke="#000"
+                      fill="var(--color-white)"
+                      stroke="var(--color-black)"
                       stroke-width="2"
                     />
                   </svg>
