@@ -4,20 +4,13 @@ import { useRouter } from 'vue-router'
 import { useStore } from '@/composables/useStore'
 
 const router = useRouter()
-const {
-  state,
-  cartCount,
-  openCart,
-  openModal,
-  logout,
-  openSidebar,
-  closeSidebar,
-  setUserRole,
-} = useStore()
+const { state, cartCount, openCart, openModal, logout, openSidebar, closeSidebar } = useStore()
 const userMenuOpen = ref(false)
+const showLogoutConfirm = ref(false)
 const userMenuRef = ref(null)
 
 const cartBadge = computed(() => cartCount())
+const isAdminMode = computed(() => state.userRole === 'admin')
 
 function closeMobile() {
   closeSidebar()
@@ -29,34 +22,33 @@ function openMobile() {
 
 function handleLogout() {
   userMenuOpen.value = false
-  logout()
+  showLogoutConfirm.value = true
 }
 
 function handleMobileLogout() {
   closeMobile()
-  logout()
+  showLogoutConfirm.value = true
 }
 
-function toggleRole() {
-  const nextRole = state.userRole === 'admin' ? 'user' : 'admin'
-  setUserRole(nextRole)
+async function confirmLogout() {
+  showLogoutConfirm.value = false
+  await logout()
+  if (['/admin', '/dashboard', '/checkout'].includes(router.currentRoute.value.path)) {
+    router.push('/')
+  }
+}
+
+function cancelLogout() {
+  showLogoutConfirm.value = false
 }
 
 function navigateToSection(hash) {
   closeMobile()
-  if (router.currentRoute.value.path !== '/') {
-    router.push({ path: '/', hash }).then(() => {
-      setTimeout(() => {
-        const el = document.querySelector(hash)
-        if (el) el.scrollIntoView({ behavior: 'smooth' })
-      }, 150)
-    })
-  } else {
-    const el = document.querySelector(hash)
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' })
-    }
+  if (router.currentRoute.value.path === '/' && router.currentRoute.value.hash === hash) {
+    document.querySelector(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    return
   }
+  router.push({ name: 'home', hash })
 }
 
 function handleSearchClick() {
@@ -67,6 +59,9 @@ function handleKeydown(e) {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
     e.preventDefault()
     handleSearchClick()
+  }
+  if (e.key === 'Escape' && showLogoutConfirm.value) {
+    cancelLogout()
   }
 }
 
@@ -110,15 +105,39 @@ defineExpose({ closeMobile, openMobile })
           </div>
         </router-link>
 
-        <nav class="hidden lg:flex items-center gap-7 font-outfit font-black text-sm">
-          <a href="#katalog" class="link-under-link hover:text-neo-violet">Katalog Buku</a>
-          <a href="#kategori" class="link-under-link hover:text-neo-violet">Kategori</a>
-          <a href="#ulasan" class="link-under-link hover:text-neo-violet">Ulasan Pembeli</a>
-          <a href="#kontak" class="link-under-link hover:text-neo-violet">Kontak</a>
+        <nav
+          v-if="!isAdminMode"
+          class="hidden lg:flex items-center gap-7 font-outfit font-black text-sm"
+        >
+          <a
+            href="#katalog"
+            class="link-under-link hover:text-neo-violet"
+            @click.prevent="navigateToSection('#katalog')"
+            >Katalog Buku</a
+          >
+          <a
+            href="#kategori"
+            class="link-under-link hover:text-neo-violet"
+            @click.prevent="navigateToSection('#kategori')"
+            >Kategori</a
+          >
+          <a
+            href="#ulasan"
+            class="link-under-link hover:text-neo-violet"
+            @click.prevent="navigateToSection('#ulasan')"
+            >Ulasan Pembeli</a
+          >
+          <a
+            href="#kontak"
+            class="link-under-link hover:text-neo-violet"
+            @click.prevent="navigateToSection('#kontak')"
+            >Kontak</a
+          >
         </nav>
 
         <div class="flex items-center gap-2 sm:gap-3">
           <button
+            v-if="!isAdminMode"
             class="neubrutal-btn bg-white border-2 md:border-3 border-black w-10 h-10 md:w-64 lg:w-80 md:px-3.5 rounded-[2px] shadow-neo-sm hover:bg-gray-100 flex items-center justify-center md:justify-between shrink-0 transition-all"
             aria-label="Cari buku"
             @click="handleSearchClick"
@@ -151,6 +170,7 @@ defineExpose({ closeMobile, openMobile })
           </button>
 
           <button
+            v-if="!isAdminMode"
             class="relative neubrutal-btn bg-neo-yellow text-black border-2 md:border-3 border-black w-10 h-10 rounded-[2px] shadow-neo-sm hover:bg-yellow-300 flex items-center justify-center shrink-0"
             aria-label="Buka keranjang belanja"
             @click="openCart"
@@ -179,19 +199,6 @@ defineExpose({ closeMobile, openMobile })
             </span>
           </button>
 
-          <!-- Admin Quick Access Badge (Visible on desktop) -->
-          <router-link
-            v-if="state.isLoggedIn && state.userRole === 'admin'"
-            to="/admin"
-            class="hidden md:flex neubrutal-btn bg-neo-violet text-white border-2 md:border-3 border-black px-3 h-10 rounded-[2px] font-outfit font-black text-xs shadow-neo-sm hover:bg-purple-700 items-center gap-1.5 shrink-0"
-            title="Buka Panel Admin"
-          >
-            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-            </svg>
-            <span class="hidden xl:inline">Admin Panel</span>
-          </router-link>
-
           <div v-if="!state.isLoggedIn" class="hidden md:flex items-center gap-2">
             <router-link
               to="/login"
@@ -219,8 +226,18 @@ defineExpose({ closeMobile, openMobile })
               <span class="font-outfit font-extrabold text-xs max-w-[110px] truncate">{{
                 state.userName.split(' ')[0]
               }}</span>
-              <svg class="w-3.5 h-3.5 text-black" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+              <svg
+                class="w-3.5 h-3.5 text-black"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M19.5 8.25l-7.5 7.5-7.5-7.5"
+                />
               </svg>
             </button>
             <div
@@ -229,55 +246,46 @@ defineExpose({ closeMobile, openMobile })
             >
               <div class="px-2.5 py-2 bg-neutral-100 border border-black/20 rounded-[2px] mb-2">
                 <div class="flex items-center justify-between gap-1">
-                  <p class="font-outfit font-black text-xs text-black truncate">{{ state.userName }}</p>
+                  <p class="font-outfit font-black text-xs text-black truncate">
+                    {{ state.userName }}
+                  </p>
                   <span
                     class="border border-black px-1.5 py-0.2 text-[9px] font-outfit font-black uppercase rounded-[2px]"
-                    :class="state.userRole === 'admin' ? 'bg-neo-violet text-white' : 'bg-neo-lime text-black'"
+                    :class="
+                      state.userRole === 'admin'
+                        ? 'bg-neo-violet text-white'
+                        : 'bg-neo-lime text-black'
+                    "
                   >
                     {{ state.userRole === 'admin' ? 'ADMIN' : 'MEMBER' }}
                   </span>
                 </div>
-                <p class="font-sans text-[10px] text-muted-foreground truncate">{{ state.userEmail }}</p>
+                <p class="font-sans text-[10px] text-muted-foreground truncate">
+                  {{ state.userEmail }}
+                </p>
               </div>
 
               <div class="space-y-1">
                 <router-link
-                  to="/admin"
-                  class="flex items-center justify-between px-2.5 py-2 rounded-[2px] font-outfit font-bold text-xs hover:bg-neo-yellow hover:text-black transition-colors group"
-                  @click="userMenuOpen = false"
-                >
-                  <span class="flex items-center gap-2">
-                    <svg class="w-4 h-4 text-black" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-                    </svg>
-                    Panel Admin Toko
-                  </span>
-                  <span class="text-[9px] font-mono bg-neo-violet text-white px-1.5 py-0.2 rounded-[2px]">Admin</span>
-                </router-link>
-
-                <router-link
-                  to="/dashboard"
+                  :to="isAdminMode ? '/admin' : '/dashboard'"
                   class="flex items-center gap-2 px-2.5 py-2 rounded-[2px] font-outfit font-bold text-xs hover:bg-neo-yellow hover:text-black transition-colors"
                   @click="userMenuOpen = false"
                 >
-                  <svg class="w-4 h-4 text-black" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                  <svg
+                    class="w-4 h-4 text-black"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"
+                    />
                   </svg>
-                  Dashboard Pembeli
+                  {{ isAdminMode ? 'Panel Admin' : 'Dashboard Pembeli' }}
                 </router-link>
-
-                <button
-                  type="button"
-                  class="w-full flex items-center justify-between px-2.5 py-2 rounded-[2px] font-outfit font-bold text-xs text-left bg-gray-50 hover:bg-neo-lime hover:text-black transition-colors border border-black/20"
-                  @click="toggleRole"
-                >
-                  <span class="flex items-center gap-2">
-                    <svg class="w-4 h-4 text-black" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                    </svg>
-                    Switch: {{ state.userRole === 'admin' ? 'ke Akun User' : 'ke Akun Admin' }}
-                  </span>
-                </button>
               </div>
 
               <div class="border-t border-black my-2"></div>
@@ -286,8 +294,18 @@ defineExpose({ closeMobile, openMobile })
                 class="w-full flex items-center gap-2 px-2.5 py-2 rounded-[2px] font-outfit font-bold text-xs text-red-600 hover:bg-red-50 transition-colors"
                 @click="handleLogout"
               >
-                <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+                <svg
+                  class="w-4 h-4 text-red-600"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"
+                  />
                 </svg>
                 Keluar dari Akun
               </button>
@@ -312,6 +330,59 @@ defineExpose({ closeMobile, openMobile })
         </div>
       </div>
     </header>
+
+    <transition
+      enter-active-class="transition-opacity duration-150"
+      leave-active-class="transition-opacity duration-150"
+      enter-from-class="opacity-0"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="showLogoutConfirm"
+        class="fixed inset-0 bg-black/70 z-[80] flex items-center justify-center p-4 backdrop-blur-xs"
+        @click.self="cancelLogout"
+      >
+        <div
+          class="w-full max-w-sm bg-white border-3 sm:border-4 border-black p-5 sm:p-6 shadow-[6px_6px_0px_0px_#000] sm:shadow-[8px_8px_0px_0px_#000]"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="logout-confirm-title"
+          aria-describedby="logout-confirm-desc"
+        >
+          <div class="mb-3">
+            <h3
+              id="logout-confirm-title"
+              class="font-outfit font-black text-base sm:text-lg leading-tight text-black"
+            >
+              Keluar dari Akun?
+            </h3>
+            <p
+              id="logout-confirm-desc"
+              class="font-sans text-xs font-bold text-muted-foreground mt-0.5"
+            >
+              Kamu akan keluar dari akun ini. Keranjang dan pesanan tetap tersimpan.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2.5">
+            <button
+              type="button"
+              class="neubrutal-btn bg-white hover:bg-gray-100 text-black border-2 border-black py-2.5 px-3 font-outfit font-black text-xs sm:text-sm shadow-neo-sm text-center"
+              @click="cancelLogout"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              class="neubrutal-btn bg-red-600 hover:bg-red-500 text-white border-2 border-black py-2.5 px-3 font-outfit font-black text-xs sm:text-sm shadow-neo-sm text-center"
+              @click="confirmLogout"
+            >
+              Ya, Keluar
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
 
     <transition
       enter-active-class="transition-opacity duration-200"
@@ -366,69 +437,72 @@ defineExpose({ closeMobile, openMobile })
         <nav
           class="flex flex-col px-6 py-4 gap-1 font-outfit font-black text-base flex-1 overflow-y-auto"
         >
-          <a
-            href="#katalog"
-            class="py-2.5 border-b-2 border-black/10 hover:text-neo-violet flex items-center justify-between"
-            @click="navigateToSection('#katalog')"
-          >
-            <span>Katalog Buku</span>
-            <span class="text-xs font-mono text-muted-foreground">→</span>
-          </a>
-          <a
-            href="#kategori"
-            class="py-2.5 border-b-2 border-black/10 hover:text-neo-violet flex items-center justify-between"
-            @click="navigateToSection('#kategori')"
-          >
-            <span>Kategori</span>
-            <span class="text-xs font-mono text-muted-foreground">→</span>
-          </a>
-          <a
-            href="#ulasan"
-            class="py-2.5 border-b-2 border-black/10 hover:text-neo-violet flex items-center justify-between"
-            @click="navigateToSection('#ulasan')"
-          >
-            <span>Ulasan Pembeli</span>
-            <span class="text-xs font-mono text-muted-foreground">→</span>
-          </a>
-          <a
-            href="#kontak"
-            class="py-2.5 border-b-2 border-black/10 hover:text-neo-violet flex items-center justify-between"
-            @click="navigateToSection('#kontak')"
-          >
-            <span>Kontak</span>
-            <span class="text-xs font-mono text-muted-foreground">→</span>
-          </a>
+          <template v-if="!isAdminMode">
+            <a
+              href="#katalog"
+              class="py-2.5 border-b-2 border-black/10 hover:text-neo-violet flex items-center justify-between"
+              @click.prevent="navigateToSection('#katalog')"
+            >
+              <span>Katalog Buku</span>
+              <span class="text-xs font-mono text-muted-foreground">→</span>
+            </a>
+            <a
+              href="#kategori"
+              class="py-2.5 border-b-2 border-black/10 hover:text-neo-violet flex items-center justify-between"
+              @click.prevent="navigateToSection('#kategori')"
+            >
+              <span>Kategori</span>
+              <span class="text-xs font-mono text-muted-foreground">→</span>
+            </a>
+            <a
+              href="#ulasan"
+              class="py-2.5 border-b-2 border-black/10 hover:text-neo-violet flex items-center justify-between"
+              @click.prevent="navigateToSection('#ulasan')"
+            >
+              <span>Ulasan Pembeli</span>
+              <span class="text-xs font-mono text-muted-foreground">→</span>
+            </a>
+            <a
+              href="#kontak"
+              class="py-2.5 border-b-2 border-black/10 hover:text-neo-violet flex items-center justify-between"
+              @click.prevent="navigateToSection('#kontak')"
+            >
+              <span>Kontak</span>
+              <span class="text-xs font-mono text-muted-foreground">→</span>
+            </a>
+          </template>
 
-          <div class="pt-3 pb-1 text-[11px] font-sans font-extrabold uppercase text-muted-foreground tracking-wider">
+          <div
+            class="pt-3 pb-1 text-[11px] font-sans font-extrabold uppercase text-muted-foreground tracking-wider"
+          >
             Portal Akun & Manajemen
           </div>
 
           <router-link
-            to="/dashboard"
+            :to="isAdminMode ? '/admin' : '/dashboard'"
             class="py-2.5 border-b-2 border-black/10 hover:text-neo-violet flex items-center justify-between"
             @click="closeMobile"
           >
             <span class="flex items-center gap-2">
-              <svg class="w-4 h-4 text-black" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+              <svg
+                class="w-4 h-4 text-black"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"
+                />
               </svg>
-              Dashboard Pembeli
+              {{ isAdminMode ? 'Panel Admin' : 'Dashboard Pembeli' }}
             </span>
-            <span class="bg-neo-lime text-black text-[9px] font-outfit font-black px-1.5 py-0.5 rounded-[2px] border border-black">User</span>
-          </router-link>
-
-          <router-link
-            to="/admin"
-            class="py-2.5 border-b-2 border-black/10 hover:text-neo-violet flex items-center justify-between"
-            @click="closeMobile"
-          >
-            <span class="flex items-center gap-2">
-              <svg class="w-4 h-4 text-neo-violet" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-              </svg>
-              Panel Admin Toko
-            </span>
-            <span class="bg-neo-violet text-white text-[9px] font-outfit font-black px-1.5 py-0.5 rounded-[2px] border border-black">Admin</span>
+            <span
+              class="bg-neo-lime text-black text-[9px] font-outfit font-black px-1.5 py-0.5 rounded-[2px] border border-black"
+              >{{ isAdminMode ? 'Admin' : 'User' }}</span
+            >
           </router-link>
         </nav>
 
@@ -458,8 +532,12 @@ defineExpose({ closeMobile, openMobile })
                   {{ state.userName.slice(0, 2).toUpperCase() }}
                 </div>
                 <div class="truncate">
-                  <span class="font-outfit font-black text-sm block truncate">{{ state.userName }}</span>
-                  <span class="text-[10px] font-mono text-muted-foreground uppercase">{{ state.userRole }}</span>
+                  <span class="font-outfit font-black text-sm block truncate">{{
+                    state.userName
+                  }}</span>
+                  <span class="text-[10px] font-mono text-muted-foreground uppercase">{{
+                    state.userRole
+                  }}</span>
                 </div>
               </div>
               <button
@@ -469,12 +547,6 @@ defineExpose({ closeMobile, openMobile })
                 Keluar
               </button>
             </div>
-            <button
-              class="neubrutal-btn w-full bg-neo-lime text-black border-2 border-black py-2 rounded-[2px] font-outfit font-black text-xs shadow-neo-sm text-center"
-              @click="toggleRole"
-            >
-              Mode: {{ state.userRole === 'admin' ? 'Admin (Klik ubah ke User)' : 'User (Klik ubah ke Admin)' }}
-            </button>
           </div>
         </div>
       </div>

@@ -1,12 +1,13 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useRouter, useRoute, RouterLink } from 'vue-router'
 import { useStore } from '@/composables/useStore'
+import { api, session } from '@/lib/api'
 import AuthLayout from './AuthLayout.vue'
 
 const router = useRouter()
 const route = useRoute()
-const { login, loginWithGoogle } = useStore()
+const { login, showToast } = useStore()
 
 const email = ref('')
 const password = ref('')
@@ -14,13 +15,21 @@ const rememberMe = ref(true)
 const showPassword = ref(false)
 const errorMessage = ref('')
 const isLoading = ref(false)
+const showForgotModal = ref(false)
+const forgotEmail = ref('')
+const forgotLoading = ref(false)
+const forgotError = ref('')
+const showResendModal = ref(false)
+const resendEmail = ref('')
+const resendLoading = ref(false)
+const resendError = ref('')
 
 function redirectAfterAuth() {
-  const redirect = route.query.redirect || '/'
-  router.push(redirect)
+  const destination = session.role === 'admin' ? '/admin' : '/dashboard'
+  router.push(destination)
 }
 
-function handleLogin() {
+async function handleLogin() {
   errorMessage.value = ''
 
   if (!email.value.trim() || !password.value) {
@@ -39,24 +48,132 @@ function handleLogin() {
   }
 
   isLoading.value = true
-  setTimeout(() => {
-    const rawName = email.value.split('@')[0]
-    const displayName = rawName.replace(/[._-]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  const success = await login(email.value.trim(), password.value)
+  isLoading.value = false
 
-    login(displayName, email.value.trim())
-    isLoading.value = false
-    redirectAfterAuth()
-  }, 400)
+  if (!success) {
+    errorMessage.value = 'Gagal masuk. Periksa email, password, atau koneksi Anda.'
+    return
+  }
+
+  redirectAfterAuth()
 }
 
 function handleGoogleLogin() {
-  isLoading.value = true
-  setTimeout(() => {
-    loginWithGoogle('Budi Pratama', 'budi.pratama@gmail.com')
-    isLoading.value = false
-    redirectAfterAuth()
-  }, 400)
+  window.location.assign(api.googleLoginUrl())
 }
+
+function openForgotModal() {
+  forgotEmail.value = email.value.trim()
+  forgotError.value = ''
+  showForgotModal.value = true
+}
+
+async function submitForgot() {
+  const target = forgotEmail.value.trim()
+  if (!target.includes('@') || !target.includes('.')) {
+    forgotError.value = 'Format email tidak valid.'
+    return
+  }
+
+  forgotLoading.value = true
+  forgotError.value = ''
+  try {
+    await api.forgotPassword(target)
+    showForgotModal.value = false
+    showToast('Jika email terdaftar, link reset password telah dikirim.', { type: 'success' })
+  } catch (error) {
+    forgotError.value = error?.message || 'Gagal mengirim link reset password.'
+  } finally {
+    forgotLoading.value = false
+  }
+}
+
+function openResendModal() {
+  resendEmail.value = email.value.trim()
+  resendError.value = ''
+  showResendModal.value = true
+}
+
+async function submitResend() {
+  const target = resendEmail.value.trim()
+  if (!target.includes('@') || !target.includes('.')) {
+    resendError.value = 'Format email tidak valid.'
+    return
+  }
+
+  resendLoading.value = true
+  resendError.value = ''
+  try {
+    await api.resendActivation(target)
+    showResendModal.value = false
+    showToast('Jika email terdaftar dan belum aktif, link aktivasi telah dikirim.', {
+      type: 'success',
+    })
+  } catch (error) {
+    resendError.value = error?.message || 'Gagal mengirim ulang email aktivasi.'
+  } finally {
+    resendLoading.value = false
+  }
+}
+
+let activationInFlight = false
+
+async function activateFromLink(token) {
+  if (activationInFlight) return
+  activationInFlight = true
+
+  try {
+    const response = await api.activateAccount(token)
+    const alreadyActive = /already active/i.test(response?.message || '')
+    showToast(
+      alreadyActive
+        ? 'Akun sudah aktif. Silakan masuk.'
+        : 'Email berhasil diverifikasi. Silakan masuk.',
+      { type: alreadyActive ? 'info' : 'success' },
+    )
+    router.replace({ name: 'login' })
+  } catch (error) {
+    const message = String(error?.message || '')
+
+    if (error?.status === 429) {
+      showToast('Terlalu banyak percobaan. Coba lagi sebentar.', { type: 'error' })
+      return
+    }
+
+    if (/expired/i.test(message)) {
+      showToast('Link verifikasi sudah kedaluwarsa. Minta link baru.', { type: 'error' })
+      router.replace({ name: 'login' })
+      return
+    }
+
+    if (/invalid|required/i.test(message)) {
+      showToast('Link verifikasi tidak valid.', { type: 'error' })
+      router.replace({ name: 'login' })
+      return
+    }
+
+    showToast(message || 'Gagal memverifikasi email. Silakan coba lagi.', { type: 'error' })
+  } finally {
+    activationInFlight = false
+  }
+}
+
+watch(
+  () => route.query.token,
+  (token) => {
+    if (token) activateFromLink(String(token))
+  },
+  { immediate: true },
+)
+
+onMounted(() => {
+  if (route.query.error !== 'oauth_failed') return
+  setTimeout(() => {
+    showToast('Gagal masuk dengan Google. Silakan coba lagi.', { type: 'error' })
+  }, 0)
+  router.replace({ name: 'login' })
+})
 </script>
 
 <template>
@@ -160,9 +277,7 @@ function handleGoogleLogin() {
               <a
                 href="#"
                 class="font-sans text-[11px] font-bold text-neo-violet hover:underline"
-                @click.prevent="
-                  errorMessage = 'Fitur reset password telah dikirim ke email bantuan admin.'
-                "
+                @click.prevent="openForgotModal"
               >
                 Lupa password?
               </a>
@@ -235,6 +350,14 @@ function handleGoogleLogin() {
             <span v-if="!isLoading">Masuk ke Akun</span>
             <span v-else>Memproses...</span>
           </button>
+
+          <button
+            type="button"
+            class="w-full text-center font-sans text-[11px] font-bold text-muted-foreground hover:text-black underline mt-2"
+            @click="openResendModal"
+          >
+            Belum menerima email aktivasi? Kirim ulang
+          </button>
         </form>
       </div>
 
@@ -250,5 +373,101 @@ function handleGoogleLogin() {
         </p>
       </div>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="showForgotModal"
+        class="fixed inset-0 z-[80] bg-black/70 backdrop-blur-xs flex items-center justify-center p-4"
+        @click.self="showForgotModal = false"
+      >
+        <div
+          class="w-full max-w-sm bg-white border-3 sm:border-4 border-black p-5 sm:p-6 shadow-[6px_6px_0px_0px_#000]"
+          role="dialog"
+          aria-modal="true"
+        >
+          <h2 class="font-outfit font-black text-xl text-black">Reset Password</h2>
+          <p class="font-sans text-xs font-semibold text-muted-foreground mt-1">
+            Masukkan email akun. Kami akan mengirim link reset jika email terdaftar.
+          </p>
+
+          <form class="mt-4 space-y-3" @submit.prevent="submitForgot">
+            <input
+              v-model="forgotEmail"
+              type="email"
+              required
+              autocomplete="email"
+              placeholder="nama@email.com"
+              class="w-full bg-white border-3 border-black rounded-[2px] px-3.5 py-2.5 font-outfit font-bold text-sm outline-none shadow-neo-sm focus:shadow-neo"
+            />
+            <p v-if="forgotError" class="font-sans text-xs font-bold text-red-600">
+              {{ forgotError }}
+            </p>
+            <div class="grid grid-cols-2 gap-2.5 pt-1">
+              <button
+                type="button"
+                class="neubrutal-btn bg-white text-black border-2 border-black py-2.5 font-outfit font-black text-xs shadow-neo-sm"
+                @click="showForgotModal = false"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                :disabled="forgotLoading"
+                class="neubrutal-btn bg-neo-yellow text-black border-2 border-black py-2.5 font-outfit font-black text-xs shadow-neo-sm disabled:opacity-60"
+              >
+                {{ forgotLoading ? 'Mengirim...' : 'Kirim Link' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div
+        v-if="showResendModal"
+        class="fixed inset-0 z-[80] bg-black/70 backdrop-blur-xs flex items-center justify-center p-4"
+        @click.self="showResendModal = false"
+      >
+        <div
+          class="w-full max-w-sm bg-white border-3 sm:border-4 border-black p-5 sm:p-6 shadow-[6px_6px_0px_0px_#000]"
+          role="dialog"
+          aria-modal="true"
+        >
+          <h2 class="font-outfit font-black text-xl text-black">Kirim Ulang Aktivasi</h2>
+          <p class="font-sans text-xs font-semibold text-muted-foreground mt-1">
+            Masukkan email akun yang belum aktif. Kami akan mengirim ulang link aktivasi.
+          </p>
+
+          <form class="mt-4 space-y-3" @submit.prevent="submitResend">
+            <input
+              v-model="resendEmail"
+              type="email"
+              required
+              autocomplete="email"
+              placeholder="nama@email.com"
+              class="w-full bg-white border-3 border-black rounded-[2px] px-3.5 py-2.5 font-outfit font-bold text-sm outline-none shadow-neo-sm focus:shadow-neo"
+            />
+            <p v-if="resendError" class="font-sans text-xs font-bold text-red-600">
+              {{ resendError }}
+            </p>
+            <div class="grid grid-cols-2 gap-2.5 pt-1">
+              <button
+                type="button"
+                class="neubrutal-btn bg-white text-black border-2 border-black py-2.5 font-outfit font-black text-xs shadow-neo-sm"
+                @click="showResendModal = false"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                :disabled="resendLoading"
+                class="neubrutal-btn bg-neo-yellow text-black border-2 border-black py-2.5 font-outfit font-black text-xs shadow-neo-sm disabled:opacity-60"
+              >
+                {{ resendLoading ? 'Mengirim...' : 'Kirim Ulang' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Teleport>
   </AuthLayout>
 </template>

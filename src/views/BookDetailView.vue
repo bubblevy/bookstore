@@ -1,28 +1,42 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { featuredBooks } from '@/data/catalog'
 import { useStore } from '@/composables/useStore'
+import { assetUrl } from '@/lib/assets'
 import BookCard from '@/components/BookCard.vue'
 import BookCover from '@/components/BookCover.vue'
 
 const route = useRoute()
 const router = useRouter()
-const { addToCart, openCart } = useStore()
+const { state, loadBook, addToCart, toggleWishlist, isWishlisted, refreshWishlistStatus } =
+  useStore()
 
-const book = computed(() => featuredBooks.find((b) => b.id === route.params.id))
+const book = ref(null)
+const loading = ref(true)
+const coverError = ref(false)
+
+async function fetchBook() {
+  loading.value = true
+  coverError.value = false
+  book.value = await loadBook(String(route.params.id))
+  loading.value = false
+  await refreshWishlistStatus(book.value?.id)
+}
+
+watch(() => route.params.id, fetchBook, { immediate: true })
 
 const relatedBooks = computed(() =>
-  featuredBooks.filter((b) => b.id !== route.params.id).slice(0, 4),
+  state.books.filter((item) => item.slug !== String(route.params.id)).slice(0, 4),
 )
 
-const selectedFormat = ref('Soft Cover')
 const activeTab = ref('sinopsis')
 
 const isQtyModalOpen = ref(false)
 const modalQty = ref(1)
+const buyNow = ref(false)
 
-function openQtyModal() {
+function openQtyModal(mode = 'cart') {
+  buyNow.value = mode === 'buy'
   modalQty.value = 1
   isQtyModalOpen.value = true
 }
@@ -32,7 +46,8 @@ function closeQtyModal() {
 }
 
 function incrementModalQty() {
-  modalQty.value = Math.min(modalQty.value + 1, 99)
+  const maxQty = Math.max(1, book.value?.stock ?? 99)
+  modalQty.value = Math.min(modalQty.value + 1, maxQty)
 }
 
 function decrementModalQty() {
@@ -48,18 +63,23 @@ const modalSubtotal = computed(() => {
   }).format(book.value.price * modalQty.value)
 })
 
-function confirmAddToCart() {
-  if (book.value) {
-    addToCart(book.value, { format: selectedFormat.value, quantity: modalQty.value })
-    closeQtyModal()
-  }
-}
+async function confirmAddToCart() {
+  if (!book.value) return
 
-function handleBuyNow() {
-  if (book.value) {
-    addToCart(book.value, { format: selectedFormat.value, quantity: 1 })
-    openCart()
+  if (!state.isLoggedIn) {
+    closeQtyModal()
+    router.push({ name: 'login', query: { redirect: '/checkout' } })
+    return
   }
+
+  const success = await addToCart(book.value, {
+    quantity: modalQty.value,
+    silent: buyNow.value,
+  })
+  if (!success) return
+
+  closeQtyModal()
+  if (buyNow.value) router.push('/checkout')
 }
 
 const discount = computed(() => {
@@ -77,6 +97,8 @@ const formattedPrice = computed(() => {
     minimumFractionDigits: 0,
   }).format(book.value.price)
 })
+const coverUrl = computed(() => assetUrl(book.value?.coverImage))
+const wishlisted = computed(() => isWishlisted(book.value?.id))
 const formattedOriginal = computed(() => {
   if (!book.value?.originalPrice) return ''
   return new Intl.NumberFormat('id-ID', {
@@ -97,7 +119,7 @@ const specItems = computed(() => {
     { label: 'Bahasa', value: d.language || 'Indonesia' },
     { label: 'Dimensi Buku', value: `${d.length || '-'} × ${d.width || '-'}` },
     { label: 'Berat Bersih', value: d.weight || '-' },
-    { label: 'Kondisi Fisik', value: '100% Baru & Segel Penerbit' },
+    { label: 'Kondisi Fisik', value: d.condition || '100% Baru & Segel Penerbit' },
   ]
 })
 </script>
@@ -105,7 +127,7 @@ const specItems = computed(() => {
 <template>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
     <div
-      v-if="!book"
+      v-if="!loading && !book"
       class="text-center py-20 bg-white border-3 border-black rounded-[2px] shadow-neo p-8"
     >
       <div
@@ -137,7 +159,7 @@ const specItems = computed(() => {
       </button>
     </div>
 
-    <template v-else>
+    <template v-if="book">
       <nav
         class="flex items-center gap-2 text-xs font-sans font-bold text-muted-foreground mb-6 sm:mb-8 overflow-x-auto sm:overflow-visible whitespace-nowrap sm:whitespace-normal pb-1 scrollbar-hide"
       >
@@ -169,7 +191,15 @@ const specItems = computed(() => {
             <div
               class="w-full max-w-[260px] sm:max-w-[280px] aspect-[3/3.9] transition-transform duration-300 group-hover:scale-[1.03] group-hover:-rotate-0.5 my-3"
             >
+              <img
+                v-if="coverUrl && !coverError"
+                :src="coverUrl"
+                :alt="book.title"
+                class="w-full h-full object-cover border-2 border-black rounded-[2px] shadow-neo"
+                @error="coverError = true"
+              />
               <BookCover
+                v-else
                 :theme="book.theme"
                 :title="book.title"
                 :author="book.author"
@@ -246,20 +276,9 @@ const specItems = computed(() => {
               {{ book.category }}
             </span>
             <div class="flex items-center gap-1.5 text-xs font-sans">
-              <svg
-                class="w-4 h-4 text-yellow-500 fill-yellow-400 shrink-0"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                stroke-width="1.5"
-              >
-                <polygon
-                  points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
-                />
-              </svg>
-              <span class="font-outfit font-bold text-sm">{{ book.rating }}</span>
-              <span class="text-muted-foreground font-semibold">({{ book.reviews }} ulasan)</span>
-              <span class="text-black/30 mx-1">·</span>
-              <span class="text-muted-foreground font-semibold">{{ book.sold }} terjual</span>
+              <span class="text-muted-foreground font-semibold">
+                {{ Number(book.sold) || 0 }} terjual
+              </span>
             </div>
           </div>
 
@@ -301,33 +320,10 @@ const specItems = computed(() => {
             </span>
           </div>
 
-          <div class="space-y-2">
-            <span
-              class="font-outfit font-bold text-xs text-muted-foreground uppercase tracking-wider block"
-            >
-              PILIH FORMAT CETAKAN
-            </span>
-            <div class="flex flex-wrap gap-2.5 sm:gap-3">
-              <button
-                v-for="fmt in ['Soft Cover', 'Hard Cover Collector']"
-                :key="fmt"
-                class="neubrutal-btn border-2 border-black py-2 px-3.5 sm:py-2.5 sm:px-4 rounded-[2px] font-outfit font-black text-xs sm:text-sm shadow-neo-sm transition-all"
-                :class="
-                  selectedFormat === fmt
-                    ? 'bg-neo-yellow text-black'
-                    : 'bg-white hover:bg-gray-100 text-black'
-                "
-                @click="selectedFormat = fmt"
-              >
-                {{ fmt }}
-              </button>
-            </div>
-          </div>
-
           <div class="grid grid-cols-2 gap-2.5 sm:gap-4 pt-1">
             <button
               class="neubrutal-btn bg-white text-black border-2 border-black h-11 sm:h-12 px-3 sm:px-5 rounded-[2px] font-outfit font-black text-xs sm:text-sm shadow-neo-sm hover:bg-gray-100 active:translate-x-0.5 active:translate-y-0.5 flex items-center justify-center gap-1.5 sm:gap-2 transition-all"
-              @click="openQtyModal"
+              @click="openQtyModal('cart')"
             >
               <svg
                 class="w-4 h-4 text-black shrink-0"
@@ -349,7 +345,7 @@ const specItems = computed(() => {
 
             <button
               class="neubrutal-btn bg-neo-yellow text-black border-2 border-black h-11 sm:h-12 px-3 sm:px-5 rounded-[2px] font-outfit font-black text-xs sm:text-sm shadow-neo-sm hover:bg-yellow-300 active:translate-x-0.5 active:translate-y-0.5 flex items-center justify-center gap-1.5 sm:gap-2 transition-all"
-              @click="handleBuyNow"
+              @click="openQtyModal('buy')"
             >
               <span class="truncate">Beli Sekarang</span>
               <svg
@@ -366,6 +362,27 @@ const specItems = computed(() => {
               </svg>
             </button>
           </div>
+
+          <button
+            type="button"
+            class="w-full neubrutal-btn bg-white text-black border-2 border-black h-11 px-4 rounded-[2px] font-outfit font-black text-xs sm:text-sm shadow-neo-sm hover:bg-neo-pink flex items-center justify-center gap-2"
+            @click="toggleWishlist(book)"
+          >
+            <svg
+              class="w-4 h-4"
+              :class="wishlisted ? 'fill-red-500 text-red-500' : 'fill-none text-black'"
+              stroke="currentColor"
+              stroke-width="2.2"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z"
+              />
+            </svg>
+            {{ wishlisted ? 'Hapus dari Wishlist' : 'Simpan ke Wishlist' }}
+          </button>
 
           <div class="pt-4 border-t-2 border-black/10">
             <div class="grid grid-cols-3 gap-2 sm:gap-3 mb-3">
@@ -639,7 +656,7 @@ const specItems = computed(() => {
                 <span
                   class="text-[10px] font-outfit font-black uppercase tracking-wider text-neo-violet block"
                 >
-                  TAMBAH KE KERANJANG
+                  {{ buyNow ? 'BELI SEKARANG' : 'TAMBAH KE KERANJANG' }}
                 </span>
                 <h3
                   class="font-outfit font-black text-lg sm:text-xl text-black line-clamp-1 mt-0.5"
@@ -647,7 +664,6 @@ const specItems = computed(() => {
                   {{ book.title }}
                 </h3>
                 <p class="text-xs font-sans font-bold text-muted-foreground mt-0.5">
-                  Format: <span class="text-black">{{ selectedFormat }}</span> •
                   {{ formattedPrice }} / item
                 </p>
               </div>
@@ -717,7 +733,7 @@ const specItems = computed(() => {
                       d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"
                     />
                   </svg>
-                  <span>Tambahkan</span>
+                  <span>{{ buyNow ? 'Lanjut ke Checkout' : 'Tambahkan' }}</span>
                 </button>
               </div>
             </div>

@@ -107,16 +107,6 @@ function handleGoToDetail() {
                 </p>
               </div>
 
-              <div class="flex items-center gap-2">
-                <div class="flex gap-0.5 text-neo-orange font-black text-sm">
-                  <span v-for="n in 5" :key="n">★</span>
-                </div>
-                <span class="font-outfit font-black text-sm">{{ book.rating }}</span>
-                <span class="font-sans text-xs font-bold text-muted-foreground"
-                  >({{ book.reviews }} ulasan)</span
-                >
-              </div>
-
               <p
                 class="font-sans text-xs sm:text-sm font-semibold text-muted-foreground leading-relaxed line-clamp-3"
               >
