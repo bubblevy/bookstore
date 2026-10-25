@@ -16,7 +16,7 @@ const failedImages = ref({})
   >
     <div class="absolute inset-0 pointer-events-none select-none overflow-hidden">
       <div
-        class="absolute inset-0 opacity-[0.05] bg-[radial-gradient(#000_1.5px,transparent_1.5px)] [background-size:24px_24px]"
+        class="absolute inset-0 opacity-[0.05] bg-[radial-gradient(var(--color-black)_1.5px,transparent_1.5px)] [background-size:24px_24px]"
       ></div>
 
       <svg
@@ -63,7 +63,8 @@ const failedImages = ref({})
       <div
         class="absolute bottom-2 left-1/2 -translate-x-1/2 opacity-20 font-outfit font-black text-[10px] tracking-widest uppercase border border-black/40 px-3 py-0.5 rounded-[2px]"
       >
-        ARCHIVE CATALOGUE · SECTION 01 — 06
+        ARCHIVE CATALOGUE · SECTION 01 —
+        {{ String(Math.max(1, categories.length)).padStart(2, '0') }}
       </div>
     </div>
 

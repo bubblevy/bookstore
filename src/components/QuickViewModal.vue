@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useStore } from '@/composables/useStore'
 import BookCover from './BookCover.vue'
@@ -8,6 +8,7 @@ const router = useRouter()
 const { state, closeModal, addToCart, openCart } = useStore()
 
 const book = computed(() => state.modalPayload)
+const adding = ref(false)
 
 const formattedPrice = computed(() => {
   if (!book.value) return ''
@@ -27,10 +28,14 @@ const formattedOriginalPrice = computed(() => {
   }).format(book.value.originalPrice)
 })
 
-function handleAddToCart() {
-  if (book.value) {
-    addToCart(book.value)
+async function handleAddToCart() {
+  if (!book.value || adding.value) return
+  adding.value = true
+  try {
+    await addToCart(book.value)
     closeModal()
+  } finally {
+    adding.value = false
   }
 }
 
@@ -52,7 +57,7 @@ function handleGoToDetail() {
     >
       <transition name="modal-pop" appear>
         <div
-          class="w-full max-w-[680px] max-h-[90vh] overflow-y-auto bg-background border-4 border-black rounded-[2px] p-6 md:p-8 shadow-[10px_10px_0px_0px_#000]"
+          class="w-full max-w-[680px] max-h-[90vh] overflow-y-auto bg-background border-4 border-black rounded-[2px] p-6 md:p-8 shadow-[10px_10px_0px_0px_var(--color-black)]"
         >
           <div class="flex items-center justify-between mb-5">
             <span
@@ -133,10 +138,11 @@ function handleGoToDetail() {
                   Detail Lengkap →
                 </button>
                 <button
-                  class="neubrutal-btn bg-neo-yellow text-black border-3 border-black py-2.5 rounded-[2px] font-outfit font-black text-xs md:text-sm shadow-neo-sm hover:bg-yellow-300"
+                  :disabled="adding"
+                  class="neubrutal-btn bg-neo-yellow text-black border-3 border-black py-2.5 rounded-[2px] font-outfit font-black text-xs md:text-sm shadow-neo-sm hover:bg-yellow-300 disabled:opacity-60"
                   @click="handleAddToCart"
                 >
-                  + Keranjang
+                  {{ adding ? 'Memproses...' : '+ Keranjang' }}
                 </button>
               </div>
             </div>

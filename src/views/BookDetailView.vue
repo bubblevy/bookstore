@@ -8,8 +8,15 @@ import BookCover from '@/components/BookCover.vue'
 
 const route = useRoute()
 const router = useRouter()
-const { state, loadBook, addToCart, toggleWishlist, isWishlisted, refreshWishlistStatus } =
-  useStore()
+const {
+  state,
+  loadBook,
+  addToCart,
+  toggleWishlist,
+  isWishlisted,
+  isWishlistPending,
+  refreshWishlistStatus,
+} = useStore()
 
 const book = ref(null)
 const loading = ref(true)
@@ -34,6 +41,7 @@ const activeTab = ref('sinopsis')
 const isQtyModalOpen = ref(false)
 const modalQty = ref(1)
 const buyNow = ref(false)
+const addingToCart = ref(false)
 
 function openQtyModal(mode = 'cart') {
   buyNow.value = mode === 'buy'
@@ -64,7 +72,7 @@ const modalSubtotal = computed(() => {
 })
 
 async function confirmAddToCart() {
-  if (!book.value) return
+  if (!book.value || addingToCart.value) return
 
   if (!state.isLoggedIn) {
     closeQtyModal()
@@ -72,14 +80,19 @@ async function confirmAddToCart() {
     return
   }
 
-  const success = await addToCart(book.value, {
-    quantity: modalQty.value,
-    silent: buyNow.value,
-  })
-  if (!success) return
+  addingToCart.value = true
+  try {
+    const success = await addToCart(book.value, {
+      quantity: modalQty.value,
+      silent: buyNow.value,
+    })
+    if (!success) return
 
-  closeQtyModal()
-  if (buyNow.value) router.push('/checkout')
+    closeQtyModal()
+    if (buyNow.value) router.push('/checkout')
+  } finally {
+    addingToCart.value = false
+  }
 }
 
 const discount = computed(() => {
@@ -99,6 +112,7 @@ const formattedPrice = computed(() => {
 })
 const coverUrl = computed(() => assetUrl(book.value?.coverImage))
 const wishlisted = computed(() => isWishlisted(book.value?.id))
+const inStock = computed(() => (Number(book.value?.stock) || 0) > 0)
 const formattedOriginal = computed(() => {
   if (!book.value?.originalPrice) return ''
   return new Intl.NumberFormat('id-ID', {
@@ -279,6 +293,11 @@ const specItems = computed(() => {
               <span class="text-muted-foreground font-semibold">
                 {{ Number(book.sold) || 0 }} terjual
               </span>
+              <span class="text-muted-foreground">·</span>
+              <span v-if="inStock" class="text-muted-foreground font-semibold">
+                Stok {{ Number(book.stock) || 0 }}
+              </span>
+              <span v-else class="text-red-600 font-black uppercase">Stok habis</span>
             </div>
           </div>
 
@@ -322,7 +341,8 @@ const specItems = computed(() => {
 
           <div class="grid grid-cols-2 gap-2.5 sm:gap-4 pt-1">
             <button
-              class="neubrutal-btn bg-white text-black border-2 border-black h-11 sm:h-12 px-3 sm:px-5 rounded-[2px] font-outfit font-black text-xs sm:text-sm shadow-neo-sm hover:bg-gray-100 active:translate-x-0.5 active:translate-y-0.5 flex items-center justify-center gap-1.5 sm:gap-2 transition-all"
+              :disabled="!inStock"
+              class="neubrutal-btn bg-white text-black border-2 border-black h-11 sm:h-12 px-3 sm:px-5 rounded-[2px] font-outfit font-black text-xs sm:text-sm shadow-neo-sm hover:bg-gray-100 active:translate-x-0.5 active:translate-y-0.5 flex items-center justify-center gap-1.5 sm:gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               @click="openQtyModal('cart')"
             >
               <svg
@@ -340,11 +360,12 @@ const specItems = computed(() => {
                   d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"
                 />
               </svg>
-              <span class="truncate">Tambah Keranjang</span>
+              <span class="truncate">{{ inStock ? 'Tambah Keranjang' : 'Stok Habis' }}</span>
             </button>
 
             <button
-              class="neubrutal-btn bg-neo-yellow text-black border-2 border-black h-11 sm:h-12 px-3 sm:px-5 rounded-[2px] font-outfit font-black text-xs sm:text-sm shadow-neo-sm hover:bg-yellow-300 active:translate-x-0.5 active:translate-y-0.5 flex items-center justify-center gap-1.5 sm:gap-2 transition-all"
+              :disabled="!inStock"
+              class="neubrutal-btn bg-neo-yellow text-black border-2 border-black h-11 sm:h-12 px-3 sm:px-5 rounded-[2px] font-outfit font-black text-xs sm:text-sm shadow-neo-sm hover:bg-yellow-300 active:translate-x-0.5 active:translate-y-0.5 flex items-center justify-center gap-1.5 sm:gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               @click="openQtyModal('buy')"
             >
               <span class="truncate">Beli Sekarang</span>
@@ -365,7 +386,8 @@ const specItems = computed(() => {
 
           <button
             type="button"
-            class="w-full neubrutal-btn bg-white text-black border-2 border-black h-11 px-4 rounded-[2px] font-outfit font-black text-xs sm:text-sm shadow-neo-sm hover:bg-neo-pink flex items-center justify-center gap-2"
+            :disabled="isWishlistPending(book.id)"
+            class="w-full neubrutal-btn bg-white text-black border-2 border-black h-11 px-4 rounded-[2px] font-outfit font-black text-xs sm:text-sm shadow-neo-sm hover:bg-neo-pink flex items-center justify-center gap-2 disabled:opacity-60"
             @click="toggleWishlist(book)"
           >
             <svg
@@ -381,7 +403,13 @@ const specItems = computed(() => {
                 d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z"
               />
             </svg>
-            {{ wishlisted ? 'Hapus dari Wishlist' : 'Simpan ke Wishlist' }}
+            {{
+              isWishlistPending(book.id)
+                ? 'Memproses...'
+                : wishlisted
+                  ? 'Hapus dari Wishlist'
+                  : 'Simpan ke Wishlist'
+            }}
           </button>
 
           <div class="pt-4 border-t-2 border-black/10">
@@ -715,7 +743,8 @@ const specItems = computed(() => {
                   Batal
                 </button>
                 <button
-                  class="neubrutal-btn bg-neo-yellow text-black border-2 border-black py-2.5 px-4 rounded-[2px] font-outfit font-black text-xs sm:text-sm shadow-neo-sm hover:bg-yellow-300 active:translate-x-0.5 active:translate-y-0.5 flex items-center justify-center gap-1.5 transition-all"
+                  :disabled="addingToCart"
+                  class="neubrutal-btn bg-neo-yellow text-black border-2 border-black py-2.5 px-4 rounded-[2px] font-outfit font-black text-xs sm:text-sm shadow-neo-sm hover:bg-yellow-300 active:translate-x-0.5 active:translate-y-0.5 flex items-center justify-center gap-1.5 transition-all disabled:opacity-60"
                   @click="confirmAddToCart"
                 >
                   <svg
@@ -733,7 +762,9 @@ const specItems = computed(() => {
                       d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"
                     />
                   </svg>
-                  <span>{{ buyNow ? 'Lanjut ke Checkout' : 'Tambahkan' }}</span>
+                  <span>{{
+                    addingToCart ? 'Memproses...' : buyNow ? 'Lanjut ke Checkout' : 'Tambahkan'
+                  }}</span>
                 </button>
               </div>
             </div>

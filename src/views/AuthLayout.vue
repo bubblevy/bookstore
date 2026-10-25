@@ -43,7 +43,7 @@ defineProps({
         class="hidden lg:flex lg:col-span-6 bg-neo-violet text-white p-6 sm:p-8 md:p-10 border-t-4 lg:border-t-0 lg:border-l-4 border-black flex-col justify-between relative overflow-hidden"
       >
         <div
-          class="absolute inset-0 pointer-events-none opacity-10 bg-[radial-gradient(#fff_1.5px,transparent_1.5px)] [background-size:18px_18px]"
+          class="absolute inset-0 pointer-events-none opacity-10 bg-[radial-gradient(var(--color-white)_1.5px,transparent_1.5px)] [background-size:18px_18px]"
         ></div>
 
         <div class="relative z-10">

@@ -2,11 +2,13 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useStore } from '@/composables/useStore'
+import { STORE_NAV } from '@/data/navigation'
 
 const router = useRouter()
 const { state, cartCount, openCart, openModal, logout, openSidebar, closeSidebar } = useStore()
 const userMenuOpen = ref(false)
 const showLogoutConfirm = ref(false)
+const loggingOut = ref(false)
 const userMenuRef = ref(null)
 
 const cartBadge = computed(() => cartCount())
@@ -31,10 +33,16 @@ function handleMobileLogout() {
 }
 
 async function confirmLogout() {
-  showLogoutConfirm.value = false
-  await logout()
-  if (['/admin', '/dashboard', '/checkout'].includes(router.currentRoute.value.path)) {
-    router.push('/')
+  if (loggingOut.value) return
+  loggingOut.value = true
+  try {
+    await logout()
+    if (['/admin', '/dashboard', '/checkout'].includes(router.currentRoute.value.path)) {
+      router.push('/')
+    }
+  } finally {
+    loggingOut.value = false
+    showLogoutConfirm.value = false
   }
 }
 
@@ -110,28 +118,12 @@ defineExpose({ closeMobile, openMobile })
           class="hidden lg:flex items-center gap-7 font-outfit font-black text-sm"
         >
           <a
-            href="#katalog"
+            v-for="item in STORE_NAV"
+            :key="item.hash"
+            :href="item.hash"
             class="link-under-link hover:text-neo-violet"
-            @click.prevent="navigateToSection('#katalog')"
-            >Katalog Buku</a
-          >
-          <a
-            href="#kategori"
-            class="link-under-link hover:text-neo-violet"
-            @click.prevent="navigateToSection('#kategori')"
-            >Kategori</a
-          >
-          <a
-            href="#ulasan"
-            class="link-under-link hover:text-neo-violet"
-            @click.prevent="navigateToSection('#ulasan')"
-            >Ulasan Pembeli</a
-          >
-          <a
-            href="#kontak"
-            class="link-under-link hover:text-neo-violet"
-            @click.prevent="navigateToSection('#kontak')"
-            >Kontak</a
+            @click.prevent="navigateToSection(item.hash)"
+            >{{ item.label }}</a
           >
         </nav>
 
@@ -193,7 +185,7 @@ defineExpose({ closeMobile, openMobile })
 
             <span
               v-if="cartBadge > 0"
-              class="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-black text-white border-2 border-black rounded-full text-[10px] font-outfit font-black flex items-center justify-center leading-none pointer-events-none shadow-[1px_1px_0px_0px_#fff]"
+              class="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-black text-white border-2 border-black rounded-full text-[10px] font-outfit font-black flex items-center justify-center leading-none pointer-events-none shadow-[1px_1px_0px_0px_var(--color-white)]"
             >
               {{ cartBadge }}
             </span>
@@ -343,7 +335,7 @@ defineExpose({ closeMobile, openMobile })
         @click.self="cancelLogout"
       >
         <div
-          class="w-full max-w-sm bg-white border-3 sm:border-4 border-black p-5 sm:p-6 shadow-[6px_6px_0px_0px_#000] sm:shadow-[8px_8px_0px_0px_#000]"
+          class="w-full max-w-sm bg-white border-3 sm:border-4 border-black p-5 sm:p-6 shadow-[6px_6px_0px_0px_var(--color-black)] sm:shadow-[8px_8px_0px_0px_var(--color-black)]"
           role="dialog"
           aria-modal="true"
           aria-labelledby="logout-confirm-title"
@@ -374,10 +366,11 @@ defineExpose({ closeMobile, openMobile })
             </button>
             <button
               type="button"
-              class="neubrutal-btn bg-red-600 hover:bg-red-500 text-white border-2 border-black py-2.5 px-3 font-outfit font-black text-xs sm:text-sm shadow-neo-sm text-center"
+              :disabled="loggingOut"
+              class="neubrutal-btn bg-red-600 hover:bg-red-500 text-white border-2 border-black py-2.5 px-3 font-outfit font-black text-xs sm:text-sm shadow-neo-sm text-center disabled:opacity-60"
               @click="confirmLogout"
             >
-              Ya, Keluar
+              {{ loggingOut ? 'Keluar...' : 'Ya, Keluar' }}
             </button>
           </div>
         </div>
@@ -400,7 +393,7 @@ defineExpose({ closeMobile, openMobile })
     <transition name="drawer">
       <div
         v-if="state.isSidebarOpen"
-        class="fixed inset-y-0 left-0 w-full max-w-[280px] sm:max-w-xs md:max-w-sm bg-background z-50 lg:hidden border-r-3 sm:border-r-4 border-black shadow-[6px_0px_0px_0px_#000] sm:shadow-[8px_0px_0px_0px_#000] flex flex-col"
+        class="fixed inset-y-0 left-0 w-full max-w-[280px] sm:max-w-xs md:max-w-sm bg-background z-50 lg:hidden border-r-3 sm:border-r-4 border-black shadow-[6px_0px_0px_0px_var(--color-black)] sm:shadow-[8px_0px_0px_0px_var(--color-black)] flex flex-col"
       >
         <div class="flex items-center justify-between p-4 sm:p-5 border-b-4 border-black bg-white">
           <router-link to="/" class="flex items-center gap-2" @click="closeMobile">
@@ -439,35 +432,13 @@ defineExpose({ closeMobile, openMobile })
         >
           <template v-if="!isAdminMode">
             <a
-              href="#katalog"
+              v-for="item in STORE_NAV"
+              :key="item.hash"
+              :href="item.hash"
               class="py-2.5 border-b-2 border-black/10 hover:text-neo-violet flex items-center justify-between"
-              @click.prevent="navigateToSection('#katalog')"
+              @click.prevent="navigateToSection(item.hash)"
             >
-              <span>Katalog Buku</span>
-              <span class="text-xs font-mono text-muted-foreground">→</span>
-            </a>
-            <a
-              href="#kategori"
-              class="py-2.5 border-b-2 border-black/10 hover:text-neo-violet flex items-center justify-between"
-              @click.prevent="navigateToSection('#kategori')"
-            >
-              <span>Kategori</span>
-              <span class="text-xs font-mono text-muted-foreground">→</span>
-            </a>
-            <a
-              href="#ulasan"
-              class="py-2.5 border-b-2 border-black/10 hover:text-neo-violet flex items-center justify-between"
-              @click.prevent="navigateToSection('#ulasan')"
-            >
-              <span>Ulasan Pembeli</span>
-              <span class="text-xs font-mono text-muted-foreground">→</span>
-            </a>
-            <a
-              href="#kontak"
-              class="py-2.5 border-b-2 border-black/10 hover:text-neo-violet flex items-center justify-between"
-              @click.prevent="navigateToSection('#kontak')"
-            >
-              <span>Kontak</span>
+              <span>{{ item.label }}</span>
               <span class="text-xs font-mono text-muted-foreground">→</span>
             </a>
           </template>

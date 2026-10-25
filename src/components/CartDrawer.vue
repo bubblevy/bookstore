@@ -18,6 +18,7 @@ const {
   deselectAllItems,
   clearCart,
   cartCount,
+  isCartPending,
 } = useStore()
 
 const selCount = computed(() => selectedCount())
@@ -117,7 +118,7 @@ onUnmounted(() => {
     >
       <aside
         v-if="state.isCartOpen"
-        class="fixed top-0 right-0 bottom-0 w-full sm:max-w-md bg-background border-l-3 sm:border-l-4 border-black z-50 flex flex-col shadow-[-6px_0px_0px_0px_#000] sm:shadow-[-8px_0px_0px_0px_#000]"
+        class="fixed top-0 right-0 bottom-0 w-full sm:max-w-md bg-background border-l-3 sm:border-l-4 border-black z-50 flex flex-col shadow-[-6px_0px_0px_0px_var(--color-black)] sm:shadow-[-8px_0px_0px_0px_var(--color-black)]"
         aria-label="Keranjang Belanja"
       >
         <div
@@ -308,7 +309,8 @@ onUnmounted(() => {
                     {{ item.title }}
                   </h4>
                   <button
-                    class="text-gray-400 hover:text-red-600 transition-colors p-0.5"
+                    :disabled="isCartPending(item.id)"
+                    class="text-gray-400 hover:text-red-600 transition-colors p-0.5 disabled:opacity-40"
                     title="Hapus"
                     @click="promptDelete(item)"
                   >
@@ -344,16 +346,18 @@ onUnmounted(() => {
                 </span>
                 <div class="flex items-center border-2 border-black bg-white shadow-neo-sm">
                   <button
-                    class="w-7 h-7 flex items-center justify-center font-outfit font-black text-xs hover:bg-gray-100 border-r border-black"
+                    :disabled="isCartPending(item.id)"
+                    class="w-7 h-7 flex items-center justify-center font-outfit font-black text-xs hover:bg-gray-100 border-r border-black disabled:opacity-40"
                     @click="updateQuantity(item.id, item.quantity - 1)"
                   >
                     −
                   </button>
-                  <span class="w-8 text-center font-outfit font-black text-xs">{{
-                    item.quantity
-                  }}</span>
+                  <span class="w-8 text-center font-outfit font-black text-xs">
+                    {{ isCartPending(item.id) ? '…' : item.quantity }}
+                  </span>
                   <button
-                    class="w-7 h-7 flex items-center justify-center font-outfit font-black text-xs hover:bg-gray-100 border-l border-black"
+                    :disabled="isCartPending(item.id)"
+                    class="w-7 h-7 flex items-center justify-center font-outfit font-black text-xs hover:bg-gray-100 border-l border-black disabled:opacity-40"
                     @click="updateQuantity(item.id, item.quantity + 1)"
                   >
                     +
@@ -410,7 +414,7 @@ onUnmounted(() => {
         @click.self="cancelDelete"
       >
         <div
-          class="w-full max-w-sm bg-white border-3 sm:border-4 border-black p-5 sm:p-6 shadow-[6px_6px_0px_0px_#000] sm:shadow-[8px_8px_0px_0px_#000]"
+          class="w-full max-w-sm bg-white border-3 sm:border-4 border-black p-5 sm:p-6 shadow-[6px_6px_0px_0px_var(--color-black)] sm:shadow-[8px_8px_0px_0px_var(--color-black)]"
           role="dialog"
           aria-modal="true"
         >
@@ -497,7 +501,7 @@ onUnmounted(() => {
         @click.self="isClearConfirmOpen = false"
       >
         <div
-          class="w-full max-w-sm bg-white border-3 sm:border-4 border-black p-5 sm:p-6 shadow-[6px_6px_0px_0px_#000] sm:shadow-[8px_8px_0px_0px_#000]"
+          class="w-full max-w-sm bg-white border-3 sm:border-4 border-black p-5 sm:p-6 shadow-[6px_6px_0px_0px_var(--color-black)] sm:shadow-[8px_8px_0px_0px_var(--color-black)]"
           role="dialog"
           aria-modal="true"
         >

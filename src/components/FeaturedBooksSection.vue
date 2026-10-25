@@ -1,10 +1,13 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import BookCard from './BookCard.vue'
 import { useStore } from '@/composables/useStore'
 import AOS from 'aos'
 
 const { state } = useStore()
+const route = useRoute()
+const router = useRouter()
 
 const sectionRef = ref(null)
 const isSectionVisible = ref(false)
@@ -46,6 +49,52 @@ const filters = computed(() => {
   return ['Semua', ...state.categories.map((category) => category.name)]
 })
 
+function syncCategoryFromQuery() {
+  const value = String(route.query.category || '')
+    .trim()
+    .toLowerCase()
+  if (!value) {
+    activeFilter.value = 'Semua'
+    return
+  }
+  const category = state.categories.find(
+    (item) => String(item.slug).toLowerCase() === value || item.name.toLowerCase() === value,
+  )
+  if (!category) {
+    activeFilter.value = 'Semua'
+    if (route.query.category) {
+      const query = { ...route.query }
+      delete query.category
+      router.replace({ path: route.path, query, hash: route.hash })
+    }
+    return
+  }
+  activeFilter.value = category.name
+}
+
+function selectFilter(filter) {
+  activeFilter.value = filter
+  if (filter === 'Semua') {
+    if (!route.query.category) return
+    const query = { ...route.query }
+    delete query.category
+    router.replace({ path: route.path, query, hash: route.hash })
+    return
+  }
+
+  const category = state.categories.find((item) => item.name === filter)
+  const slug = category?.slug || filter
+  if (route.query.category === slug) return
+  router.replace({
+    path: route.path,
+    query: { ...route.query, category: slug },
+    hash: route.hash,
+  })
+}
+
+watch(() => route.query.category, syncCategoryFromQuery, { immediate: true })
+watch(() => state.categories, syncCategoryFromQuery)
+
 const visibleCount = ref(8)
 
 const filteredBooks = computed(() => {
@@ -81,7 +130,7 @@ watch(activeFilter, () => {
   >
     <div class="absolute inset-0 pointer-events-none select-none overflow-hidden">
       <div
-        class="absolute inset-0 opacity-[0.05] bg-[radial-gradient(#000_1.5px,transparent_1.5px)] [background-size:24px_24px]"
+        class="absolute inset-0 opacity-[0.05] bg-[radial-gradient(var(--color-black)_1.5px,transparent_1.5px)] [background-size:24px_24px]"
       ></div>
 
       <svg
@@ -163,7 +212,7 @@ watch(activeFilter, () => {
                   ? 'bg-neo-yellow text-black'
                   : 'bg-white hover:bg-gray-100 text-black'
               "
-              @click="activeFilter = filter"
+              @click="selectFilter(filter)"
             >
               {{ filter }}
             </button>
@@ -235,7 +284,7 @@ watch(activeFilter, () => {
         </p>
         <button
           class="mt-4 neubrutal-btn bg-neo-yellow text-black border-2 border-black py-2 px-5 rounded-[2px] font-outfit font-black text-xs shadow-neo-sm"
-          @click="activeFilter = 'Semua'"
+          @click="selectFilter('Semua')"
         >
           Tampilkan Semua Buku
         </button>

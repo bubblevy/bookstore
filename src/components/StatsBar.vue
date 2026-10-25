@@ -1,63 +1,75 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useStore } from '@/composables/useStore'
 
-const stats = [
-  {
-    value: '10.000+',
-    label: 'BUKU TERJUAL',
-    sub: 'Dipercaya oleh ribuan pembaca',
-    target: 10000,
-    suffix: '+',
-    isLocale: true,
-  },
-  {
-    value: '1.500+',
-    label: 'JUDUL BUKU',
-    sub: 'Sastra, sains, filsafat dan banyak lagi',
-    target: 1500,
-    suffix: '+',
-    isLocale: true,
-  },
-  {
-    value: '100%',
-    label: 'EDISI ASLI',
-    sub: 'Penerbit resmi & bergaransi',
-    target: 100,
-    suffix: '%',
-    isLocale: false,
-  },
-  {
-    value: '24 JAM',
-    label: 'PROSES KILAT',
-    sub: 'Pengiriman aman se-Indonesia',
-    target: 24,
-    suffix: ' JAM',
-    isLocale: false,
-  },
-]
+const { state } = useStore()
+
+const stats = computed(() => {
+  const sold = state.books.reduce((sum, book) => sum + (Number(book.sold) || 0), 0)
+  const titles = state.books.length
+  return [
+    {
+      value: `${sold.toLocaleString('id-ID')}+`,
+      label: 'BUKU TERJUAL',
+      sub: 'Berdasarkan penjualan tercatat',
+      target: sold,
+      suffix: '+',
+      isLocale: true,
+    },
+    {
+      value: `${titles.toLocaleString('id-ID')}`,
+      label: 'JUDUL BUKU',
+      sub: 'Katalog aktif saat ini',
+      target: titles,
+      suffix: '',
+      isLocale: true,
+    },
+    {
+      value: '100%',
+      label: 'EDISI ASLI',
+      sub: 'Penerbit resmi & bergaransi',
+      target: 100,
+      suffix: '%',
+      isLocale: false,
+    },
+    {
+      value: '24 JAM',
+      label: 'PROSES KILAT',
+      sub: 'Pengiriman aman se-Indonesia',
+      target: 24,
+      suffix: ' JAM',
+      isLocale: false,
+    },
+  ]
+})
 
 const sectionRef = ref(null)
 const isVisible = ref(false)
-const displayedValues = ref(stats.map((s) => s.value))
+const displayedValues = ref(stats.value.map((s) => s.value))
 
 let hasAnimated = false
+
+watch(stats, (next) => {
+  if (!hasAnimated) displayedValues.value = next.map((s) => s.value)
+})
 
 function startAnimation() {
   if (hasAnimated) return
   hasAnimated = true
   isVisible.value = true
 
+  const items = stats.value
   const duration = 1500
   const startTime = performance.now()
 
-  displayedValues.value = stats.map((s) => `0${s.suffix}`)
+  displayedValues.value = items.map((s) => `0${s.suffix}`)
 
   function tick(now) {
     const elapsed = now - startTime
     const progress = Math.min(elapsed / duration, 1)
     const easeOut = 1 - Math.pow(1 - progress, 3)
 
-    displayedValues.value = stats.map((s) => {
+    displayedValues.value = items.map((s) => {
       const current = Math.round(s.target * easeOut)
       const formatted = s.isLocale ? current.toLocaleString('id-ID') : current.toString()
       return `${formatted}${s.suffix}`
@@ -66,7 +78,7 @@ function startAnimation() {
     if (progress < 1) {
       requestAnimationFrame(tick)
     } else {
-      displayedValues.value = stats.map((s) => s.value)
+      displayedValues.value = items.map((s) => s.value)
     }
   }
 
@@ -102,7 +114,7 @@ onUnmounted(() => {
   >
     <div class="absolute inset-0 pointer-events-none select-none overflow-hidden">
       <div
-        class="absolute inset-0 opacity-[0.06] bg-[radial-gradient(#000_1.5px,transparent_1.5px)] [background-size:20px_20px]"
+        class="absolute inset-0 opacity-[0.06] bg-[radial-gradient(var(--color-black)_1.5px,transparent_1.5px)] [background-size:20px_20px]"
       ></div>
 
       <span class="absolute top-2 left-6 text-black/15 text-3xl font-black">✦</span>
@@ -129,7 +141,7 @@ onUnmounted(() => {
           :key="stat.label"
           data-aos="fade-up"
           :data-aos-delay="idx * 100"
-          class="bg-white border-3 border-black rounded-[2px] p-4 sm:p-5 text-center shadow-neo flex flex-col items-center justify-center hover:-translate-y-1 hover:shadow-[5px_5px_0px_0px_#000] transition-all duration-300"
+          class="bg-white border-3 border-black rounded-[2px] p-4 sm:p-5 text-center shadow-neo flex flex-col items-center justify-center hover:-translate-y-1 hover:shadow-[5px_5px_0px_0px_var(--color-black)] transition-all duration-300"
         >
           <span
             class="font-outfit font-black text-2xl sm:text-3xl md:text-4xl tracking-tight leading-none text-black tabular-nums"

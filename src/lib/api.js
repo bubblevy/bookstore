@@ -3,11 +3,28 @@ const BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/+$/, '
 const ACCESS_TOKEN_KEY = 'bookstore.access_token'
 const REFRESH_TOKEN_KEY = 'bookstore.refresh_token'
 const USER_ROLE_KEY = 'bookstore.user_role'
+const PERSIST_KEY = 'bookstore.persist'
 const REQUEST_TIMEOUT_MS = 20000
+
+function activeStorage() {
+  try {
+    return localStorage.getItem(PERSIST_KEY) === '0' ? sessionStorage : localStorage
+  } catch {
+    return localStorage
+  }
+}
+
+function setPersistence(persist) {
+  try {
+    localStorage.setItem(PERSIST_KEY, persist ? '1' : '0')
+  } catch {
+    // Storage can be unavailable (private mode/quota).
+  }
+}
 
 function readStorage(key) {
   try {
-    return localStorage.getItem(key)
+    return localStorage.getItem(key) ?? sessionStorage.getItem(key)
   } catch {
     return null
   }
@@ -15,8 +32,11 @@ function readStorage(key) {
 
 function writeStorage(key, value) {
   try {
-    if (value) localStorage.setItem(key, value)
-    else localStorage.removeItem(key)
+    const target = activeStorage()
+    const other = target === localStorage ? sessionStorage : localStorage
+    if (value) target.setItem(key, value)
+    else target.removeItem(key)
+    other.removeItem(key)
   } catch {
     // Storage can be unavailable (private mode/quota). The in-memory session
     // still works until the tab is closed.
@@ -45,7 +65,8 @@ export const session = {
   get role() {
     return readStorage(USER_ROLE_KEY) || ''
   },
-  set(tokens = {}) {
+  set(tokens = {}, options = {}) {
+    if (typeof options.persist === 'boolean') setPersistence(options.persist)
     writeStorage(ACCESS_TOKEN_KEY, tokens.access_token || '')
     writeStorage(REFRESH_TOKEN_KEY, tokens.refresh_token || '')
   },
@@ -56,6 +77,11 @@ export const session = {
     writeStorage(ACCESS_TOKEN_KEY, '')
     writeStorage(REFRESH_TOKEN_KEY, '')
     writeStorage(USER_ROLE_KEY, '')
+    try {
+      localStorage.removeItem(PERSIST_KEY)
+    } catch {
+      // Ignore storage errors.
+    }
   },
 }
 
@@ -100,6 +126,12 @@ function errorMessage(payload, status) {
 }
 
 let refreshPromise = null
+
+function notifySessionExpired() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('bookstore:auth-expired'))
+  }
+}
 
 async function refreshAccessToken() {
   if (refreshPromise) return refreshPromise
@@ -162,6 +194,10 @@ async function request(path, { method = 'GET', body, auth = true, retry = true }
     const refreshed = await refreshAccessToken()
     if (refreshed) return request(path, { method, body, auth, retry: false })
     session.clear()
+    notifySessionExpired()
+  } else if (response.status === 401 && auth && session.accessToken) {
+    session.clear()
+    notifySessionExpired()
   }
 
   const text = await response.text()
@@ -203,6 +239,10 @@ async function requestBlob(path, { retry = true } = {}) {
     const refreshed = await refreshAccessToken()
     if (refreshed) return requestBlob(path, { retry: false })
     session.clear()
+    notifySessionExpired()
+  } else if (response.status === 401 && session.accessToken) {
+    session.clear()
+    notifySessionExpired()
   }
 
   if (!response.ok) {

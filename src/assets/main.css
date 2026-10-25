@@ -40,6 +40,27 @@
   --color-card: #ffffff;
   --color-card-foreground: #000000;
 
+  --color-surface: #f8f8f6;
+  --color-paper: #fbf9f5;
+  --color-ink: #111111;
+  --color-sky: #6ec6ff;
+  --color-pink: #ff9ec1;
+  --color-cream: #ffeaa7;
+  --color-lilac: #9fa0ff;
+  --color-ice: #cef6ff;
+  --color-lime-deep: #d4ff00;
+  --color-lime-dark: #b5e600;
+  --color-brown: #6f4e37;
+  --color-zinc-900: #18181b;
+  --color-zinc-800: #27272a;
+  --color-zinc-300: #d4d4d8;
+  --color-zinc-200: #e4e4e7;
+
+  --color-google-blue: #4285f4;
+  --color-google-green: #34a853;
+  --color-google-yellow: #fbbc05;
+  --color-google-red: #ea4335;
+
   --color-border: #000000;
   --color-input: #000000;
 
@@ -303,55 +324,55 @@ body::-webkit-scrollbar,
 }
 
 .bg-neo-violet {
-  background-color: #8847f5;
+  background-color: var(--color-violet);
 }
 .bg-neo-yellow {
-  background-color: #d8fa00;
+  background-color: var(--color-yellow);
 }
 .bg-neo-orange {
-  background-color: #ff7b29;
+  background-color: var(--color-orange);
 }
 .bg-neo-lime {
-  background-color: #cbff00;
+  background-color: var(--color-lime);
 }
 
 .text-neo-violet {
-  color: #8847f5;
+  color: var(--color-violet);
 }
 .text-neo-yellow {
-  color: #d8fa00;
+  color: var(--color-yellow);
 }
 .text-neo-orange {
-  color: #ff7b29;
+  color: var(--color-orange);
 }
 
 .shadow-neo-sm {
-  box-shadow: 2px 2px 0px 0px #000000;
+  box-shadow: 2px 2px 0px 0px var(--color-border);
 }
 .shadow-neo {
-  box-shadow: 4px 4px 0px 0px #000000;
+  box-shadow: 4px 4px 0px 0px var(--color-border);
 }
 .shadow-neo-md {
-  box-shadow: 6px 6px 0px 0px #000000;
+  box-shadow: 6px 6px 0px 0px var(--color-border);
 }
 .shadow-neo-lg {
-  box-shadow: 8px 8px 0px 0px #000000;
+  box-shadow: 8px 8px 0px 0px var(--color-border);
 }
 .shadow-neo-xl {
-  box-shadow: 12px 12px 0px 0px #000000;
+  box-shadow: 12px 12px 0px 0px var(--color-border);
 }
 
 .shadow-neo-yellow {
-  box-shadow: 5px 5px 0px 0px #d8fa00;
+  box-shadow: 5px 5px 0px 0px var(--color-yellow);
 }
 .shadow-neo-violet {
-  box-shadow: 5px 5px 0px 0px #8847f5;
+  box-shadow: 5px 5px 0px 0px var(--color-violet);
 }
 .shadow-neo-orange {
-  box-shadow: 5px 5px 0px 0px #ff7b29;
+  box-shadow: 5px 5px 0px 0px var(--color-orange);
 }
 .shadow-neo-lime {
-  box-shadow: 5px 5px 0px 0px #cbff00;
+  box-shadow: 5px 5px 0px 0px var(--color-lime);
 }
 
 .reveal {

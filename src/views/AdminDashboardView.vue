@@ -4,15 +4,25 @@ import { useStore } from '@/composables/useStore'
 import { api } from '@/lib/api'
 import { mapBook } from '@/lib/mappers'
 import { assetUrl } from '@/lib/assets'
-import { shippingLabel } from '@/lib/shipping'
+import { shippingLabel, ensureCourierCatalog } from '@/lib/shipping'
+import { localizeApiError } from '@/lib/errors'
+import StatusBadge from '@/components/StatusBadge.vue'
 import BookCover from '@/components/BookCover.vue'
 
-const { showToast } = useStore()
+const { showToast, loadCategories, loadBooks } = useStore()
 
-// Navigation Tabs
+const busy = ref({})
+const isBusy = (key) => Boolean(busy.value[key])
+const setBusy = (key, value) => {
+  busy.value = { ...busy.value, [key]: value }
+}
+
+function apiErrorText(error, fallback) {
+  return localizeApiError(error?.message, error?.status) || fallback
+}
+
 const activeTab = ref('overview') // 'overview' | 'books' | 'categories' | 'people' | 'vouchers' | 'orders' | 'customers' | 'payments'
 
-// Format Rupiah
 function formatRupiah(val) {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
@@ -21,7 +31,6 @@ function formatRupiah(val) {
   }).format(val || 0)
 }
 
-// ================= ADMIN DATA =================
 const adminBooks = ref([])
 const adminCategories = ref([])
 const adminAuthors = ref([])
@@ -98,24 +107,6 @@ async function loadAdminDiscounts() {
   adminDiscounts.value = response.data || []
 }
 
-const STATUS_META = {
-  waiting_payment: { label: 'Menunggu Pembayaran', className: 'bg-gray-200 text-black' },
-  paid: { label: 'Dibayar', className: 'bg-neo-yellow text-black' },
-  processing: { label: 'Diproses', className: 'bg-neo-yellow text-black' },
-  shipped: { label: 'Dikirim', className: 'bg-[#6EC6FF] text-black' },
-  completed: { label: 'Selesai', className: 'bg-neo-lime text-black' },
-  cancelled: { label: 'Dibatalkan', className: 'bg-red-300 text-black' },
-  returned: { label: 'Diretur', className: 'bg-red-300 text-black' },
-}
-
-function statusLabel(status) {
-  return STATUS_META[status]?.label || status
-}
-
-function statusClass(status) {
-  return STATUS_META[status]?.className || 'bg-gray-200 text-black'
-}
-
 // /reports powers the KPIs, chart, and per-user totals, while the orders tab
 // reads the paginated /orders/all endpoint.
 // shortcut: /reports has no pagination; revisit when the totals stop fitting
@@ -143,13 +134,12 @@ async function loadAdminReport() {
     const response = await api.report({ status: 'all' })
     adminReport.value = response.data
   } catch (error) {
-    showToast(error?.message || 'Gagal memuat laporan', { type: 'error' })
+    showToast(apiErrorText(error, 'Gagal memuat laporan'), { type: 'error' })
   } finally {
     reportLoading.value = false
   }
 }
 
-// ================= OVERVIEW METRICS =================
 const reportSummary = computed(() => adminReport.value?.summary || {})
 const totalRevenue = computed(() => Number(reportSummary.value.net_revenue) || 0)
 const totalOrdersCount = computed(
@@ -203,7 +193,6 @@ const weeklySalesTotal = computed(() =>
   weeklySales.value.reduce((sum, item) => sum + item.amount, 0),
 )
 
-// ================= 1. BOOK MANAGEMENT (CRUD) =================
 const bookSearch = ref('')
 const selectedCategory = ref('all')
 const bookSort = ref('newest')
@@ -289,7 +278,7 @@ async function processImageFile(file) {
     showToast('Gambar sampul berhasil diunggah.', { type: 'success' })
   } catch (error) {
     draftCover.value = previousDraft
-    showToast(error?.message || 'Gagal mengunggah gambar', { type: 'error' })
+    showToast(apiErrorText(error, 'Gagal mengunggah gambar'), { type: 'error' })
   } finally {
     uploadingCover.value = false
   }
@@ -444,6 +433,7 @@ async function handleSaveBook() {
   }
 
   try {
+    setBusy('book-save', true)
     if (isEditMode.value && currentBookId.value) {
       await api.updateBook(currentBookId.value, payload)
       showToast('Buku berhasil diperbarui.', { type: 'success' })
@@ -451,11 +441,13 @@ async function handleSaveBook() {
       await api.createBook(payload)
       showToast('Buku berhasil ditambahkan.', { type: 'success' })
     }
-    await Promise.all([loadAdminBooks(), loadAdminReport()])
+    await Promise.all([loadAdminBooks(), loadAdminReport(), loadCategories(), loadBooks()])
     draftCover.value = null
     showBookModal.value = false
   } catch (error) {
-    showToast(error?.message || 'Gagal menyimpan buku', { type: 'error' })
+    showToast(apiErrorText(error, 'Gagal menyimpan buku'), { type: 'error' })
+  } finally {
+    setBusy('book-save', false)
   }
 }
 
@@ -468,14 +460,16 @@ function confirmDeleteBook(book) {
 }
 
 async function executeDeleteBook() {
-  if (!bookToDelete.value) return
+  if (!bookToDelete.value || isBusy('book-delete')) return
+  setBusy('book-delete', true)
   try {
     await api.deleteBook(bookToDelete.value.rawId || bookToDelete.value.id)
-    await Promise.all([loadAdminBooks(), loadAdminReport()])
+    await Promise.all([loadAdminBooks(), loadAdminReport(), loadCategories(), loadBooks()])
     showToast('Buku berhasil dihapus.', { type: 'info' })
   } catch (error) {
-    showToast(error?.message || 'Gagal menghapus buku', { type: 'error' })
+    showToast(apiErrorText(error, 'Gagal menghapus buku'), { type: 'error' })
   } finally {
+    setBusy('book-delete', false)
     showDeleteConfirm.value = false
     bookToDelete.value = null
   }
@@ -485,60 +479,143 @@ async function updateBookStock(bookId, amount) {
   const book = adminBooks.value.find(
     (item) => String(item.rawId) === String(bookId) || String(item.id) === String(bookId),
   )
-  if (!book) return
+  if (!book || isBusy(`stock-${bookId}`)) return
+  setBusy(`stock-${bookId}`, true)
   try {
+    // The lean admin list omits ISBN/synopsis, which the update endpoint requires.
+    let source = book
+    if (book.slug) {
+      try {
+        const response = await api.book(book.slug)
+        if (response.data) source = mapAdminBook(response.data)
+      } catch {
+        // Fall back to the list payload when the detail request fails.
+      }
+    }
+
     await api.updateBook(book.rawId, {
-      category_id: Number(book.categoryId),
-      author_id: Number(book.authorId),
-      publisher_id: Number(book.publisherId),
-      title: book.title,
-      isbn: book.isbn,
-      synopsis: book.description,
-      price: Number(book.price) || 0,
-      original_price: Number(book.originalPrice) || Number(book.price) || 0,
-      discount_percentage: Number(book.discount) || 0,
-      weight_grams: Number(book.weightGrams) || 300,
-      pages: Number(book.pages) || 1,
-      publication_year: Number(book.publicationYear) || new Date().getFullYear(),
-      language: book.language || 'Indonesia',
-      length: Number(book.length) || 1,
-      width: Number(book.width) || 1,
-      height: Number(book.height) || 1,
-      condition: book.condition || '100% Baru & Segel Penerbit',
-      stock: Math.max(0, (Number(book.stock) || 0) + Number(amount || 0)),
-      cover_image: book.coverImage,
-      is_active: book.isActive !== false,
+      category_id: Number(source.categoryId),
+      author_id: Number(source.authorId),
+      publisher_id: Number(source.publisherId),
+      title: source.title,
+      isbn: source.isbn,
+      synopsis: source.description,
+      price: Number(source.price) || 0,
+      original_price: Number(source.originalPrice) || Number(source.price) || 0,
+      discount_percentage: Number(source.discount) || 0,
+      weight_grams: Number(source.weightGrams) || 300,
+      pages: Number(source.pages) || 1,
+      publication_year: Number(source.publicationYear) || new Date().getFullYear(),
+      language: source.language || 'Indonesia',
+      length: Number(source.length) || 1,
+      width: Number(source.width) || 1,
+      height: Number(source.height) || 1,
+      condition: source.condition || '100% Baru & Segel Penerbit',
+      stock: Math.max(0, (Number(source.stock) || 0) + Number(amount || 0)),
+      cover_image: source.coverImage,
+      is_active: source.isActive !== false,
     })
-    await loadAdminBooks()
+    await Promise.all([loadAdminBooks(), loadBooks()])
+    showToast('Stok buku diperbarui.', { type: 'info' })
   } catch (error) {
-    showToast(error?.message || 'Gagal memperbarui stok', { type: 'error' })
+    showToast(apiErrorText(error, 'Gagal memperbarui stok'), { type: 'error' })
+  } finally {
+    setBusy(`stock-${bookId}`, false)
   }
 }
 
-// ================= 2. CATEGORY MANAGEMENT (CRUD) =================
 const showCategoryModal = ref(false)
 const isEditCategory = ref(false)
 const currentCategoryId = ref(null)
+const categoryImageInput = ref(null)
+const uploadingCategoryImage = ref(false)
+const categoryDraftImage = ref(null)
 
 const categoryForm = ref({
   name: '',
   imageUrl: '',
 })
 
+async function discardCategoryDraft() {
+  const draft = categoryDraftImage.value
+  categoryDraftImage.value = null
+  if (!draft?.key) return
+  try {
+    await api.deleteUpload({ file_key: draft.key })
+  } catch {
+    // An orphaned upload only wastes storage.
+  }
+}
+
+function closeCategoryModal() {
+  discardCategoryDraft()
+  showCategoryModal.value = false
+}
+
+async function processCategoryImage(file) {
+  if (!file) return
+  if (!file.type.startsWith('image/')) {
+    showToast('Harap pilih berkas gambar yang valid (JPG, PNG, WebP).', { type: 'error' })
+    return
+  }
+
+  uploadingCategoryImage.value = true
+  const previousDraft = categoryDraftImage.value
+  categoryDraftImage.value = null
+  try {
+    const response = await api.uploadImage(file, 'categories')
+    const data = response.data || {}
+    categoryForm.value.imageUrl = data.file_url || ''
+    categoryDraftImage.value = { url: data.file_url || '', key: data.file_key || '' }
+    if (previousDraft?.key && previousDraft.url !== categoryForm.value.imageUrl) {
+      api.deleteUpload({ file_key: previousDraft.key }).catch(() => {})
+    }
+    showToast('Gambar kategori berhasil diunggah.', { type: 'success' })
+  } catch (error) {
+    categoryDraftImage.value = previousDraft
+    showToast(apiErrorText(error, 'Gagal mengunggah gambar'), { type: 'error' })
+  } finally {
+    uploadingCategoryImage.value = false
+  }
+}
+
+function handleCategoryImageChange(event) {
+  const file = event.target.files?.[0]
+  processCategoryImage(file)
+}
+
+async function removeCategoryImage() {
+  const draft = categoryDraftImage.value
+  categoryForm.value.imageUrl = ''
+  categoryDraftImage.value = null
+  if (categoryImageInput.value) categoryImageInput.value.value = ''
+  if (draft?.key) {
+    try {
+      await api.deleteUpload({ file_key: draft.key })
+    } catch {
+      // The file may already be gone.
+    }
+  }
+}
+
 function openAddCategory() {
   isEditCategory.value = false
   currentCategoryId.value = null
+  categoryDraftImage.value = null
   categoryForm.value = { name: '', imageUrl: '' }
+  if (categoryImageInput.value) categoryImageInput.value.value = ''
   showCategoryModal.value = true
 }
 
 function openEditCategory(cat) {
   isEditCategory.value = true
   currentCategoryId.value = cat.id
+  categoryDraftImage.value = null
   categoryForm.value = {
     name: cat.name || '',
     imageUrl: cat.image_url || '',
   }
+  if (categoryImageInput.value) categoryImageInput.value.value = ''
   showCategoryModal.value = true
 }
 
@@ -548,12 +625,14 @@ async function handleSaveCategory() {
     return
   }
 
+  const imageUrl = categoryForm.value.imageUrl.trim()
   const payload = {
     name: categoryForm.value.name.trim(),
-    image_url: categoryForm.value.imageUrl.trim() || null,
+    image_url: imageUrl || null,
   }
 
   try {
+    setBusy('category-save', true)
     if (isEditCategory.value && currentCategoryId.value) {
       await api.updateCategory(currentCategoryId.value, payload)
       showToast('Kategori berhasil diperbarui.', { type: 'success' })
@@ -561,10 +640,13 @@ async function handleSaveCategory() {
       await api.createCategory(payload)
       showToast('Kategori berhasil ditambahkan.', { type: 'success' })
     }
-    await Promise.all([loadAdminCategories(), loadAdminBooks()])
+    await Promise.all([loadAdminCategories(), loadAdminBooks(), loadCategories(), loadBooks()])
+    categoryDraftImage.value = null
     showCategoryModal.value = false
   } catch (error) {
-    showToast(error?.message || 'Gagal menyimpan kategori', { type: 'error' })
+    showToast(apiErrorText(error, 'Gagal menyimpan kategori'), { type: 'error' })
+  } finally {
+    setBusy('category-save', false)
   }
 }
 
@@ -577,20 +659,21 @@ function confirmDeleteCategory(cat) {
 }
 
 async function executeDeleteCategory() {
-  if (!categoryToDelete.value) return
+  if (!categoryToDelete.value || isBusy('category-delete')) return
+  setBusy('category-delete', true)
   try {
     await api.deleteCategory(categoryToDelete.value.id)
-    await Promise.all([loadAdminCategories(), loadAdminBooks()])
+    await Promise.all([loadAdminCategories(), loadAdminBooks(), loadCategories(), loadBooks()])
     showToast('Kategori berhasil dihapus.', { type: 'info' })
   } catch (error) {
-    showToast(error?.message || 'Gagal menghapus kategori', { type: 'error' })
+    showToast(apiErrorText(error, 'Gagal menghapus kategori'), { type: 'error' })
   } finally {
+    setBusy('category-delete', false)
     showDeleteCategoryConfirm.value = false
     categoryToDelete.value = null
   }
 }
 
-// ================= 3. DISCOUNT / VOUCHER MANAGEMENT =================
 const showVoucherModal = ref(false)
 const isEditVoucher = ref(false)
 const currentVoucherId = ref(null)
@@ -804,6 +887,7 @@ async function handleSaveVoucher() {
   }
 
   try {
+    setBusy('voucher-save', true)
     if (isEditVoucher.value && currentVoucherId.value) {
       await api.updateDiscount(currentVoucherId.value, payload)
       showToast('Voucher berhasil diperbarui.', { type: 'success' })
@@ -814,7 +898,9 @@ async function handleSaveVoucher() {
     await loadAdminDiscounts()
     showVoucherModal.value = false
   } catch (error) {
-    showToast(error?.message || 'Gagal menyimpan voucher', { type: 'error' })
+    showToast(apiErrorText(error, 'Gagal menyimpan voucher'), { type: 'error' })
+  } finally {
+    setBusy('voucher-save', false)
   }
 }
 
@@ -827,20 +913,25 @@ function confirmDeleteVoucher(v) {
 }
 
 async function executeDeleteVoucher() {
-  if (!voucherToDelete.value) return
+  if (!voucherToDelete.value || isBusy('voucher-delete')) return
+  setBusy('voucher-delete', true)
   try {
     await api.deleteDiscount(voucherToDelete.value.id)
     await loadAdminDiscounts()
     showToast('Voucher berhasil dihapus.', { type: 'info' })
   } catch (error) {
-    showToast(error?.message || 'Gagal menghapus voucher', { type: 'error' })
+    showToast(apiErrorText(error, 'Gagal menghapus voucher'), { type: 'error' })
   } finally {
+    setBusy('voucher-delete', false)
     showDeleteVoucherConfirm.value = false
     voucherToDelete.value = null
   }
 }
 
 async function toggleVoucher(voucher) {
+  const key = `voucher-toggle-${voucher.id}`
+  if (isBusy(key)) return
+  setBusy(key, true)
   try {
     const type = voucher.rawType || voucherTypeCode(voucher.type)
     const payload = {
@@ -866,11 +957,12 @@ async function toggleVoucher(voucher) {
     await loadAdminDiscounts()
     showToast('Status voucher diperbarui.', { type: 'success' })
   } catch (error) {
-    showToast(error?.message || 'Gagal mengubah status voucher', { type: 'error' })
+    showToast(apiErrorText(error, 'Gagal mengubah status voucher'), { type: 'error' })
+  } finally {
+    setBusy(key, false)
   }
 }
 
-// ================= 4. ORDER MANAGEMENT =================
 const orderSearch = ref('')
 const orderStatusFilter = ref('all')
 const orderSortFilter = ref('newest')
@@ -927,7 +1019,7 @@ async function loadAdminOrders() {
     }
   } catch (error) {
     adminOrderRows.value = []
-    showToast(error?.message || 'Gagal memuat daftar pesanan', { type: 'error' })
+    showToast(apiErrorText(error, 'Gagal memuat daftar pesanan'), { type: 'error' })
   } finally {
     adminOrdersLoading.value = false
   }
@@ -942,7 +1034,7 @@ async function openAdminOrder(order) {
     const response = await api.adminOrder(order.invoice)
     adminOrderDetail.value = response.data || null
   } catch (error) {
-    showToast(error?.message || 'Gagal memuat detail pesanan', { type: 'error' })
+    showToast(apiErrorText(error, 'Gagal memuat detail pesanan'), { type: 'error' })
     showAdminOrderModal.value = false
   } finally {
     adminOrderDetailLoading.value = false
@@ -975,8 +1067,12 @@ watch(adminOrderPage, loadAdminOrders)
 onUnmounted(() => clearTimeout(orderSearchTimer))
 
 async function fulfillOrder(order) {
+  const invoice = order.invoice || order.id
+  const key = `dispatch-${invoice}`
+  if (isBusy(key)) return
+  setBusy(key, true)
   try {
-    await api.fulfillOrder(order.invoice || order.id, 'Diproses dari dashboard admin')
+    await api.fulfillOrder(invoice, 'Diproses dari dashboard admin')
     await Promise.all([loadAdminReport(), loadAdminOrders()])
     showToast('Pesanan berhasil didispatch ke kurir.', { type: 'success' })
   } catch (error) {
@@ -987,12 +1083,18 @@ async function fulfillOrder(order) {
         : message || 'Gagal dispatch pesanan',
       { type: 'error' },
     )
+  } finally {
+    setBusy(key, false)
   }
 }
 
 async function returnOrder(order) {
+  const invoice = order.invoice || order.id
+  const key = `return-${invoice}`
+  if (isBusy(key)) return
+  setBusy(key, true)
   try {
-    await api.returnOrder(order.invoice || order.id, 'Retur dari dashboard admin')
+    await api.returnOrder(invoice, 'Retur dari dashboard admin')
     await Promise.all([loadAdminReport(), loadAdminOrders()])
     showToast('Retur pesanan berhasil diproses.', { type: 'success' })
   } catch (error) {
@@ -1003,10 +1105,14 @@ async function returnOrder(order) {
         : message || 'Gagal memproses retur',
       { type: 'error' },
     )
+  } finally {
+    setBusy(key, false)
   }
 }
 
 async function downloadReport() {
+  if (isBusy('report-download')) return
+  setBusy('report-download', true)
   try {
     const { blob, filename } = await api.reportPdf({ status: 'all' })
     const url = URL.createObjectURL(blob)
@@ -1019,11 +1125,12 @@ async function downloadReport() {
     URL.revokeObjectURL(url)
     showToast('Laporan PDF berhasil diunduh.', { type: 'success' })
   } catch (error) {
-    showToast(error?.message || 'Gagal mengunduh laporan', { type: 'error' })
+    showToast(apiErrorText(error, 'Gagal mengunduh laporan'), { type: 'error' })
+  } finally {
+    setBusy('report-download', false)
   }
 }
 
-// ================= 5. PAYMENT METHOD MANAGEMENT =================
 const paymentMethods = ref([])
 const paymentMethodsLoading = ref(false)
 const showPaymentModal = ref(false)
@@ -1101,7 +1208,7 @@ async function loadPaymentMethods() {
     }
     paymentMethods.value = list
   } catch (error) {
-    showToast(error?.message || 'Gagal memuat metode pembayaran', { type: 'error' })
+    showToast(apiErrorText(error, 'Gagal memuat metode pembayaran'), { type: 'error' })
   } finally {
     paymentMethodsLoading.value = false
   }
@@ -1138,7 +1245,7 @@ async function processPaymentLogo(file) {
     showToast('Logo pembayaran berhasil diunggah.', { type: 'success' })
   } catch (error) {
     paymentDraftLogo.value = previousDraft
-    showToast(error?.message || 'Gagal mengunggah logo', { type: 'error' })
+    showToast(apiErrorText(error, 'Gagal mengunggah logo'), { type: 'error' })
   } finally {
     uploadingPaymentLogo.value = false
   }
@@ -1202,7 +1309,7 @@ async function openEditPayment(method) {
       instructions: instructions.length ? instructions : [{ title: '', steps: '' }],
     }
   } catch (error) {
-    showToast(error?.message || 'Gagal memuat detail metode pembayaran', { type: 'error' })
+    showToast(apiErrorText(error, 'Gagal memuat detail metode pembayaran'), { type: 'error' })
   }
 }
 
@@ -1255,23 +1362,27 @@ async function handleSavePayment() {
     showPaymentModal.value = false
     showToast('Metode pembayaran berhasil diperbarui.', { type: 'success' })
   } catch (error) {
-    showToast(error?.message || 'Gagal menyimpan metode pembayaran', { type: 'error' })
+    showToast(apiErrorText(error, 'Gagal menyimpan metode pembayaran'), { type: 'error' })
   } finally {
     savingPayment.value = false
   }
 }
 
 async function togglePayment(method) {
+  const key = `payment-toggle-${method.id}`
+  if (isBusy(key)) return
+  setBusy(key, true)
   try {
     await api.updatePaymentMethod(method.id, { is_active: method.is_active === false })
     await loadPaymentMethods()
     showToast('Status metode pembayaran diperbarui.', { type: 'success' })
   } catch (error) {
-    showToast(error?.message || 'Gagal mengubah status metode pembayaran', { type: 'error' })
+    showToast(apiErrorText(error, 'Gagal mengubah status metode pembayaran'), { type: 'error' })
+  } finally {
+    setBusy(key, false)
   }
 }
 
-// ================= 6. AUTHOR & PUBLISHER MANAGEMENT =================
 const peopleTab = ref('authors')
 const showPeopleModal = ref(false)
 const isEditPeople = ref(false)
@@ -1321,6 +1432,7 @@ async function handleSavePeople() {
     peopleType.value === 'author' ? { name, bio: peopleForm.value.bio.trim() || null } : { name }
 
   try {
+    setBusy('people-save', true)
     if (isEditPeople.value && currentPeopleId.value) {
       if (peopleType.value === 'author') {
         await api.updateAuthor(currentPeopleId.value, payload)
@@ -1343,7 +1455,9 @@ async function handleSavePeople() {
     await Promise.all([loadAdminAuthors(), loadAdminPublishers(), loadAdminBooks()])
     showPeopleModal.value = false
   } catch (error) {
-    showToast(error?.message || 'Gagal menyimpan data', { type: 'error' })
+    showToast(apiErrorText(error, 'Gagal menyimpan data'), { type: 'error' })
+  } finally {
+    setBusy('people-save', false)
   }
 }
 
@@ -1353,7 +1467,8 @@ function confirmDeletePeople(type, item) {
 }
 
 async function executeDeletePeople() {
-  if (!peopleToDelete.value) return
+  if (!peopleToDelete.value || isBusy('people-delete')) return
+  setBusy('people-delete', true)
   const { type, item } = peopleToDelete.value
   try {
     if (type === 'author') {
@@ -1364,14 +1479,14 @@ async function executeDeletePeople() {
     await Promise.all([loadAdminAuthors(), loadAdminPublishers(), loadAdminBooks()])
     showToast(`${type === 'author' ? 'Penulis' : 'Penerbit'} dihapus.`, { type: 'info' })
   } catch (error) {
-    showToast(error?.message || 'Gagal menghapus data', { type: 'error' })
+    showToast(apiErrorText(error, 'Gagal menghapus data'), { type: 'error' })
   } finally {
+    setBusy('people-delete', false)
     showDeletePeopleConfirm.value = false
     peopleToDelete.value = null
   }
 }
 
-// ================= 7. CUSTOMERS MANAGEMENT =================
 const customersList = ref([])
 const customersLoading = ref(false)
 
@@ -1427,7 +1542,7 @@ async function loadCustomers() {
       joinDate: formatJoinDate(user.created_at),
     }))
   } catch (error) {
-    showToast(error?.message || 'Gagal memuat data pengguna', { type: 'error' })
+    showToast(apiErrorText(error, 'Gagal memuat data pengguna'), { type: 'error' })
   } finally {
     customersLoading.value = false
   }
@@ -1445,6 +1560,7 @@ onMounted(async () => {
     loadAdminOrders(),
     loadPaymentMethods(),
     loadCustomers(),
+    ensureCourierCatalog(),
   ])
   adminLoading.value = false
 })
@@ -1462,7 +1578,6 @@ onMounted(async () => {
         ></span>
         Memuat data admin...
       </div>
-      <!-- KPI Metrics Grid (Unified Black Style) -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div class="bg-white border-3 border-black p-5 rounded-[2px] shadow-neo">
           <div class="flex items-center justify-between">
@@ -1568,7 +1683,6 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- Navigation Tabs (No Emojis) -->
       <div class="flex items-center gap-2 overflow-x-auto pt-2 px-1 pb-3 mb-6 scrollbar-none">
         <button
           class="neubrutal-btn px-4 sm:px-5 py-2.5 rounded-[2px] font-outfit font-black text-xs sm:text-sm whitespace-nowrap transition-all border-2 sm:border-3 border-black"
@@ -1688,10 +1802,8 @@ onMounted(async () => {
         </button>
       </div>
 
-      <!-- ================= TAB: OVERVIEW ================= -->
       <div v-if="activeTab === 'overview'" class="space-y-6">
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <!-- Sales Bar Chart (Responsive on Mobile) -->
           <div
             class="lg:col-span-8 bg-white border-3 border-black p-4 sm:p-6 rounded-[2px] shadow-neo overflow-hidden"
           >
@@ -1711,10 +1823,11 @@ onMounted(async () => {
               </div>
               <button
                 type="button"
-                class="neubrutal-btn bg-neo-yellow border-2 border-black px-3 py-1.5 font-outfit font-black text-[11px] shadow-neo-sm hover:bg-yellow-300 shrink-0"
+                :disabled="isBusy('report-download')"
+                class="neubrutal-btn bg-neo-yellow border-2 border-black px-3 py-1.5 font-outfit font-black text-[11px] shadow-neo-sm hover:bg-yellow-300 shrink-0 disabled:opacity-60"
                 @click="downloadReport"
               >
-                Laporan PDF
+                {{ isBusy('report-download') ? 'Mengunduh...' : 'Laporan PDF' }}
               </button>
             </div>
 
@@ -1748,7 +1861,6 @@ onMounted(async () => {
             </div>
           </div>
 
-          <!-- Low Stock Alert -->
           <div
             class="lg:col-span-4 bg-white border-3 border-black p-6 rounded-[2px] shadow-neo flex flex-col justify-between"
           >
@@ -1766,7 +1878,7 @@ onMounted(async () => {
                 <div
                   v-for="b in lowStockBooks.slice(0, 4)"
                   :key="b.id"
-                  class="bg-[#F8F8F6] border-2 border-black p-2.5 rounded-[2px] flex items-center justify-between gap-2"
+                  class="bg-surface border-2 border-black p-2.5 rounded-[2px] flex items-center justify-between gap-2"
                 >
                   <div class="min-w-0">
                     <h5 class="font-outfit font-black text-xs text-black truncate">
@@ -1802,7 +1914,6 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- Recent Orders live table -->
         <div class="bg-white border-3 border-black p-6 rounded-[2px] shadow-neo">
           <div class="flex items-center justify-between border-b-2 border-black pb-3 mb-4">
             <div>
@@ -1852,20 +1963,16 @@ onMounted(async () => {
                     {{ formatRupiah(order.total) }}
                   </td>
                   <td class="p-3">
-                    <span
-                      class="inline-block border-2 border-black font-outfit font-black text-[10px] py-1 px-2.5 rounded-[2px] shadow-neo-sm uppercase"
-                      :class="statusClass(order.rawStatus)"
-                    >
-                      {{ statusLabel(order.rawStatus) }}
-                    </span>
+                    <StatusBadge :status="order.rawStatus" size="xs" />
                   </td>
                   <td class="p-3 text-right">
                     <button
                       v-if="order.rawStatus === 'paid'"
-                      class="neubrutal-btn bg-white border border-black px-2.5 py-1 font-outfit font-black text-[11px] shadow-neo-sm hover:bg-neo-yellow"
+                      :disabled="isBusy(`dispatch-${order.invoice || order.id}`)"
+                      class="neubrutal-btn bg-white border border-black px-2.5 py-1 font-outfit font-black text-[11px] shadow-neo-sm hover:bg-neo-yellow disabled:opacity-50"
                       @click="fulfillOrder(order)"
                     >
-                      Dispatch
+                      {{ isBusy(`dispatch-${order.invoice || order.id}`) ? '...' : 'Dispatch' }}
                     </button>
                   </td>
                 </tr>
@@ -1875,7 +1982,6 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- ================= TAB: BOOKS CRUD ================= -->
       <div v-if="activeTab === 'books'" class="space-y-6">
         <div
           class="bg-white border-3 border-black p-4 rounded-[2px] shadow-neo-sm flex flex-col md:flex-row md:items-center justify-between gap-4"
@@ -1986,7 +2092,8 @@ onMounted(async () => {
                   <td class="p-3 text-center">
                     <div class="flex items-center justify-center gap-1.5">
                       <button
-                        class="w-5 h-5 border border-black bg-white rounded-[2px] font-black hover:bg-gray-200"
+                        :disabled="isBusy(`stock-${book.id}`)"
+                        class="w-5 h-5 border border-black bg-white rounded-[2px] font-black hover:bg-gray-200 disabled:opacity-40"
                         title="Kurang 1"
                         @click="updateBookStock(book.id, -1)"
                       >
@@ -2000,10 +2107,11 @@ onMounted(async () => {
                             : 'bg-neo-lime text-black'
                         "
                       >
-                        {{ book.stock || 0 }}
+                        {{ isBusy(`stock-${book.id}`) ? '…' : book.stock || 0 }}
                       </span>
                       <button
-                        class="w-5 h-5 border border-black bg-white rounded-[2px] font-black hover:bg-gray-200"
+                        :disabled="isBusy(`stock-${book.id}`)"
+                        class="w-5 h-5 border border-black bg-white rounded-[2px] font-black hover:bg-gray-200 disabled:opacity-40"
                         title="Tambah 1"
                         @click="updateBookStock(book.id, 1)"
                       >
@@ -2054,7 +2162,6 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- ================= TAB: CATEGORIES CRUD ================= -->
       <div v-if="activeTab === 'categories'" class="space-y-6">
         <div
           class="bg-white border-3 border-black p-4 rounded-[2px] shadow-neo-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4"
@@ -2129,7 +2236,6 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- ================= TAB: VOUCHERS CRUD ================= -->
       <div v-if="activeTab === 'vouchers'" class="space-y-6">
         <div
           class="bg-white border-3 border-black p-4 rounded-[2px] shadow-neo-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4"
@@ -2209,7 +2315,8 @@ onMounted(async () => {
                   </td>
                   <td class="p-3 text-center">
                     <button
-                      class="border-2 border-black px-2.5 py-0.5 rounded-[2px] font-outfit font-black text-[10px] uppercase shadow-neo-sm cursor-pointer"
+                      :disabled="isBusy(`voucher-toggle-${v.id}`)"
+                      class="border-2 border-black px-2.5 py-0.5 rounded-[2px] font-outfit font-black text-[10px] uppercase shadow-neo-sm cursor-pointer disabled:opacity-50"
                       :class="
                         v.active
                           ? 'bg-neo-lime text-black hover:bg-red-100'
@@ -2217,7 +2324,9 @@ onMounted(async () => {
                       "
                       @click="toggleVoucher(v)"
                     >
-                      {{ v.active ? 'Aktif' : 'Nonaktif' }}
+                      {{
+                        isBusy(`voucher-toggle-${v.id}`) ? '...' : v.active ? 'Aktif' : 'Nonaktif'
+                      }}
                     </button>
                   </td>
                   <td class="p-3 text-right">
@@ -2243,7 +2352,6 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- ================= TAB: ORDERS MANAGEMENT ================= -->
       <div v-if="activeTab === 'orders'" class="space-y-6">
         <div
           class="bg-white border-3 border-black p-4 rounded-[2px] shadow-neo-sm flex flex-col md:flex-row md:items-center justify-between gap-4"
@@ -2338,12 +2446,7 @@ onMounted(async () => {
                     <span class="text-[10px] text-muted-foreground">{{ order.paymentMethod }}</span>
                   </td>
                   <td class="p-3">
-                    <span
-                      class="inline-block border-2 border-black font-outfit font-black text-[10px] py-1 px-2.5 rounded-[2px] shadow-neo-sm uppercase"
-                      :class="statusClass(order.rawStatus)"
-                    >
-                      {{ statusLabel(order.rawStatus) }}
-                    </span>
+                    <StatusBadge :status="order.rawStatus" size="xs" />
                   </td>
                   <td class="p-3 text-right">
                     <div class="flex flex-wrap justify-end gap-1.5">
@@ -2355,17 +2458,19 @@ onMounted(async () => {
                       </button>
                       <button
                         v-if="order.rawStatus === 'paid'"
-                        class="neubrutal-btn bg-neo-yellow border border-black px-2 py-1 font-outfit font-black text-[10px] shadow-neo-sm"
+                        :disabled="isBusy(`dispatch-${order.invoice || order.id}`)"
+                        class="neubrutal-btn bg-neo-yellow border border-black px-2 py-1 font-outfit font-black text-[10px] shadow-neo-sm disabled:opacity-50"
                         @click="fulfillOrder(order)"
                       >
-                        Dispatch
+                        {{ isBusy(`dispatch-${order.invoice || order.id}`) ? '...' : 'Dispatch' }}
                       </button>
                       <button
                         v-if="['shipped', 'completed'].includes(order.rawStatus)"
-                        class="neubrutal-btn bg-white border border-black px-2 py-1 font-outfit font-black text-[10px] shadow-neo-sm hover:bg-red-50"
+                        :disabled="isBusy(`return-${order.invoice || order.id}`)"
+                        class="neubrutal-btn bg-white border border-black px-2 py-1 font-outfit font-black text-[10px] shadow-neo-sm hover:bg-red-50 disabled:opacity-50"
                         @click="returnOrder(order)"
                       >
-                        Retur
+                        {{ isBusy(`return-${order.invoice || order.id}`) ? '...' : 'Retur' }}
                       </button>
                     </div>
                   </td>
@@ -2418,7 +2523,6 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- ================= TAB: PEOPLE (AUTHORS & PUBLISHERS) ================= -->
       <div v-if="activeTab === 'people'" class="space-y-6">
         <div
           class="bg-white border-3 border-black p-4 rounded-[2px] shadow-neo-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4"
@@ -2517,7 +2621,6 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- ================= TAB: PAYMENT METHODS ================= -->
       <div v-if="activeTab === 'payments'" class="space-y-6">
         <div class="bg-white border-3 border-black p-4 rounded-[2px] shadow-neo-sm">
           <h2 class="font-outfit font-black text-lg text-black">Metode Pembayaran</h2>
@@ -2582,7 +2685,8 @@ onMounted(async () => {
                   <td class="p-3 font-outfit font-black">{{ paymentFeeText(method) }}</td>
                   <td class="p-3 text-center">
                     <button
-                      class="border-2 border-black px-2.5 py-0.5 rounded-[2px] font-outfit font-black text-[10px] uppercase shadow-neo-sm"
+                      :disabled="isBusy(`payment-toggle-${method.id}`)"
+                      class="border-2 border-black px-2.5 py-0.5 rounded-[2px] font-outfit font-black text-[10px] uppercase shadow-neo-sm disabled:opacity-50"
                       :class="
                         method.is_active !== false
                           ? 'bg-neo-lime text-black hover:bg-red-100'
@@ -2590,7 +2694,13 @@ onMounted(async () => {
                       "
                       @click="togglePayment(method)"
                     >
-                      {{ method.is_active !== false ? 'Aktif' : 'Nonaktif' }}
+                      {{
+                        isBusy(`payment-toggle-${method.id}`)
+                          ? '...'
+                          : method.is_active !== false
+                            ? 'Aktif'
+                            : 'Nonaktif'
+                      }}
                     </button>
                   </td>
                   <td class="p-3 text-right">
@@ -2608,7 +2718,6 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- ================= TAB: CUSTOMERS (NO TIERS) ================= -->
       <div v-if="activeTab === 'customers'" class="space-y-6">
         <div class="bg-white border-3 border-black rounded-[2px] shadow-neo p-6">
           <div class="border-b-2 border-black pb-3 mb-4 flex items-center justify-between">
@@ -2701,7 +2810,6 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- ================= MODAL: ADD / EDIT BOOK ================= -->
     <div
       v-if="showBookModal"
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
@@ -2819,8 +2927,7 @@ onMounted(async () => {
             </div>
           </div>
 
-          <!-- Upload Gambar Sampul & Preview Otomatis -->
-          <div class="border-2 border-black p-4 bg-[#F8F8F6] rounded-[2px] shadow-neo-sm space-y-3">
+          <div class="border-2 border-black p-4 bg-surface rounded-[2px] shadow-neo-sm space-y-3">
             <div class="flex items-center justify-between border-b border-black/20 pb-2">
               <span class="font-outfit font-black text-xs uppercase text-black">
                 Gambar Sampul Buku
@@ -2841,7 +2948,6 @@ onMounted(async () => {
               @change="handleImageUpload"
             />
 
-            <!-- Kondisi 1: Sudah ada gambar -> Kotak otomatis ganti jadi preview -->
             <div
               v-if="bookForm.coverImage"
               class="border-2 border-black bg-white p-3.5 rounded-[2px] shadow-neo-sm flex flex-col sm:flex-row items-center gap-4"
@@ -2920,7 +3026,6 @@ onMounted(async () => {
               </div>
             </div>
 
-            <!-- Kondisi 2: Belum ada gambar -> Hanya kotak upload (tanpa preview di kiri) -->
             <div
               v-else
               class="border-2 border-dashed border-black bg-white p-4 rounded-[2px] shadow-neo-sm hover:bg-yellow-50/60 transition-all cursor-pointer flex flex-col justify-center gap-2 group"
@@ -3081,20 +3186,26 @@ onMounted(async () => {
             </button>
             <button
               type="submit"
-              class="neubrutal-btn bg-neo-yellow text-black border-2 border-black px-5 py-2 font-outfit font-black text-xs shadow-neo hover:bg-yellow-300"
+              :disabled="isBusy('book-save')"
+              class="neubrutal-btn bg-neo-yellow text-black border-2 border-black px-5 py-2 font-outfit font-black text-xs shadow-neo hover:bg-yellow-300 disabled:opacity-60"
             >
-              {{ isEditMode ? 'Simpan Perubahan' : 'Terbitkan Buku' }}
+              {{
+                isBusy('book-save')
+                  ? 'Menyimpan...'
+                  : isEditMode
+                    ? 'Simpan Perubahan'
+                    : 'Terbitkan Buku'
+              }}
             </button>
           </div>
         </form>
       </div>
     </div>
 
-    <!-- ================= MODAL: ADD / EDIT CATEGORY ================= -->
     <div
       v-if="showCategoryModal"
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
-      @click.self="showCategoryModal = false"
+      @click.self="closeCategoryModal"
     >
       <div
         class="bg-white border-4 border-black max-w-md w-full rounded-[2px] shadow-neo-xl overflow-hidden animate-hero-entrance"
@@ -3105,7 +3216,7 @@ onMounted(async () => {
           </h3>
           <button
             class="w-8 h-8 rounded-[2px] bg-white border-2 border-black flex items-center justify-center font-outfit font-black text-sm hover:bg-black hover:text-white"
-            @click="showCategoryModal = false"
+            @click="closeCategoryModal"
           >
             X
           </button>
@@ -3125,18 +3236,64 @@ onMounted(async () => {
             />
           </div>
 
-          <div>
-            <label class="block font-outfit font-black text-xs uppercase mb-1"
-              >URL Gambar Kategori</label
-            >
+          <div class="border-2 border-black p-3 bg-surface space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-outfit font-black text-xs uppercase">Gambar Kategori</span>
+              <span
+                v-if="categoryForm.imageUrl"
+                class="bg-neo-lime border border-black px-2 py-0.5 font-outfit font-black text-[9px] uppercase"
+              >
+                Terpasang
+              </span>
+            </div>
+
+            <input
+              ref="categoryImageInput"
+              type="file"
+              accept=".png, .jpg, .jpeg, .webp, image/png, image/jpeg, image/webp"
+              class="hidden"
+              @change="handleCategoryImageChange"
+            />
+
+            <div class="flex items-center gap-3">
+              <div
+                class="w-16 h-16 border-2 border-black bg-white shrink-0 flex items-center justify-center overflow-hidden"
+              >
+                <img
+                  v-if="categoryForm.imageUrl"
+                  :src="assetUrl(categoryForm.imageUrl)"
+                  alt="Gambar kategori"
+                  class="w-full h-full object-cover"
+                />
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  :disabled="uploadingCategoryImage"
+                  class="neubrutal-btn bg-white border-2 border-black px-3 py-1.5 font-outfit font-black text-xs shadow-neo-sm hover:bg-neo-yellow disabled:opacity-60"
+                  @click="categoryImageInput?.click()"
+                >
+                  {{ uploadingCategoryImage ? 'Mengunggah...' : 'Unggah Gambar' }}
+                </button>
+                <button
+                  v-if="categoryForm.imageUrl"
+                  type="button"
+                  class="neubrutal-btn bg-white text-red-600 border-2 border-black px-3 py-1.5 font-outfit font-black text-xs shadow-neo-sm hover:bg-red-50"
+                  @click="removeCategoryImage"
+                >
+                  Hapus
+                </button>
+              </div>
+            </div>
+
             <input
               v-model="categoryForm.imageUrl"
               type="text"
-              placeholder="/api/v1/static/categories/..."
-              class="w-full bg-background border-2 border-black p-2.5 font-mono text-xs outline-none shadow-neo-sm"
+              placeholder="/categories/..."
+              class="w-full bg-white border-2 border-black p-2 font-mono text-[11px] outline-none shadow-neo-sm"
             />
-            <p class="font-sans text-[10px] text-muted-foreground mt-1">
-              Gunakan URL dari endpoint upload atau path static backend.
+            <p class="font-sans text-[10px] text-muted-foreground">
+              Unggah gambar atau isi path/URL manual.
             </p>
           </div>
 
@@ -3144,22 +3301,28 @@ onMounted(async () => {
             <button
               type="button"
               class="neubrutal-btn bg-white border-2 border-black px-4 py-2 font-outfit font-black text-xs shadow-neo-sm hover:bg-gray-100"
-              @click="showCategoryModal = false"
+              @click="closeCategoryModal"
             >
               Batal
             </button>
             <button
               type="submit"
-              class="neubrutal-btn bg-neo-yellow text-black border-2 border-black px-5 py-2 font-outfit font-black text-xs shadow-neo hover:bg-yellow-300"
+              :disabled="isBusy('category-save')"
+              class="neubrutal-btn bg-neo-yellow text-black border-2 border-black px-5 py-2 font-outfit font-black text-xs shadow-neo hover:bg-yellow-300 disabled:opacity-60"
             >
-              {{ isEditCategory ? 'Simpan Kategori' : 'Buat Kategori' }}
+              {{
+                isBusy('category-save')
+                  ? 'Menyimpan...'
+                  : isEditCategory
+                    ? 'Simpan Kategori'
+                    : 'Buat Kategori'
+              }}
             </button>
           </div>
         </form>
       </div>
     </div>
 
-    <!-- ================= MODAL: ADD / EDIT VOUCHER ================= -->
     <div
       v-if="showVoucherModal"
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
@@ -3291,7 +3454,7 @@ onMounted(async () => {
 
           <div
             v-if="voucherForm.type === 'tiered'"
-            class="border-2 border-black p-3 bg-[#F8F8F6] space-y-2"
+            class="border-2 border-black p-3 bg-surface space-y-2"
           >
             <div class="flex items-center justify-between">
               <span class="font-outfit font-black text-xs uppercase">Tier Diskon</span>
@@ -3408,16 +3571,22 @@ onMounted(async () => {
             </button>
             <button
               type="submit"
-              class="neubrutal-btn bg-neo-yellow text-black border-2 border-black px-5 py-2 font-outfit font-black text-xs shadow-neo hover:bg-yellow-300"
+              :disabled="isBusy('voucher-save')"
+              class="neubrutal-btn bg-neo-yellow text-black border-2 border-black px-5 py-2 font-outfit font-black text-xs shadow-neo hover:bg-yellow-300 disabled:opacity-60"
             >
-              {{ isEditVoucher ? 'Simpan Perubahan' : 'Terbitkan Voucher' }}
+              {{
+                isBusy('voucher-save')
+                  ? 'Menyimpan...'
+                  : isEditVoucher
+                    ? 'Simpan Perubahan'
+                    : 'Terbitkan Voucher'
+              }}
             </button>
           </div>
         </form>
       </div>
     </div>
 
-    <!-- ================= MODAL: KONFIRMASI HAPUS BUKU ================= -->
     <div
       v-if="showDeleteConfirm && bookToDelete"
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
@@ -3440,16 +3609,16 @@ onMounted(async () => {
             Batal
           </button>
           <button
-            class="neubrutal-btn bg-red-500 text-white border-2 border-black px-4 py-2 font-outfit font-black text-xs shadow-neo hover:bg-red-600"
+            :disabled="isBusy('book-delete')"
+            class="neubrutal-btn bg-red-500 text-white border-2 border-black px-4 py-2 font-outfit font-black text-xs shadow-neo hover:bg-red-600 disabled:opacity-60"
             @click="executeDeleteBook"
           >
-            Ya, Hapus Buku
+            {{ isBusy('book-delete') ? 'Menghapus...' : 'Ya, Hapus Buku' }}
           </button>
         </div>
       </div>
     </div>
 
-    <!-- ================= MODAL: KONFIRMASI HAPUS KATEGORI ================= -->
     <div
       v-if="showDeleteCategoryConfirm && categoryToDelete"
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
@@ -3472,16 +3641,16 @@ onMounted(async () => {
             Batal
           </button>
           <button
-            class="neubrutal-btn bg-red-500 text-white border-2 border-black px-4 py-2 font-outfit font-black text-xs shadow-neo hover:bg-red-600"
+            :disabled="isBusy('category-delete')"
+            class="neubrutal-btn bg-red-500 text-white border-2 border-black px-4 py-2 font-outfit font-black text-xs shadow-neo hover:bg-red-600 disabled:opacity-60"
             @click="executeDeleteCategory"
           >
-            Ya, Hapus Kategori
+            {{ isBusy('category-delete') ? 'Menghapus...' : 'Ya, Hapus Kategori' }}
           </button>
         </div>
       </div>
     </div>
 
-    <!-- ================= MODAL: KONFIRMASI HAPUS VOUCHER ================= -->
     <div
       v-if="showDeleteVoucherConfirm && voucherToDelete"
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
@@ -3504,16 +3673,16 @@ onMounted(async () => {
             Batal
           </button>
           <button
-            class="neubrutal-btn bg-red-500 text-white border-2 border-black px-4 py-2 font-outfit font-black text-xs shadow-neo hover:bg-red-600"
+            :disabled="isBusy('voucher-delete')"
+            class="neubrutal-btn bg-red-500 text-white border-2 border-black px-4 py-2 font-outfit font-black text-xs shadow-neo hover:bg-red-600 disabled:opacity-60"
             @click="executeDeleteVoucher"
           >
-            Ya, Hapus Voucher
+            {{ isBusy('voucher-delete') ? 'Menghapus...' : 'Ya, Hapus Voucher' }}
           </button>
         </div>
       </div>
     </div>
 
-    <!-- ================= MODAL: ADMIN ORDER DETAIL ================= -->
     <div
       v-if="showAdminOrderModal"
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
@@ -3548,12 +3717,7 @@ onMounted(async () => {
               <span class="font-outfit font-black text-lg"
                 >#{{ adminOrderDetail.invoice_number }}</span
               >
-              <span
-                class="inline-block border-2 border-black font-outfit font-black text-[10px] py-1 px-2.5 rounded-[2px] uppercase"
-                :class="statusClass(adminOrderDetail.status)"
-              >
-                {{ statusLabel(adminOrderDetail.status) }}
-              </span>
+              <StatusBadge :status="adminOrderDetail.status" size="xs" />
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -3729,7 +3893,6 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- ================= MODAL: ADD / EDIT AUTHOR & PUBLISHER ================= -->
     <div
       v-if="showPeopleModal"
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
@@ -3783,16 +3946,16 @@ onMounted(async () => {
             </button>
             <button
               type="submit"
-              class="neubrutal-btn bg-neo-yellow text-black border-2 border-black px-5 py-2 font-outfit font-black text-xs shadow-neo hover:bg-yellow-300"
+              :disabled="isBusy('people-save')"
+              class="neubrutal-btn bg-neo-yellow text-black border-2 border-black px-5 py-2 font-outfit font-black text-xs shadow-neo hover:bg-yellow-300 disabled:opacity-60"
             >
-              Simpan
+              {{ isBusy('people-save') ? 'Menyimpan...' : 'Simpan' }}
             </button>
           </div>
         </form>
       </div>
     </div>
 
-    <!-- ================= MODAL: KONFIRMASI HAPUS PENULIS / PENERBIT ================= -->
     <div
       v-if="showDeletePeopleConfirm && peopleToDelete"
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
@@ -3817,16 +3980,16 @@ onMounted(async () => {
             Batal
           </button>
           <button
-            class="neubrutal-btn bg-red-500 text-white border-2 border-black px-4 py-2 font-outfit font-black text-xs shadow-neo hover:bg-red-600"
+            :disabled="isBusy('people-delete')"
+            class="neubrutal-btn bg-red-500 text-white border-2 border-black px-4 py-2 font-outfit font-black text-xs shadow-neo hover:bg-red-600 disabled:opacity-60"
             @click="executeDeletePeople"
           >
-            Ya, Hapus
+            {{ isBusy('people-delete') ? 'Menghapus...' : 'Ya, Hapus' }}
           </button>
         </div>
       </div>
     </div>
 
-    <!-- ================= MODAL: EDIT PAYMENT METHOD ================= -->
     <div
       v-if="showPaymentModal"
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
@@ -3875,7 +4038,7 @@ onMounted(async () => {
             ></textarea>
           </div>
 
-          <div class="border-2 border-black p-3 bg-[#F8F8F6] space-y-2">
+          <div class="border-2 border-black p-3 bg-surface space-y-2">
             <div class="flex items-center justify-between">
               <span class="font-outfit font-black text-xs uppercase">Logo Pembayaran</span>
               <span

@@ -5,7 +5,11 @@ import { useStore } from '@/composables/useStore'
 import { api } from '@/lib/api'
 import { assetUrl } from '@/lib/assets'
 import BookCover from '@/components/BookCover.vue'
+import PasswordValidation from '@/components/PasswordValidation.vue'
+import { getPasswordStrength } from '@/lib/password'
+import { COMPANY_NAME, COMPANY_ADDRESS } from '@/lib/brand'
 import PaymentInstructions from '@/components/PaymentInstructions.vue'
+import StatusBadge from '@/components/StatusBadge.vue'
 
 const route = useRoute()
 const {
@@ -25,7 +29,12 @@ const {
   changePassword,
 } = useStore()
 
-// Tab Navigation
+const busy = ref({})
+const isBusy = (key) => Boolean(busy.value[key])
+const setBusy = (key, value) => {
+  busy.value = { ...busy.value, [key]: value }
+}
+
 const activeTab = ref('orders') // 'orders' | 'library' | 'wishlist' | 'addresses' | 'profile'
 const orderFilter = ref('all') // 'all' | 'menunggu' | 'diproses' | 'dikirim' | 'selesai' | 'dibatalkan'
 const addressSaving = ref(false)
@@ -65,7 +74,6 @@ onMounted(async () => {
   await Promise.all([loadOrders(), loadAddresses(), loadWishlist()])
 })
 
-// Orders
 const filteredOrders = computed(() => {
   if (orderFilter.value === 'all') return state.orders
   return state.orders.filter((o) => o.status === orderFilter.value)
@@ -75,7 +83,6 @@ const activeOrdersCount = computed(() => {
   return state.orders.filter((o) => ['menunggu', 'diproses', 'dikirim'].includes(o.status)).length
 })
 
-// My Library Books
 const myLibraryBooks = computed(() => {
   const map = new Map()
   state.orders
@@ -95,7 +102,6 @@ const myLibraryBooks = computed(() => {
   return Array.from(map.values())
 })
 
-// Currency Formatter
 function formatRupiah(val) {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
@@ -104,7 +110,6 @@ function formatRupiah(val) {
   }).format(val || 0)
 }
 
-// Modals
 const selectedOrder = ref(null)
 const showTrackingModal = ref(false)
 const showInvoiceModal = ref(false)
@@ -171,23 +176,13 @@ function openReading(book) {
   showReadingModal.value = true
 }
 
-// Password Form
 const passwordForm = ref({
   current: '',
   newPass: '',
   confirmPass: '',
 })
 
-function missingPasswordRules(value) {
-  const checks = [
-    [value.length >= 8, 'minimal 8 karakter'],
-    [/[A-Z]/.test(value), 'huruf besar'],
-    [/[a-z]/.test(value), 'huruf kecil'],
-    [/\d/.test(value), 'angka'],
-    [/[^A-Za-z0-9]/.test(value), 'simbol'],
-  ]
-  return checks.filter(([ok]) => !ok).map(([, label]) => label)
-}
+const passwordStrength = computed(() => getPasswordStrength(passwordForm.value.newPass))
 
 async function handleChangePassword() {
   if (!passwordForm.value.current || !passwordForm.value.newPass) {
@@ -198,21 +193,25 @@ async function handleChangePassword() {
     showToast('Konfirmasi password tidak cocok.', { type: 'error' })
     return
   }
-  const missing = missingPasswordRules(passwordForm.value.newPass)
-  if (missing.length) {
-    showToast(`Password baru butuh ${missing.join(', ')}.`, { type: 'error' })
+  if (passwordStrength.value.score < 4) {
+    showToast('Password belum cukup kuat. Tambahkan variasi karakter.', { type: 'error' })
     return
   }
 
-  const ok = await changePassword(
-    passwordForm.value.current,
-    passwordForm.value.newPass,
-    passwordForm.value.confirmPass,
-  )
-  if (ok) passwordForm.value = { current: '', newPass: '', confirmPass: '' }
+  if (isBusy('password')) return
+  setBusy('password', true)
+  try {
+    const ok = await changePassword(
+      passwordForm.value.current,
+      passwordForm.value.newPass,
+      passwordForm.value.confirmPass,
+    )
+    if (ok) passwordForm.value = { current: '', newPass: '', confirmPass: '' }
+  } finally {
+    setBusy('password', false)
+  }
 }
 
-// Address Form
 const editingAddressId = ref(null)
 
 function emptyAddressForm() {
@@ -280,6 +279,60 @@ async function handleClearWishlist() {
     if (cleared) showClearWishlistConfirm.value = false
   } finally {
     clearingWishlist.value = false
+  }
+}
+
+async function handleRemoveAddress(addr) {
+  const key = `addr-delete-${addr.id}`
+  if (isBusy(key)) return
+  setBusy(key, true)
+  try {
+    await removeAddress(addr.id)
+  } finally {
+    setBusy(key, false)
+  }
+}
+
+async function handleSetPrimary(addr) {
+  const key = `addr-primary-${addr.id}`
+  if (isBusy(key)) return
+  setBusy(key, true)
+  try {
+    await setDefaultAddress(addr.id)
+  } finally {
+    setBusy(key, false)
+  }
+}
+
+async function handleWishlistRemove(item) {
+  const key = `wish-remove-${item.bookId}`
+  if (isBusy(key)) return
+  setBusy(key, true)
+  try {
+    await toggleWishlist(item)
+  } finally {
+    setBusy(key, false)
+  }
+}
+
+async function handleWishlistMove(item) {
+  const key = `wish-move-${item.bookId}`
+  if (isBusy(key)) return
+  setBusy(key, true)
+  try {
+    await moveWishlistToCart(item.bookId)
+  } finally {
+    setBusy(key, false)
+  }
+}
+
+async function handleReorder(order) {
+  if (isBusy('reorder')) return
+  setBusy('reorder', true)
+  try {
+    await reorderBook(order)
+  } finally {
+    setBusy('reorder', false)
   }
 }
 
@@ -369,7 +422,6 @@ function paymentMethodLabel(order) {
 <template>
   <div class="min-h-screen bg-background py-6 sm:py-10">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <!-- Breadcrumb & Mode Switcher Bar -->
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div
           class="flex items-center gap-2 text-xs sm:text-sm font-outfit font-extrabold text-muted-foreground"
@@ -380,7 +432,6 @@ function paymentMethodLabel(order) {
         </div>
       </div>
 
-      <!-- User Profile Banner (No Tiers) -->
       <section
         class="bg-white border-3 sm:border-4 border-black p-5 sm:p-7 rounded-[2px] shadow-neo-md sm:shadow-neo-lg mb-8"
       >
@@ -408,7 +459,6 @@ function paymentMethodLabel(order) {
             </div>
           </div>
 
-          <!-- Quick Stats Cards (No Tiers) -->
           <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 lg:gap-4 shrink-0">
             <div
               class="bg-background border-2 border-black p-3 rounded-[2px] shadow-neo-sm text-center"
@@ -452,7 +502,6 @@ function paymentMethodLabel(order) {
         </div>
       </section>
 
-      <!-- Dashboard Tabs Navigation (No Emojis) -->
       <div class="flex items-center gap-2 overflow-x-auto pb-3 mb-6 scrollbar-none">
         <button
           class="neubrutal-btn px-4 sm:px-5 py-2.5 rounded-[2px] font-outfit font-black text-xs sm:text-sm whitespace-nowrap transition-all flex items-center gap-2 border-2 sm:border-3 border-black"
@@ -608,7 +657,6 @@ function paymentMethodLabel(order) {
         </button>
       </div>
 
-      <!-- ================= TAB 1: ORDERS ================= -->
       <div v-if="activeTab === 'orders'" class="space-y-6">
         <div
           class="bg-white border-3 border-black p-3.5 rounded-[2px] shadow-neo-sm flex flex-wrap items-center justify-between gap-3"
@@ -665,7 +713,6 @@ function paymentMethodLabel(order) {
           </div>
         </div>
 
-        <!-- Orders Loading -->
         <div v-if="state.ordersLoading" class="space-y-5">
           <div
             v-for="n in 3"
@@ -674,7 +721,6 @@ function paymentMethodLabel(order) {
           ></div>
         </div>
 
-        <!-- Orders Empty State -->
         <div
           v-else-if="filteredOrders.length === 0"
           class="bg-white border-3 border-black p-12 text-center rounded-[2px] shadow-neo"
@@ -708,16 +754,14 @@ function paymentMethodLabel(order) {
           </RouterLink>
         </div>
 
-        <!-- Order Cards List -->
         <div v-else class="space-y-5">
           <div
             v-for="order in filteredOrders"
             :key="order.id"
             class="bg-white border-3 border-black rounded-[2px] shadow-neo overflow-hidden transition-all hover:shadow-neo-md"
           >
-            <!-- Header -->
             <div
-              class="bg-[#F8F8F6] border-b-3 border-black px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3"
+              class="bg-surface border-b-3 border-black px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3"
             >
               <div class="flex items-center gap-3">
                 <span class="font-outfit font-black text-sm sm:text-base text-black tracking-tight">
@@ -729,22 +773,10 @@ function paymentMethodLabel(order) {
               </div>
 
               <div class="flex items-center gap-2">
-                <span
-                  class="border-2 border-black px-2.5 py-0.5 rounded-[2px] font-outfit font-black text-xs uppercase shadow-neo-sm"
-                  :class="{
-                    'bg-neo-yellow text-black': order.status === 'diproses',
-                    'bg-[#6EC6FF] text-black': order.status === 'dikirim',
-                    'bg-neo-lime text-black': order.status === 'selesai',
-                    'bg-red-400 text-white': order.status === 'dibatalkan',
-                    'bg-gray-200 text-black': order.status === 'menunggu',
-                  }"
-                >
-                  {{ order.status }}
-                </span>
+                <StatusBadge :status="order.rawStatus" size="xs" />
               </div>
             </div>
 
-            <!-- Body Items -->
             <div class="p-4 sm:p-6 space-y-4">
               <div
                 v-for="item in order.items"
@@ -786,7 +818,6 @@ function paymentMethodLabel(order) {
                 </div>
               </div>
 
-              <!-- Shipping & Payment Info -->
               <div
                 class="bg-background border-2 border-black p-3 rounded-[2px] flex flex-wrap items-center justify-between gap-3 text-xs font-sans"
               >
@@ -820,7 +851,6 @@ function paymentMethodLabel(order) {
               </div>
             </div>
 
-            <!-- Footer: Total & Actions -->
             <div
               class="bg-white border-t-3 border-black px-4 sm:px-6 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
             >
@@ -882,10 +912,11 @@ function paymentMethodLabel(order) {
                 </button>
 
                 <button
-                  class="neubrutal-btn bg-neo-yellow text-black border-2 border-black px-4 py-2 font-outfit font-black text-xs shadow-neo-sm hover:bg-yellow-300"
-                  @click="reorderBook(order)"
+                  :disabled="isBusy('reorder')"
+                  class="neubrutal-btn bg-neo-yellow text-black border-2 border-black px-4 py-2 font-outfit font-black text-xs shadow-neo-sm hover:bg-yellow-300 disabled:opacity-60"
+                  @click="handleReorder(order)"
                 >
-                  Beli Lagi
+                  {{ isBusy('reorder') ? 'Memproses...' : 'Beli Lagi' }}
                 </button>
               </div>
             </div>
@@ -893,7 +924,6 @@ function paymentMethodLabel(order) {
         </div>
       </div>
 
-      <!-- ================= TAB 3: LIBRARY (RAK BUKU) ================= -->
       <div v-if="activeTab === 'library'" class="space-y-6">
         <div
           class="flex items-center justify-between bg-white border-3 border-black p-4 rounded-[2px] shadow-neo-sm"
@@ -967,7 +997,6 @@ function paymentMethodLabel(order) {
         </div>
       </div>
 
-      <!-- ================= TAB 3.5: WISHLIST ================= -->
       <div v-if="activeTab === 'wishlist'" class="space-y-6">
         <div
           class="flex items-center justify-between gap-3 bg-white border-3 border-black p-4 rounded-[2px] shadow-neo-sm"
@@ -1060,17 +1089,19 @@ function paymentMethodLabel(order) {
               <div class="flex flex-wrap gap-2 mt-3">
                 <button
                   type="button"
-                  class="neubrutal-btn bg-neo-yellow text-black border-2 border-black px-2.5 py-1 font-outfit font-black text-[10px] shadow-neo-sm"
-                  @click="moveWishlistToCart(item.bookId)"
+                  :disabled="isBusy(`wish-move-${item.bookId}`)"
+                  class="neubrutal-btn bg-neo-yellow text-black border-2 border-black px-2.5 py-1 font-outfit font-black text-[10px] shadow-neo-sm disabled:opacity-60"
+                  @click="handleWishlistMove(item)"
                 >
-                  Ke Keranjang
+                  {{ isBusy(`wish-move-${item.bookId}`) ? 'Memproses...' : 'Ke Keranjang' }}
                 </button>
                 <button
                   type="button"
-                  class="neubrutal-btn bg-white text-red-600 border-2 border-black px-2.5 py-1 font-outfit font-black text-[10px] shadow-neo-sm"
-                  @click="toggleWishlist(item)"
+                  :disabled="isBusy(`wish-remove-${item.bookId}`)"
+                  class="neubrutal-btn bg-white text-red-600 border-2 border-black px-2.5 py-1 font-outfit font-black text-[10px] shadow-neo-sm disabled:opacity-60"
+                  @click="handleWishlistRemove(item)"
                 >
-                  Hapus
+                  {{ isBusy(`wish-remove-${item.bookId}`) ? 'Menghapus...' : 'Hapus' }}
                 </button>
               </div>
             </div>
@@ -1078,7 +1109,6 @@ function paymentMethodLabel(order) {
         </div>
       </div>
 
-      <!-- ================= TAB 4: ADDRESSES ================= -->
       <div v-if="activeTab === 'addresses'" class="space-y-6">
         <div
           class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border-3 border-black p-4 rounded-[2px] shadow-neo-sm"
@@ -1133,10 +1163,11 @@ function paymentMethodLabel(order) {
                   </button>
                   <button
                     v-if="!addr.isDefault"
-                    class="text-xs font-outfit font-bold text-red-600 hover:underline"
-                    @click="removeAddress(addr.id)"
+                    :disabled="isBusy(`addr-delete-${addr.id}`)"
+                    class="text-xs font-outfit font-bold text-red-600 hover:underline disabled:opacity-50"
+                    @click="handleRemoveAddress(addr)"
                   >
-                    Hapus
+                    {{ isBusy(`addr-delete-${addr.id}`) ? 'Menghapus...' : 'Hapus' }}
                   </button>
                 </div>
               </div>
@@ -1153,10 +1184,11 @@ function paymentMethodLabel(order) {
             <div class="mt-4 pt-3 border-t border-black/10 flex items-center justify-between">
               <button
                 v-if="!addr.isDefault"
-                class="neubrutal-btn bg-white border-2 border-black px-3 py-1 font-outfit font-black text-xs shadow-neo-sm hover:bg-neo-yellow"
-                @click="setDefaultAddress(addr.id)"
+                :disabled="isBusy(`addr-primary-${addr.id}`)"
+                class="neubrutal-btn bg-white border-2 border-black px-3 py-1 font-outfit font-black text-xs shadow-neo-sm hover:bg-neo-yellow disabled:opacity-60"
+                @click="handleSetPrimary(addr)"
               >
-                Jadikan Alamat Utama
+                {{ isBusy(`addr-primary-${addr.id}`) ? 'Memproses...' : 'Jadikan Alamat Utama' }}
               </button>
               <span v-else class="text-xs font-sans font-bold text-green-700">
                 Alamat pengiriman aktif utama
@@ -1166,7 +1198,6 @@ function paymentMethodLabel(order) {
         </div>
       </div>
 
-      <!-- ================= TAB 5: PROFILE ================= -->
       <div v-if="activeTab === 'profile'" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div
           class="lg:col-span-7 bg-white border-3 border-black p-6 rounded-[2px] shadow-neo space-y-5"
@@ -1254,12 +1285,14 @@ function paymentMethodLabel(order) {
                 v-model="passwordForm.newPass"
                 type="password"
                 autocomplete="new-password"
-                placeholder="Min. 8 karakter + simbol"
+                placeholder="Minimal 8 karakter"
                 class="w-full bg-background border-2 border-black p-2.5 font-sans text-sm outline-none shadow-neo-sm"
               />
-              <p class="font-sans text-[10px] font-semibold text-muted-foreground mt-1">
-                Minimal 8 karakter, kombinasi huruf besar, huruf kecil, angka, dan simbol.
-              </p>
+              <PasswordValidation
+                :password="passwordForm.newPass"
+                :confirm="passwordForm.confirmPass"
+                class="mt-2"
+              />
             </div>
 
             <div>
@@ -1277,16 +1310,16 @@ function paymentMethodLabel(order) {
 
             <button
               type="submit"
-              class="w-full neubrutal-btn bg-white text-black border-2 border-black py-2.5 font-outfit font-black text-xs shadow-neo hover:bg-gray-100"
+              :disabled="isBusy('password')"
+              class="w-full neubrutal-btn bg-white text-black border-2 border-black py-2.5 font-outfit font-black text-xs shadow-neo hover:bg-gray-100 disabled:opacity-60"
             >
-              Ubah Password
+              {{ isBusy('password') ? 'Menyimpan...' : 'Ubah Password' }}
             </button>
           </form>
         </div>
       </div>
     </div>
 
-    <!-- ================= MODAL: TRACKING (NO EMOJIS) ================= -->
     <div
       v-if="showTrackingModal && selectedOrder"
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
@@ -1410,7 +1443,6 @@ function paymentMethodLabel(order) {
       </div>
     </div>
 
-    <!-- ================= MODAL: INVOICE (NO EMOJIS) ================= -->
     <div
       v-if="showInvoiceModal && selectedOrder"
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
@@ -1466,12 +1498,10 @@ function paymentMethodLabel(order) {
               <span class="font-outfit font-black text-xs text-muted-foreground block"
                 >DIBAYAR KEPADA:</span
               >
-              <p class="font-outfit font-black text-sm text-black">
-                PT BOOKSTORE INDONESIA DIGITAL
-              </p>
-              <p class="font-sans text-xs text-muted-foreground">Jakarta Pusat, Indonesia</p>
+              <p class="font-outfit font-black text-sm text-black">{{ COMPANY_NAME }}</p>
+              <p class="font-sans text-xs text-muted-foreground">{{ COMPANY_ADDRESS }}</p>
               <p class="font-mono text-xs text-muted-foreground mt-1">
-                Ref Gateway: {{ selectedOrder.paymentGatewayTxId || 'MID-TX-2026' }}
+                Ref Gateway: {{ selectedOrder.paymentGatewayTxId || '—' }}
               </p>
             </div>
 
@@ -1487,7 +1517,7 @@ function paymentMethodLabel(order) {
           </div>
 
           <div
-            class="bg-[#F8F8F6] border-2 border-black p-3.5 rounded-[2px] text-xs font-sans space-y-1"
+            class="bg-surface border-2 border-black p-3.5 rounded-[2px] text-xs font-sans space-y-1"
           >
             <span class="font-outfit font-black text-xs uppercase block text-muted-foreground"
               >PEMBELI:</span
@@ -1581,14 +1611,13 @@ function paymentMethodLabel(order) {
       </div>
     </div>
 
-    <!-- ================= MODAL: SAMPLE READER ================= -->
     <div
       v-if="showReadingModal && readingBook"
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs"
       @click.self="showReadingModal = false"
     >
       <div
-        class="bg-[#FBF9F5] border-4 border-black max-w-2xl w-full rounded-[2px] shadow-neo-xl overflow-hidden max-h-[85vh] flex flex-col"
+        class="bg-paper border-4 border-black max-w-2xl w-full rounded-[2px] shadow-neo-xl overflow-hidden max-h-[85vh] flex flex-col"
       >
         <div class="bg-white border-b-3 border-black p-4 flex items-center justify-between">
           <div>
@@ -1650,7 +1679,6 @@ function paymentMethodLabel(order) {
       </div>
     </div>
 
-    <!-- ================= MODAL: ADD ADDRESS ================= -->
     <div
       v-if="showAddAddressModal"
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
@@ -1760,7 +1788,6 @@ function paymentMethodLabel(order) {
       </div>
     </div>
 
-    <!-- ================= MODAL: KOSONGKAN WISHLIST ================= -->
     <div
       v-if="showClearWishlistConfirm"
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"

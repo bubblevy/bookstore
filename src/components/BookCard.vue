@@ -12,7 +12,7 @@ const props = defineProps({
 })
 
 const router = useRouter()
-const { state, toggleWishlist, isWishlisted } = useStore()
+const { state, toggleWishlist, isWishlisted, isWishlistPending } = useStore()
 const imgError = ref(false)
 const imgLoaded = ref(false)
 let imgTimer = null
@@ -101,6 +101,13 @@ function goToDetail() {
       </span>
 
       <span
+        v-if="(Number(book.stock) || 0) <= 0"
+        class="absolute bottom-2 right-2 bg-red-600 text-white border-2 border-black px-2 py-0.5 rounded-[2px] font-outfit font-black text-[9px] uppercase tracking-wide shadow-neo-sm"
+      >
+        Stok Habis
+      </span>
+
+      <span
         v-if="hasDiscount"
         class="absolute top-2 left-2 bg-neo-yellow text-black border-2 border-black px-2 py-0.5 rounded-[2px] font-outfit font-black text-[10px] shadow-neo-sm"
       >
@@ -110,7 +117,8 @@ function goToDetail() {
       <button
         v-if="state.isLoggedIn"
         type="button"
-        class="absolute top-2 right-2 w-8 h-8 bg-white border-2 border-black rounded-full flex items-center justify-center shadow-neo-sm hover:bg-neo-pink"
+        :disabled="isWishlistPending(book.id)"
+        class="absolute top-2 right-2 w-8 h-8 bg-white border-2 border-black rounded-full flex items-center justify-center shadow-neo-sm hover:bg-neo-pink disabled:opacity-50"
         :aria-label="wishlisted ? 'Hapus dari wishlist' : 'Tambah ke wishlist'"
         @click.stop="toggleWishlist(book)"
       >

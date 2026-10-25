@@ -1,7 +1,9 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter, useRoute, RouterLink } from 'vue-router'
 import { useStore } from '@/composables/useStore'
+import { getPasswordStrength } from '@/lib/password'
+import PasswordValidation from '@/components/PasswordValidation.vue'
 import AuthLayout from './AuthLayout.vue'
 
 const router = useRouter()
@@ -17,6 +19,8 @@ const showPassword = ref(false)
 const showConfirmPassword = ref(false)
 const errorMessage = ref('')
 const isLoading = ref(false)
+
+const passwordStrength = computed(() => getPasswordStrength(password.value))
 
 async function handleRegister() {
   errorMessage.value = ''
@@ -36,13 +40,8 @@ async function handleRegister() {
     return
   }
 
-  if (password.value.length < 8) {
-    errorMessage.value = 'Password minimal 8 karakter'
-    return
-  }
-
-  if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(password.value)) {
-    errorMessage.value = 'Password harus mengandung huruf besar, huruf kecil, angka, dan simbol'
+  if (passwordStrength.value.score < 4) {
+    errorMessage.value = 'Password belum cukup kuat. Tambahkan variasi karakter.'
     return
   }
 
@@ -67,7 +66,10 @@ async function handleRegister() {
 
   router.push({
     name: 'login',
-    query: route.query.redirect ? { redirect: route.query.redirect } : {},
+    query: {
+      ...(route.query.redirect ? { redirect: route.query.redirect } : {}),
+      activation: 'resend',
+    },
   })
 }
 
@@ -99,19 +101,19 @@ function handleGoogleRegister() {
         >
           <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path
-              fill="#4285F4"
+              fill="var(--color-google-blue)"
               d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17Z"
             />
             <path
-              fill="#34A853"
+              fill="var(--color-google-green)"
               d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24Z"
             />
             <path
-              fill="#FBBC05"
+              fill="var(--color-google-yellow)"
               d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.97 0 12s.45 3.82 1.25 5.42l4.03-3.15Z"
             />
             <path
-              fill="#EA4335"
+              fill="var(--color-google-red)"
               d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98Z"
             />
           </svg>
@@ -177,12 +179,15 @@ function handleGoogleRegister() {
             />
           </label>
 
-          <label class="block space-y-1">
-            <span class="font-outfit font-black text-xs uppercase tracking-wide"
-              >Password (Min. 8 Karakter)</span
+          <div class="block space-y-1">
+            <label
+              for="register-password"
+              class="font-outfit font-black text-xs uppercase tracking-wide"
+              >Password</label
             >
             <div class="relative">
               <input
+                id="register-password"
                 v-model="password"
                 :type="showPassword ? 'text' : 'password'"
                 required
@@ -226,14 +231,19 @@ function handleGoogleRegister() {
                 </svg>
               </button>
             </div>
-          </label>
 
-          <label class="block space-y-1">
-            <span class="font-outfit font-black text-xs uppercase tracking-wide"
-              >Ulangi Password</span
+            <PasswordValidation :password="password" :confirm="confirmPassword" class="mt-1.5" />
+          </div>
+
+          <div class="block space-y-1">
+            <label
+              for="register-confirm-password"
+              class="font-outfit font-black text-xs uppercase tracking-wide"
+              >Ulangi Password</label
             >
             <div class="relative">
               <input
+                id="register-confirm-password"
                 v-model="confirmPassword"
                 :type="showConfirmPassword ? 'text' : 'password'"
                 required
@@ -277,7 +287,7 @@ function handleGoogleRegister() {
                 </svg>
               </button>
             </div>
-          </label>
+          </div>
 
           <label class="flex items-start gap-2 cursor-pointer select-none pt-1">
             <input
@@ -287,9 +297,19 @@ function handleGoogleRegister() {
             />
             <span class="font-sans text-xs text-gray-700 leading-snug">
               Saya menyetujui
-              <span class="font-bold text-black underline">Syarat & Ketentuan</span>
+              <RouterLink
+                to="/syarat-ketentuan"
+                class="font-bold text-black underline"
+                target="_blank"
+                >Syarat & Ketentuan</RouterLink
+              >
               serta
-              <span class="font-bold text-black underline">Kebijakan Privasi</span>
+              <RouterLink
+                to="/kebijakan-privasi"
+                class="font-bold text-black underline"
+                target="_blank"
+                >Kebijakan Privasi</RouterLink
+              >
               BookStore Indonesia.
             </span>
           </label>
@@ -305,7 +325,7 @@ function handleGoogleRegister() {
         </form>
       </div>
 
-      <div class="mt-5 pt-4 bg-[#F8F8F6] border-2 border-black/10 rounded-[2px] p-3 text-center">
+      <div class="mt-5 pt-4 bg-surface border-2 border-black/10 rounded-[2px] p-3 text-center">
         <p class="font-sans text-xs font-semibold text-muted-foreground">
           Sudah memiliki akun?
           <RouterLink
