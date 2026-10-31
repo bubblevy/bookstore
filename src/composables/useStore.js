@@ -1,7 +1,7 @@
 import { reactive, readonly } from 'vue'
 import router from '@/router'
 import { api, session } from '@/lib/api'
-import { mapBook, mapBookDetail, mapCartItem, mapCategory } from '@/lib/mappers'
+import { mapBook, mapBookDetail, mapCartItem, mapCategory, formatFullAddress } from '@/lib/mappers'
 import { shippingLabel, ensureCourierCatalog } from '@/lib/shipping'
 import { localizeApiError } from '@/lib/errors'
 
@@ -23,8 +23,7 @@ function persistBookCache() {
   try {
     localStorage.setItem(BOOK_CACHE_KEY, JSON.stringify(bookCache))
   } catch {
-    // Cache is a nicety (author/theme in the cart), not a requirement.
-  }
+      }
 }
 
 function rememberBook(book) {
@@ -69,6 +68,8 @@ const state = reactive({
   modalPayload: null,
 
   books: [],
+  popularBooks: [],
+  popularBooksLoading: false,
   categories: [],
   categoriesLoading: true,
 
@@ -93,7 +94,7 @@ function showToast(message, options = {}) {
   const key = `${type}|${message}`
   const now = Date.now()
 
-  // Parallel requests often fail together; collapse identical back-to-back toasts.
+  // Prevent duplicate back-to-back toast notifications.
   if (recentToast.key === key && now - recentToast.at < 1500) return recentToast.id
 
   const id = ++toastId
@@ -146,8 +147,8 @@ function expireSession() {
   showToast('Sesi Anda telah berakhir. Silakan masuk kembali.', { type: 'info' })
 
   const routeName = String(router.currentRoute.value.name || '')
-  if (routeName && routeName !== 'home') {
-    router.replace({ name: 'home' })
+  if (routeName !== 'login') {
+    router.replace({ name: 'login' })
   }
 
   setTimeout(() => {
@@ -258,6 +259,11 @@ function buildOrderTimeline(detail) {
   return steps
 }
 
+let ordersPromise = null
+let addressesPromise = null
+let wishlistPromise = null
+
+
 function mapOrder(detail) {
   const recipient = detail.recipient || {}
   const shipping = detail.shipping || {}
@@ -272,7 +278,86 @@ function mapOrder(detail) {
     (payment.qr_url ? 'QRIS' : '') ||
     (payment.deeplink_url ? 'E-Wallet' : '') ||
     payment.payment_type ||
+    detail.payment_method ||
     '-'
+
+  const hasItems = Array.isArray(detail.items) && detail.items.length > 0
+  const items = hasItems
+    ? detail.items.map((item) => {
+        const bookId = item.book_id || item.bookId || item.id
+        const book =
+          state.books.find((b) => String(b.id) === String(bookId)) ||
+          bookCache[bookId] ||
+          state.books.find(
+            (b) =>
+              b.title &&
+              item.title &&
+              b.title.trim().toLowerCase() === String(item.title).trim().toLowerCase(),
+          )
+        const cover =
+          book?.coverImage ||
+          book?.cover ||
+          (item.cover_image && !item.cover_image.includes('/static/covers/')
+            ? item.cover_image
+            : item.cover && !item.cover.includes('/static/covers/')
+              ? item.cover
+              : '')
+        return {
+          id: bookId,
+          title: item.title || book?.title || 'Buku',
+          author:
+            item.author ||
+            (typeof book?.author === 'object' ? book.author?.name : book?.author) ||
+            '',
+          price: Number(item.price) || Number(book?.price) || 0,
+          quantity: Number(item.quantity) || 1,
+          coverImage: cover,
+          cover: cover,
+          theme: book?.theme || 'violet',
+        }
+      })
+    : (() => {
+        const matchedBook = detail.first_item_title
+          ? state.books.find(
+              (b) =>
+                b.title &&
+                b.title.trim().toLowerCase() ===
+                  String(detail.first_item_title).trim().toLowerCase(),
+            )
+          : null
+        const cover =
+          matchedBook?.coverImage ||
+          matchedBook?.cover ||
+          (detail.first_item_cover && !detail.first_item_cover.includes('/static/covers/')
+            ? detail.first_item_cover
+            : detail.first_item_cover_image || '')
+        return [
+          {
+            id: matchedBook?.id || detail.id || detail.invoice_number,
+            title: detail.first_item_title || 'Buku Pesanan',
+            author:
+              (matchedBook
+                ? typeof matchedBook.author === 'object'
+                  ? matchedBook.author.name
+                  : matchedBook.author
+                : '') ||
+              (detail.extra_item_count > 0 ? `+${detail.extra_item_count} buku lainnya` : ''),
+            price: Math.round(
+              (Number(detail.total_amount) || 0) / (Number(detail.total_quantity) || 1),
+            ),
+            quantity: Number(detail.total_quantity) || 1,
+            coverImage: cover,
+            cover: cover,
+            theme: matchedBook?.theme || 'violet',
+          },
+        ]
+      })()
+
+  const courierLabel = shipping.courier
+    ? shippingLabel(shipping.courier, shipping.courier_service)
+    : detail.courier
+      ? shippingLabel(detail.courier)
+      : 'Reguler'
 
   return {
     id: detail.invoice_number,
@@ -283,14 +368,20 @@ function mapOrder(detail) {
     customerName: recipient.name || state.userName,
     customerEmail: state.userEmail,
     customerPhone: recipient.phone || '',
-    address: [recipient.address, recipient.city, recipient.postal_code].filter(Boolean).join(', '),
-    courier: shippingLabel(shipping.courier, shipping.courier_service),
-    trackingNumber: shipping.tracking_number || '',
+    address: formatFullAddress(recipient),
+    courier: courierLabel,
+    trackingNumber: shipping.tracking_number || detail.tracking_number || '',
     paymentMethod,
     methodName: paymentMethod,
     instructions: Array.isArray(payment.instructions) ? payment.instructions : [],
     paymentMethodCode: payment.payment_method || '',
-    paymentStatus: payment.status || '',
+    paymentStatus:
+      payment.status ||
+      (['paid', 'processing', 'shipped', 'completed'].includes(detail.status)
+        ? 'settlement'
+        : detail.status === 'waiting_payment'
+          ? 'pending'
+          : ''),
     paymentDeadline: paymentDeadlineAt ? formatDateTime(paymentDeadlineAt) : '',
     paymentDeadlineAt,
     paymentGatewayTxId:
@@ -308,90 +399,246 @@ function mapOrder(detail) {
     paymentCode: payment.payment_code || '',
     store: payment.store || '',
     deeplinkUrl: payment.deeplink_url || '',
-    subtotal: Number(pricing.items_subtotal) || 0,
+    subtotal: Number(pricing.items_subtotal ?? detail.total_amount) || 0,
     discount: Number(pricing.discount_amount) || 0,
     shipping: Number(pricing.shipping_cost) || 0,
     adminFee: Number(pricing.admin_fee) || 0,
-    total: Number(pricing.total_amount) || 0,
-    items: (detail.items || []).map((item) => {
-      const book = state.books.find((b) => String(b.id) === String(item.book_id))
-      return {
-        id: item.book_id,
-        title: item.title,
-        author: book?.author || '',
-        price: Number(item.price) || 0,
-        quantity: Number(item.quantity) || 1,
-        coverImage: item.cover_image || '',
-        theme: book?.theme || 'violet',
-      }
-    }),
+    total: Number(pricing.total_amount ?? detail.total_amount) || 0,
+    items,
     timeline: buildOrderTimeline(detail),
   }
 }
 
-async function loadOrders() {
-  state.ordersLoading = true
-  try {
-    const [response] = await Promise.all([api.orders(), ensureCourierCatalog()])
-    const list = response.data || []
-    const details = await Promise.all(
-      list.map(async (order) => {
-        try {
-          const detail = await api.order(order.invoice_number)
-          return detail.data
-        } catch {
-          return null
+async function enrichOrders(list) {
+  if (!Array.isArray(list) || !list.length) return
+  await Promise.allSettled(
+    list.map(async (order) => {
+      if (!order?.id) return
+      if (Array.isArray(order.items) && order.items.length > 1 && order.items[0]?.coverImage) return
+      try {
+        const res = await api.order(order.id)
+        if (res?.data) {
+          const detailed = mapOrder(res.data)
+          state.orders = state.orders.map((o) => (o.id === order.id ? { ...o, ...detailed } : o))
         }
-      }),
-    )
-    state.orders = details.filter(Boolean).map(mapOrder)
-  } catch (error) {
-    if (handleAuthFailure(error)) return
-    showToast(errorText(error, 'Gagal memuat pesanan'), { type: 'error' })
-  } finally {
-    state.ordersLoading = false
+      } catch {
+              }
+    }),
+  )
+}
+
+async function loadOrders(status, options = {}) {
+  const isSilent = Boolean(options.silent)
+  if (ordersPromise && !status) return ordersPromise
+
+  if (!isSilent) state.ordersLoading = true
+  ordersPromise = (async () => {
+    try {
+      if (!state.books.length) {
+        loadBooks({ per_page: 100 }).catch(() => {})
+      }
+      ensureCourierCatalog().catch(() => {})
+      const response = await api.orders(status)
+      const list = response.data || []
+      state.orders = list.map(mapOrder)
+
+      if (list.length > 0) {
+        enrichOrders(state.orders).catch(() => {})
+      }
+
+      return state.orders
+    } catch (error) {
+      if (handleAuthFailure(error)) return []
+      if (!isSilent) showToast(errorText(error, 'Gagal memuat pesanan'), { type: 'error' })
+      return []
+    } finally {
+      if (!isSilent) state.ordersLoading = false
+      ordersPromise = null
+    }
+  })()
+
+  return ordersPromise
+}
+
+function applyOrderPaymentUpdate(event) {
+  if (!event || !event.invoice_number) return null
+  const invoice = String(event.invoice_number).trim()
+  const orderIndex = state.orders.findIndex((o) => o.id === invoice)
+  if (orderIndex !== -1) {
+    const prev = state.orders[orderIndex]
+    const nextStatus = event.order_status ? mapOrderStatus(event.order_status) : prev.status
+    const updated = {
+      ...prev,
+      rawStatus: event.order_status || prev.rawStatus,
+      status: nextStatus,
+      paymentStatus: event.payment_status || prev.paymentStatus,
+    }
+    state.orders[orderIndex] = updated
+    return updated
   }
+  return null
+}
+
+function applyOrderShippingUpdate(event) {
+  if (!event || !event.invoice_number) return null
+  const invoice = String(event.invoice_number).trim()
+  const orderIndex = state.orders.findIndex((o) => o.id === invoice)
+  if (orderIndex !== -1) {
+    const prev = state.orders[orderIndex]
+    const nextStatus = event.order_status ? mapOrderStatus(event.order_status) : prev.status
+    const updated = {
+      ...prev,
+      rawStatus: event.order_status || prev.rawStatus,
+      status: nextStatus,
+      trackingNumber: event.waybill_number || prev.trackingNumber,
+    }
+    state.orders[orderIndex] = updated
+    return updated
+  }
+  return null
 }
 
 function mapAddress(address = {}) {
+  const line = (
+    address.address_line ||
+    address.address ||
+    address.fullAddress ||
+    address.full_address ||
+    address.street ||
+    ''
+  )
+    .replace(/^[\s,.-]+/, '')
+    .replace(/[\s,.-]+$/, '')
+    .trim()
+
+  const city = (
+    address.city_name ||
+    address.city ||
+    address.administrative_division_level_2_name ||
+    ''
+  )
+    .replace(/^[\s,.-]+/, '')
+    .replace(/[\s,.-]+$/, '')
+    .trim()
+
+  const province = (
+    address.province_name ||
+    address.province ||
+    address.administrative_division_level_1_name ||
+    ''
+  )
+    .replace(/^[\s,.-]+/, '')
+    .replace(/[\s,.-]+$/, '')
+    .trim()
+
+  const district = (
+    address.district_name ||
+    address.district ||
+    address.administrative_division_level_3_name ||
+    ''
+  )
+    .replace(/^[\s,.-]+/, '')
+    .replace(/[\s,.-]+$/, '')
+    .trim()
+
+  const subdistrict = (
+    address.subdistrict_name ||
+    address.subdistrict ||
+    address.administrative_division_level_4_name ||
+    ''
+  )
+    .replace(/^[\s,.-]+/, '')
+    .replace(/[\s,.-]+$/, '')
+    .trim()
+
+  const postal = String(
+    address.postal_code ||
+    address.postalCode ||
+    address.zip_code ||
+    ''
+  ).trim()
+
+  const recipient = (
+    address.receiver_name ||
+    address.recipient ||
+    address.recipient_name ||
+    address.name ||
+    ''
+  ).trim()
+
+  const phone = (address.phone || address.phone_number || '').trim()
+
   return {
     id: address.id,
-    title: address.city_name || 'Alamat',
-    recipient: address.receiver_name || '',
-    phone: address.phone || '',
-    fullAddress: address.address_line || '',
-    city: address.city_name || '',
-    postalCode: address.postal_code || '',
-    province: address.province_name || '',
-    district: address.district_name || '',
-    subdistrict: address.subdistrict_name || '',
-    biteshipAreaId: address.biteship_area_id || '',
-    isDefault: Boolean(address.is_primary),
+    title: city || 'Alamat',
+    recipient,
+    receiver_name: recipient,
+    phone,
+    fullAddress: line,
+    address_line: line,
+    address: line,
+    city,
+    city_name: city,
+    postalCode: postal,
+    postal_code: postal,
+    province,
+    province_name: province,
+    district,
+    district_name: district,
+    subdistrict,
+    subdistrict_name: subdistrict,
+    biteshipAreaId: address.biteship_area_id || address.biteshipAreaId || '',
+    isDefault: Boolean(address.is_primary ?? address.isDefault),
+    is_primary: Boolean(address.is_primary ?? address.isDefault),
   }
 }
 
-async function loadAddresses() {
-  state.addressesLoading = true
-  try {
-    const response = await api.addresses()
-    const list = response.data || []
-    const details = await Promise.all(
-      list.map(async (address) => {
-        try {
-          const detail = await api.address(address.id)
-          return detail.data
-        } catch {
-          return address
+async function enrichAddresses(list) {
+  if (!Array.isArray(list) || !list.length) return
+  await Promise.allSettled(
+    list.map(async (item) => {
+      if (!item?.id) return
+      // Skip address detail fetch if fields are already complete.
+      if (item.address_line && (item.province || item.postalCode)) return
+      try {
+        const res = await api.address(item.id)
+        if (res?.data) {
+          const detailed = mapAddress(res.data)
+          state.userProfile.addresses = state.userProfile.addresses.map((a) =>
+            a.id === item.id ? { ...a, ...detailed } : a,
+          )
         }
-      }),
-    )
-    state.userProfile.addresses = details.map(mapAddress)
-  } catch (error) {
-    if (handleAuthFailure(error)) return
-    showToast(errorText(error, 'Gagal memuat alamat'), { type: 'error' })
-  } finally {
-    state.addressesLoading = false
-  }
+      } catch {
+              }
+    }),
+  )
+}
+
+async function loadAddresses(force = false) {
+  if (addressesPromise && !force) return addressesPromise
+
+  state.addressesLoading = true
+  addressesPromise = (async () => {
+    try {
+      const response = await api.addresses()
+      const list = response.data || []
+      state.userProfile.addresses = list.map(mapAddress)
+
+      if (list.length > 0) {
+        await enrichAddresses(state.userProfile.addresses)
+      }
+      return state.userProfile.addresses
+    } catch (error) {
+      if (handleAuthFailure(error)) return []
+      showToast(errorText(error, 'Gagal memuat alamat'), { type: 'error' })
+      return []
+    } finally {
+      state.addressesLoading = false
+      addressesPromise = null
+    }
+  })()
+
+  return addressesPromise
 }
 
 async function changePassword(currentPassword, newPassword, confirmPassword) {
@@ -440,10 +687,20 @@ async function loadCategories() {
 async function loadBooks(params = {}) {
   state.catalogLoading = true
   try {
-    // shortcut: fetch up to 100 books once and let the UI filter/paginate
-    // client-side; move to server paging when the catalog outgrows one page.
     const response = await api.books({ per_page: 100, ...params })
-    state.books = (response.data || []).map(mapBook)
+    const fetchedBooks = (response.data || []).map(mapBook)
+    const existingMap = new Map(state.books.map((b) => [String(b.id), b]))
+    state.books = fetchedBooks.map((b) => {
+      const prev = existingMap.get(String(b.id))
+      return prev
+        ? {
+            ...prev,
+            ...b,
+            sold: Number(b.sold) || 0,
+            stock: Number(b.stock) || 0,
+          }
+        : b
+    })
     return state.books
   } catch (error) {
     state.books = []
@@ -454,16 +711,97 @@ async function loadBooks(params = {}) {
   }
 }
 
-async function loadBook(slug) {
+async function loadPopularBooks(params = {}) {
+  state.popularBooksLoading = true
   try {
-    const response = await api.book(slug)
+    const response = await api.books({ sort_by: 'popular', per_page: 100, ...params })
+    const fetchedBooks = (response.data || []).map(mapBook)
+    state.popularBooks = fetchedBooks
+
+    // Synchronize updated book data into local store.
+    const existingMap = new Map(state.books.map((b) => [String(b.id), b]))
+    fetchedBooks.forEach((b) => {
+      const prev = existingMap.get(String(b.id))
+      if (prev) {
+        Object.assign(prev, b)
+      } else {
+        state.books.push(b)
+      }
+    })
+    return state.popularBooks
+  } catch (error) {
+    state.popularBooks = [...state.books].sort(
+      (a, b) =>
+        (Number(b.sold) || 0) - (Number(a.sold) || 0) ||
+        String(a.title).localeCompare(String(b.title)),
+    )
+    return state.popularBooks
+  } finally {
+    state.popularBooksLoading = false
+  }
+}
+
+async function loadBook(slugOrId) {
+  try {
+    let slug = slugOrId
+    if (slugOrId !== undefined && slugOrId !== null) {
+      const matched = state.books.find(
+        (b) => String(b.id) === String(slugOrId) || String(b.slug) === String(slugOrId),
+      )
+      if (matched?.slug) {
+        slug = matched.slug
+      }
+    }
+
+    let response
+    try {
+      response = await api.book(slug)
+    } catch (err) {
+      if (err?.status === 404 && !state.books.length) {
+        try {
+          await loadBooks({ per_page: 100 })
+          const matched = state.books.find(
+            (b) => String(b.id) === String(slugOrId) || String(b.slug) === String(slugOrId),
+          )
+          if (matched?.slug && matched.slug !== slug) {
+            response = await api.book(matched.slug)
+          } else {
+            return null
+          }
+        } catch {
+          return null
+        }
+      } else {
+        return null
+      }
+    }
+
     const book = mapBookDetail(response.data)
     rememberBook(book)
-    return book
-  } catch (error) {
-    if (!handleAuthFailure(error)) {
-      showToast(errorText(error, 'Buku tidak dapat dimuat'), { type: 'error' })
+
+    // Synchronize updated book data into local store.
+    const index = state.books.findIndex(
+      (b) =>
+        String(b.slug) === String(book.slug) ||
+        String(b.id) === String(book.id) ||
+        String(b.slug) === String(slugOrId) ||
+        String(b.id) === String(slugOrId),
+    )
+    if (index !== -1) {
+      const synchronized = {
+        ...state.books[index],
+        ...book,
+        sold: Number(book.sold) || 0,
+        stock: Number(book.stock) || 0,
+      }
+      state.books[index] = synchronized
+      return synchronized
+    } else {
+      state.books.push(book)
+      return book
     }
+  } catch (error) {
+    handleAuthFailure(error)
     return null
   }
 }
@@ -473,7 +811,7 @@ let bootstrapPromise = null
 function bootstrap() {
   if (!bootstrapPromise) {
     bootstrapPromise = (async () => {
-      await Promise.allSettled([loadCategories(), loadBooks()])
+      await Promise.allSettled([loadCategories(), loadBooks(), loadPopularBooks()])
 
       if (!session.isAuthenticated) return
 
@@ -502,22 +840,14 @@ async function login(email, password, options = {}) {
 
     const me = await api.me()
     applyUser(me.data)
-    await Promise.allSettled([refreshCart(), loadWishlist()])
-    showToast(`Selamat datang kembali, ${state.userName}!`, { type: 'success' })
+    // Background sync keeps navigation instant.
+    Promise.allSettled([refreshCart(), loadWishlist()]).catch(() => {})
     return true
   } catch (error) {
     session.clear()
     state.isLoggedIn = false
     const message = String(error?.message || '')
     const inactive = /inactive|not active|not activated|verify|activation/i.test(message)
-    showToast(
-      inactive
-        ? 'Akun belum aktif. Cek email atau kirim ulang aktivasi.'
-        : error?.status === 401
-          ? 'Email atau password salah.'
-          : errorText(error, 'Gagal masuk. Periksa email dan password.'),
-      { type: 'error' },
-    )
     if (inactive) return 'inactive'
     if (error?.status === 401) return 'credentials'
     return 'error'
@@ -548,11 +878,13 @@ async function logout() {
     try {
       await api.logout(refreshToken)
     } catch {
-      // Local logout must still succeed when the network fails.
+      // Proceed with local logout even if network request fails.
     }
   }
   clearSession()
-  showToast('Anda telah keluar.', { type: 'info' })
+  if (router.currentRoute.value.name !== 'login') {
+    router.push({ name: 'login' })
+  }
 }
 
 async function addToCart(book, options = {}) {
@@ -586,9 +918,6 @@ async function addToCart(book, options = {}) {
     await api.addToCart(book.id, quantity)
     rememberBook(book)
     await refreshCart()
-    if (!options.silent && !options.quiet) {
-      showToast(`"${book.title}" masuk keranjang!`, { type: 'success' })
-    }
     return true
   } catch (error) {
     if (handleAuthFailure(error)) return false
@@ -632,7 +961,6 @@ async function updateQuantity(id, qty) {
 
   try {
     await api.updateCartItem(id, nextQuantity)
-    showToast('Jumlah item diperbarui.', { type: 'info' })
   } catch (error) {
     item.quantity = previousQuantity
     if (handleAuthFailure(error)) return
@@ -655,38 +983,66 @@ async function clearCart() {
   }
 }
 
-async function loadWishlist() {
+async function loadWishlist(params = {}) {
   if (!session.isAuthenticated) {
     state.wishlist = []
-    return
+    return []
   }
+  const isDefaultQuery = Object.keys(params).length === 0
+  if (wishlistPromise && isDefaultQuery) return wishlistPromise
+
   state.wishlistLoading = true
-  try {
-    const response = await api.wishlist({ per_page: 100 })
-    state.wishlist = (response.data || []).map((item) => {
-      const book = item.book || {}
-      return {
-        id: item.id,
-        bookId: item.book_id,
-        slug: book.slug || '',
-        title: book.title || 'Buku',
-        author: book.author_name || '',
-        category: book.category_name || '',
-        price: Number(book.price) || 0,
-        originalPrice: Number(book.original_price) || 0,
-        discount: Number(book.discount_percentage) || 0,
-        cover: book.cover_image || '',
-        stock: Number(book.stock) || 0,
-        weightGrams: Number(book.weight_grams) || 0,
+  const promise = (async () => {
+    try {
+      const response = await api.wishlist({ per_page: 10, ...params })
+      state.wishlist = (response.data || []).map((item) => {
+        const book = item.book || {}
+        const bookId = item.book_id || book.id
+        const cachedBook =
+          state.books.find((b) => String(b.id) === String(bookId)) ||
+          bookCache[bookId] ||
+          {}
+        const cover =
+          book.cover_image ||
+          book.coverImage ||
+          book.cover ||
+          cachedBook.coverImage ||
+          cachedBook.cover ||
+          ''
+        return {
+          id: item.id,
+          bookId,
+          slug: book.slug || cachedBook.slug || '',
+          title: book.title || cachedBook.title || 'Buku',
+          author:
+            book.author_name ||
+            (typeof book.author === 'object' ? book.author?.name : book.author) ||
+            cachedBook.author ||
+            '',
+          category: book.category_name || cachedBook.category || '',
+          price: Number(book.price) || Number(cachedBook.price) || 0,
+          originalPrice: Number(book.original_price) || Number(cachedBook.originalPrice) || 0,
+          discount: Number(book.discount_percentage) || Number(cachedBook.discount) || 0,
+          cover,
+          coverImage: cover,
+          stock: Number(book.stock ?? cachedBook.stock) || 0,
+          weightGrams: Number(book.weight_grams ?? cachedBook.weightGrams) || 0,
+        }
+      })
+      return state.wishlist
+    } catch (error) {
+      if (!handleAuthFailure(error)) {
+        showToast(errorText(error, 'Gagal memuat wishlist'), { type: 'error' })
       }
-    })
-  } catch (error) {
-    if (!handleAuthFailure(error)) {
-      showToast(errorText(error, 'Gagal memuat wishlist'), { type: 'error' })
+      return []
+    } finally {
+      state.wishlistLoading = false
+      if (isDefaultQuery) wishlistPromise = null
     }
-  } finally {
-    state.wishlistLoading = false
-  }
+  })()
+
+  if (isDefaultQuery) wishlistPromise = promise
+  return promise
 }
 
 function isWishlisted(bookId) {
@@ -706,11 +1062,9 @@ async function toggleWishlist(book) {
     if (isWishlisted(bookId)) {
       await api.removeWishlist(bookId)
       state.wishlist = state.wishlist.filter((item) => String(item.bookId) !== String(bookId))
-      showToast('Dihapus dari wishlist.', { type: 'info' })
     } else {
       await api.addWishlist(bookId)
       await loadWishlist()
-      showToast('Ditambahkan ke wishlist.', { type: 'success' })
     }
     return true
   } catch (error) {
@@ -833,10 +1187,14 @@ async function resolveAddressPayload(address) {
   const area = await resolveAddressArea(city, postalCode)
   if (!area) throw new Error(`Area "${city}" tidak ditemukan.`)
 
+  const cleanLine = String(address.fullAddress || '')
+    .trim()
+    .replace(/^[\s,.-]+/, '')
+
   return {
     receiver_name: String(address.recipient || '').trim(),
     phone: String(address.phone || '').trim(),
-    address_line: String(address.fullAddress || '').trim(),
+    address_line: cleanLine,
     biteship_area_id: area.id,
     province_name: area.administrative_division_level_1_name || '',
     city_name: area.administrative_division_level_2_name || city,
@@ -852,18 +1210,8 @@ async function addAddress(address) {
     const payload = await resolveAddressPayload(address)
     if (state.userProfile.addresses.length === 0) payload.is_primary = true
 
-    const response = await api.createAddress(payload)
-
-    if (response.data) {
-      const saved = mapAddress(response.data)
-      const others = state.userProfile.addresses.filter((item) => item.id !== saved.id)
-      state.userProfile.addresses = [
-        ...others.map((item) => (saved.isDefault ? { ...item, isDefault: false } : item)),
-        saved,
-      ]
-    } else {
-      await loadAddresses()
-    }
+    await api.createAddress(payload)
+    await loadAddresses(true)
     showToast('Alamat baru berhasil ditambahkan.', { type: 'success' })
     return true
   } catch (error) {
@@ -877,7 +1225,7 @@ async function updateAddress(id, address) {
   try {
     const payload = await resolveAddressPayload(address)
     await api.updateAddress(id, payload)
-    await loadAddresses()
+    await loadAddresses(true)
     showToast('Alamat berhasil diperbarui.', { type: 'success' })
     return true
   } catch (error) {
@@ -889,7 +1237,7 @@ async function updateAddress(id, address) {
 async function removeAddress(id) {
   try {
     await api.deleteAddress(id)
-    await loadAddresses()
+    await loadAddresses(true)
     showToast('Alamat berhasil dihapus.', { type: 'info' })
     return true
   } catch (error) {
@@ -901,7 +1249,7 @@ async function removeAddress(id) {
 async function setDefaultAddress(id) {
   try {
     await api.setPrimaryAddress(id)
-    await loadAddresses()
+    await loadAddresses(true)
     showToast('Alamat utama berhasil diperbarui.', { type: 'success' })
     return true
   } catch (error) {
@@ -911,9 +1259,24 @@ async function setDefaultAddress(id) {
 }
 
 async function reorderBook(order) {
-  if (!order || !Array.isArray(order.items)) return
+  if (!order) return
+  let currentOrder = order
 
-  const available = order.items
+  const hasSpecificBooks =
+    Array.isArray(currentOrder.items) &&
+    currentOrder.items.some((item) => state.books.some((b) => String(b.id) === String(item.id)))
+
+  if (!hasSpecificBooks && currentOrder.id) {
+    try {
+      const res = await api.order(currentOrder.id)
+      if (res?.data) currentOrder = mapOrder(res.data)
+    } catch {
+          }
+  }
+
+  if (!currentOrder || !Array.isArray(currentOrder.items)) return
+
+  const available = currentOrder.items
     .map((item) => ({
       book: state.books.find((book) => String(book.id) === String(item.id)),
       quantity: Number(item.quantity) || 1,
@@ -972,8 +1335,11 @@ export function useStore() {
     refreshCart,
     loadCategories,
     loadBooks,
+    loadPopularBooks,
     loadBook,
     loadOrders,
+    applyOrderPaymentUpdate,
+    applyOrderShippingUpdate,
     loadAddresses,
     loadWishlist,
     toggleWishlist,

@@ -54,7 +54,7 @@ import { TESTIMONIALS } from '@/data/testimonials'
           :key="t.id"
           data-aos="fade-up"
           :data-aos-delay="idx * 100"
-          class="bg-background text-black border-3 border-black rounded-[2px] p-6 shadow-neo hover:-translate-y-1 hover:shadow-neo-md transition-all flex flex-col justify-between"
+          class="bg-background text-black border-3 border-black rounded-[2px] p-6 shadow-neo flex flex-col justify-between"
         >
           <div>
             <div class="flex items-center justify-between pb-3 border-b border-black/10 mb-4">

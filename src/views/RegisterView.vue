@@ -21,9 +21,22 @@ const errorMessage = ref('')
 const isLoading = ref(false)
 
 const passwordStrength = computed(() => getPasswordStrength(password.value))
+const isSubmitDisabled = computed(() => {
+  return (
+    isLoading.value ||
+    passwordStrength.value.score < 4 ||
+    !confirmPassword.value ||
+    password.value !== confirmPassword.value ||
+    !agreeTerms.value
+  )
+})
 
 async function handleRegister() {
   errorMessage.value = ''
+
+  if (isSubmitDisabled.value) {
+    return
+  }
 
   if (!name.value.trim() || !email.value.trim() || !password.value || !confirmPassword.value) {
     errorMessage.value = 'Semua kolom wajib diisi'
@@ -40,16 +53,6 @@ async function handleRegister() {
     return
   }
 
-  if (passwordStrength.value.score < 4) {
-    errorMessage.value = 'Password belum cukup kuat. Tambahkan variasi karakter.'
-    return
-  }
-
-  if (password.value !== confirmPassword.value) {
-    errorMessage.value = 'Konfirmasi password tidak cocok'
-    return
-  }
-
   if (!agreeTerms.value) {
     errorMessage.value = 'Anda harus menyetujui Syarat & Ketentuan'
     return
@@ -60,7 +63,6 @@ async function handleRegister() {
   isLoading.value = false
 
   if (!success) {
-    errorMessage.value = 'Pendaftaran gagal. Periksa data atau coba lagi.'
     return
   }
 
@@ -163,7 +165,7 @@ function handleGoogleRegister() {
               required
               autocomplete="name"
               placeholder="Contoh: Raden Saleh"
-              class="w-full bg-white border-3 border-black rounded-[2px] px-3.5 py-2.5 font-outfit font-bold text-sm outline-none shadow-neo-sm focus:shadow-neo transition-all placeholder:text-gray-400 placeholder:font-medium"
+              class="w-full bg-white border-3 border-black rounded-[2px] px-3.5 py-2.5 font-outfit font-bold text-sm outline-none shadow-neo-sm transition-all placeholder:text-gray-400 placeholder:font-medium"
             />
           </label>
 
@@ -175,7 +177,7 @@ function handleGoogleRegister() {
               required
               autocomplete="email"
               placeholder="nama@email.com"
-              class="w-full bg-white border-3 border-black rounded-[2px] px-3.5 py-2.5 font-outfit font-bold text-sm outline-none shadow-neo-sm focus:shadow-neo transition-all placeholder:text-gray-400 placeholder:font-medium"
+              class="w-full bg-white border-3 border-black rounded-[2px] px-3.5 py-2.5 font-outfit font-bold text-sm outline-none shadow-neo-sm transition-all placeholder:text-gray-400 placeholder:font-medium"
             />
           </label>
 
@@ -193,7 +195,7 @@ function handleGoogleRegister() {
                 required
                 autocomplete="new-password"
                 placeholder="Minimal 8 karakter kombinasi"
-                class="w-full bg-white border-3 border-black rounded-[2px] px-3.5 py-2.5 pr-11 font-outfit font-bold text-sm outline-none shadow-neo-sm focus:shadow-neo transition-all placeholder:text-gray-400 placeholder:font-medium"
+                class="w-full bg-white border-3 border-black rounded-[2px] px-3.5 py-2.5 pr-11 font-outfit font-bold text-sm outline-none shadow-neo-sm transition-all placeholder:text-gray-400 placeholder:font-medium"
               />
               <button
                 type="button"
@@ -249,7 +251,7 @@ function handleGoogleRegister() {
                 required
                 autocomplete="new-password"
                 placeholder="Ketik ulang password Anda"
-                class="w-full bg-white border-3 border-black rounded-[2px] px-3.5 py-2.5 pr-11 font-outfit font-bold text-sm outline-none shadow-neo-sm focus:shadow-neo transition-all placeholder:text-gray-400 placeholder:font-medium"
+                class="w-full bg-white border-3 border-black rounded-[2px] px-3.5 py-2.5 pr-11 font-outfit font-bold text-sm outline-none shadow-neo-sm transition-all placeholder:text-gray-400 placeholder:font-medium"
               />
               <button
                 type="button"
@@ -293,7 +295,7 @@ function handleGoogleRegister() {
             <input
               v-model="agreeTerms"
               type="checkbox"
-              class="w-4 h-4 mt-0.5 rounded-[2px] border-2 border-black accent-neo-violet cursor-pointer shrink-0"
+              class="w-4 h-4 mt-0.5 rounded-[2px] border-2 border-black accent-black cursor-pointer shrink-0"
             />
             <span class="font-sans text-xs text-gray-700 leading-snug">
               Saya menyetujui
@@ -314,14 +316,16 @@ function handleGoogleRegister() {
             </span>
           </label>
 
-          <button
-            type="submit"
-            :disabled="isLoading"
-            class="w-full neubrutal-btn bg-neo-yellow text-black border-3 border-black py-3.5 rounded-[2px] font-outfit font-black text-sm sm:text-base shadow-neo hover:bg-yellow-300 flex items-center justify-center gap-2 transition-all active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-60 mt-2"
-          >
-            <span v-if="!isLoading">Daftar Akun Baru</span>
-            <span v-else>Mendaftarkan...</span>
-          </button>
+          <div :class="isSubmitDisabled ? 'cursor-not-allowed' : ''" class="mt-2">
+            <button
+              type="submit"
+              :disabled="isSubmitDisabled"
+              class="w-full neubrutal-btn bg-neo-yellow text-black border-3 border-black py-3 rounded-[2px] font-outfit font-black text-sm shadow-neo-sm hover:bg-yellow-300 flex items-center justify-center gap-2 transition-all active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+            >
+              <span v-if="!isLoading">Daftar Akun Baru</span>
+              <span v-else>Mendaftarkan...</span>
+            </button>
+          </div>
         </form>
       </div>
 

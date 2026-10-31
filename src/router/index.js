@@ -16,13 +16,21 @@ const router = createRouter({
     },
     {
       path: '/catalog',
+      alias: ['/search', '/katalog', '/books'],
       name: 'catalog',
-      component: () => import('@/views/HomeView.vue'),
+      component: () => import('@/views/CatalogView.vue'),
     },
     {
-      path: '/checkout',
+      path: '/checkout/:token?',
+      alias: ['/checkput/:token?', '/checkput'],
       name: 'checkout',
       component: () => import('@/views/CheckoutView.vue'),
+    },
+    {
+      path: '/orders/:id',
+      alias: ['/order/:id', '/oder/:id', '/invoice/:id'],
+      name: 'order-detail',
+      component: () => import('@/views/OrderDetailView.vue'),
     },
     {
       path: '/login',
@@ -143,12 +151,16 @@ router.beforeEach(async (to) => {
     if (!session.isAuthenticated) {
       return { name: 'login', query: { redirect: to.fullPath } }
     }
+    if (session.role === 'admin') {
+      return true
+    }
     try {
       const response = await api.me()
       if (response.data?.role !== 'admin') {
         return { name: 'user-dashboard' }
       }
       session.setRole('admin')
+      return true
     } catch {
       session.clear()
       return { name: 'home' }

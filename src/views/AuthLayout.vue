@@ -33,7 +33,7 @@ defineProps({
     </div>
 
     <div
-      class="w-full bg-white border-3 md:border-4 border-black rounded-[2px] shadow-neo grid grid-cols-1 lg:grid-cols-12 overflow-hidden items-stretch"
+      class="w-full bg-white border-3 md:border-4 border-black rounded-[2px] shadow-neo-sm grid grid-cols-1 lg:grid-cols-12 overflow-hidden items-stretch"
     >
       <div class="lg:col-span-6 p-6 sm:p-8 md:p-10 flex flex-col justify-between">
         <slot />
@@ -47,26 +47,6 @@ defineProps({
         ></div>
 
         <div class="relative z-10">
-          <div class="mb-4">
-            <span
-              class="inline-flex items-center gap-1.5 bg-neo-yellow text-black border-2 border-black px-3 py-0.5 rounded-[2px] font-outfit font-black text-[11px] uppercase tracking-wider shadow-neo-sm"
-            >
-              <svg
-                class="w-3.5 h-3.5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <polygon
-                  points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
-                />
-              </svg>
-              {{ mode === 'login' ? 'PORTAL PEMBACA RESMI' : 'GABUNG KOMUNITAS KAMI' }}
-            </span>
-          </div>
 
           <h2
             class="font-outfit font-black text-2xl sm:text-3xl xl:text-4xl tracking-tight leading-tight mb-3"
@@ -144,7 +124,7 @@ defineProps({
 
             <div class="flex items-center gap-3.5 bg-black/20 p-3 rounded-[2px] backdrop-blur-xs">
               <div
-                class="w-8 h-8 rounded-[2px] bg-neo-pink text-black border border-black flex items-center justify-center shrink-0"
+                class="w-8 h-8 rounded-[2px] bg-neo-lime text-black border border-black flex items-center justify-center shrink-0"
               >
                 <svg
                   class="w-4 h-4"
@@ -163,21 +143,39 @@ defineProps({
               </div>
               <div>
                 <p class="font-outfit font-black text-sm text-white leading-tight">
-                  Poin & Diskon Khusus
+                  Promo & Diskon Khusus
                 </p>
                 <p class="font-sans text-xs text-white/75 leading-tight mt-0.5">
-                  Poin reward transaksi untuk potongan belanja berikutnya.
+                  Dapatkan harga spesial dan penawaran menarik untuk pilihan buku tertentu.
                 </p>
               </div>
             </div>
+    
+            <div class="flex items-center gap-3.5 bg-black/20 p-3 rounded-[2px] backdrop-blur-xs">
+            <div class="w-8 h-8 rounded-[2px] bg-neo-lime text-black border border-black flex items-center justify-center shrink-0">
+                <svg
+                class="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                >
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-4-4" />
+                </svg>
+                </div>
+                <div>
+                    <p class="font-outfit font-black text-sm text-white leading-tight">
+                    Lacak Pesanan Real-Time
+                    </p>
+                    <p class="font-sans text-xs text-white/75 leading-tight mt-0.5">
+                    Pantau status dan perjalanan pesanan Anda hingga buku tiba dengan aman.
+                    </p>
+                </div>
+            </div>
           </div>
-        </div>
-
-        <div
-          class="relative z-10 border-t-2 border-white/20 pt-4 mt-6 flex items-center justify-between text-xs sm:text-sm text-white/80 font-sans"
-        >
-          <span class="font-medium">"Kurasi dan pengemasan terbaik di Indonesia."</span>
-          <span class="font-outfit font-black text-neo-yellow shrink-0 ml-2">★ 4.9/5 RATING</span>
         </div>
       </div>
     </div>

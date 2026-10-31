@@ -117,6 +117,37 @@ body::-webkit-scrollbar,
   height: 0px;
 }
 
+/* Explicit scrollbar for mobile responsive horizontal tables */
+.table-scrollbar {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #000000 #f1f1f5;
+}
+.table-scrollbar::-webkit-scrollbar {
+  display: block !important;
+  height: 5px !important;
+  width: 5px !important;
+}
+.table-scrollbar::-webkit-scrollbar-track {
+  background: #f1f1f5;
+}
+.table-scrollbar::-webkit-scrollbar-thumb {
+  background: #000000;
+  border-radius: 2px;
+}
+
+/* Hide number input spin buttons (up/down arrows) */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 .neubrutal-btn {
   transition: all 0.1s ease;
   cursor: pointer;
@@ -319,8 +350,35 @@ body::-webkit-scrollbar,
 }
 
 *:focus-visible {
-  outline: 3px solid var(--color-primary);
-  outline-offset: 3px;
+  outline: 2px solid var(--color-border);
+  outline-offset: 2px;
+}
+
+/* Form fields (inputs, textareas, selects) must never have purple borders or outlines when active/focused */
+input,
+textarea,
+select,
+.neo-select {
+  outline: none !important;
+}
+
+input:focus,
+input:focus-visible,
+input:active,
+textarea:focus,
+textarea:focus-visible,
+textarea:active,
+select:focus,
+select:focus-visible,
+select:active,
+.neo-select:focus,
+.neo-select:focus-visible,
+.neo-select:active {
+  outline: none !important;
+  outline-offset: 0 !important;
+  --tw-ring-color: transparent !important;
+  --tw-ring-offset-width: 0px !important;
+  --tw-ring-width: 0px !important;
 }
 
 .bg-neo-violet {

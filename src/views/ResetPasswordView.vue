@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { api } from '@/lib/api'
 import { useStore } from '@/composables/useStore'
@@ -15,25 +15,36 @@ const { showToast } = useStore()
 const token = String(route.query.token || '')
 const password = ref('')
 const confirmPassword = ref('')
+const showPassword = ref(false)
+const showConfirmPassword = ref(false)
 const errorMessage = ref('')
 const isLoading = ref(false)
 const isSuccess = ref(false)
 
 const passwordStrength = computed(() => getPasswordStrength(password.value))
+const isSubmitDisabled = computed(() => {
+  return (
+    isLoading.value ||
+    passwordStrength.value.score < 4 ||
+    !confirmPassword.value ||
+    password.value !== confirmPassword.value
+  )
+})
+
+onMounted(() => {
+  if (!token) {
+    showToast('Link sudah tidak valid atau kedaluwarsa.', { type: 'error' })
+  }
+})
 
 async function handleSubmit() {
   errorMessage.value = ''
 
   if (!token) {
-    errorMessage.value = 'Link reset password tidak valid.'
+    showToast('Link sudah tidak valid atau kedaluwarsa.', { type: 'error' })
     return
   }
-  if (passwordStrength.value.score < 4) {
-    errorMessage.value = 'Password belum cukup kuat. Tambahkan variasi karakter.'
-    return
-  }
-  if (password.value !== confirmPassword.value) {
-    errorMessage.value = 'Konfirmasi password tidak cocok.'
+  if (isSubmitDisabled.value) {
     return
   }
 
@@ -44,9 +55,14 @@ async function handleSubmit() {
     showToast('Password berhasil direset. Silakan masuk.', { type: 'success' })
     setTimeout(() => router.replace({ name: 'login' }), 1200)
   } catch (error) {
-    errorMessage.value =
+    const message =
       localizeApiError(error?.message, error?.status) ||
-      'Gagal mereset password. Link mungkin sudah kedaluwarsa.'
+      'Link sudah tidak valid atau kedaluwarsa.'
+    if (/tidak valid|kedaluwarsa|token/i.test(message) || /token/i.test(error?.message || '')) {
+      showToast(message, { type: 'error' })
+    } else {
+      errorMessage.value = message
+    }
   } finally {
     isLoading.value = false
   }
@@ -67,14 +83,7 @@ async function handleSubmit() {
         </p>
 
         <div
-          v-if="!token"
-          class="mt-5 bg-red-500 text-white border-3 border-black p-3 rounded-[2px] shadow-neo-sm font-sans text-xs font-bold"
-        >
-          Link reset password tidak valid. Minta link baru dari halaman login.
-        </div>
-
-        <div
-          v-else-if="isSuccess"
+          v-if="isSuccess"
           class="mt-5 bg-neo-lime border-3 border-black p-3 rounded-[2px] shadow-neo-sm font-sans text-xs font-bold"
         >
           Password berhasil direset. Mengarahkan ke halaman login...
@@ -85,26 +94,100 @@ async function handleSubmit() {
             <label class="block font-outfit font-black text-xs uppercase tracking-wide mb-1.5">
               Password Baru
             </label>
-            <input
-              v-model="password"
-              type="password"
-              autocomplete="new-password"
-              placeholder="Minimal 8 karakter"
-              class="w-full bg-white border-2 border-black px-3.5 py-2.5 rounded-[2px] font-sans font-semibold text-sm outline-none shadow-neo-sm focus:shadow-neo transition-shadow"
-            />
+            <div class="relative">
+              <input
+                v-model="password"
+                :type="showPassword ? 'text' : 'password'"
+                autocomplete="new-password"
+                placeholder="Minimal 8 karakter"
+                class="w-full bg-white border-2 border-black px-3.5 py-2.5 pr-11 rounded-[2px] font-sans font-semibold text-sm outline-none shadow-neo-sm transition-shadow"
+              />
+              <button
+                type="button"
+                class="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-gray-500 hover:text-black rounded-[2px] cursor-pointer"
+                :aria-label="showPassword ? 'Sembunyikan password' : 'Lihat password'"
+                @click="showPassword = !showPassword"
+              >
+                <svg
+                  v-if="showPassword"
+                  class="w-4 h-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path
+                    d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
+                  />
+                  <line x1="1" y1="1" x2="23" y2="23" />
+                </svg>
+                <svg
+                  v-else
+                  class="w-4 h-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           <div>
             <label class="block font-outfit font-black text-xs uppercase tracking-wide mb-1.5">
               Konfirmasi Password Baru
             </label>
-            <input
-              v-model="confirmPassword"
-              type="password"
-              autocomplete="new-password"
-              placeholder="Ulangi password baru"
-              class="w-full bg-white border-2 border-black px-3.5 py-2.5 rounded-[2px] font-sans font-semibold text-sm outline-none shadow-neo-sm focus:shadow-neo transition-shadow"
-            />
+            <div class="relative">
+              <input
+                v-model="confirmPassword"
+                :type="showConfirmPassword ? 'text' : 'password'"
+                autocomplete="new-password"
+                placeholder="Ulangi password baru"
+                class="w-full bg-white border-2 border-black px-3.5 py-2.5 pr-11 rounded-[2px] font-sans font-semibold text-sm outline-none shadow-neo-sm transition-shadow"
+              />
+              <button
+                type="button"
+                class="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-gray-500 hover:text-black rounded-[2px] cursor-pointer"
+                :aria-label="showConfirmPassword ? 'Sembunyikan password' : 'Lihat password'"
+                @click="showConfirmPassword = !showConfirmPassword"
+              >
+                <svg
+                  v-if="showConfirmPassword"
+                  class="w-4 h-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path
+                    d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
+                  />
+                  <line x1="1" y1="1" x2="23" y2="23" />
+                </svg>
+                <svg
+                  v-else
+                  class="w-4 h-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           <PasswordValidation :password="password" :confirm="confirmPassword" />
@@ -116,13 +199,15 @@ async function handleSubmit() {
             {{ errorMessage }}
           </div>
 
-          <button
-            type="submit"
-            :disabled="isLoading"
-            class="w-full neubrutal-btn bg-neo-yellow text-black border-3 border-black py-3 rounded-[2px] font-outfit font-black text-sm shadow-neo hover:bg-yellow-300 transition-all active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-60"
-          >
-            {{ isLoading ? 'Menyimpan...' : 'Simpan Password Baru' }}
-          </button>
+          <div :class="isSubmitDisabled ? 'cursor-not-allowed' : ''">
+            <button
+              type="submit"
+              :disabled="isSubmitDisabled"
+              class="w-full neubrutal-btn bg-neo-yellow text-black border-3 border-black py-3 rounded-[2px] font-outfit font-black text-sm shadow-neo-sm hover:bg-yellow-300 transition-all active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+            >
+              {{ isLoading ? 'Menyimpan...' : 'Simpan Password Baru' }}
+            </button>
+          </div>
         </form>
       </div>
 

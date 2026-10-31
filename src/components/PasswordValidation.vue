@@ -69,16 +69,16 @@ const matched = computed(() => Boolean(props.confirm) && props.confirm === props
 
     <p
       v-if="confirm !== null && confirm"
-      class="mt-2 flex items-center gap-1 font-sans text-[10px] font-bold"
+      class="mt-2 flex items-center gap-1.5 font-sans text-[10px] font-semibold"
       :class="matched ? 'text-green-700' : 'text-red-600'"
     >
       <span
-        class="w-3 h-3 border border-black flex items-center justify-center shrink-0"
+        class="w-3.5 h-3.5 border border-black flex items-center justify-center shrink-0 transition-colors"
         :class="matched ? 'bg-green-600' : 'bg-red-500'"
       >
         <svg
           v-if="matched"
-          class="w-2 h-2 text-white"
+          class="w-2.5 h-2.5 text-white"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -87,6 +87,18 @@ const matched = computed(() => Boolean(props.confirm) && props.confirm === props
           stroke-linejoin="round"
         >
           <path d="M5 13l4 4L19 7" />
+        </svg>
+        <svg
+          v-else
+          class="w-2.5 h-2.5 text-white"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="4"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M18 6L6 18M6 6l12 12" />
         </svg>
       </span>
       {{ matched ? 'Password cocok' : 'Password belum cocok' }}
