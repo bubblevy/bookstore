@@ -43,8 +43,7 @@ function titleCase(value) {
     .replace(/\b\w/g, (char) => char.toUpperCase())
 }
 
-// The courier list from Biteship is the naming standard. Cache it once and use
-// it for order history, where the API only stores courier/service codes.
+// Cache Biteship courier catalog for order history label formatting.
 export function ensureCourierCatalog() {
   if (catalog) return Promise.resolve(catalog)
   if (catalogPromise) return catalogPromise
@@ -66,8 +65,7 @@ export function ensureCourierCatalog() {
         )
       }
     } catch {
-      // Fall back to the static labels below.
-    }
+          }
     catalog = map
     catalogPromise = null
     return map

@@ -63,12 +63,12 @@
             data-aos-delay="200"
             class="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-4"
           >
-            <a
-              href="#katalog"
+            <router-link
+              to="/catalog"
               class="neubrutal-btn bg-black text-white border-3 border-black py-3.5 px-7 rounded-[2px] font-outfit font-black text-base shadow-neo flex items-center justify-center gap-2 hover:bg-neutral-900 active:translate-x-0.5 active:translate-y-0.5"
             >
               <span>Jelajahi Katalog Buku</span>
-            </a>
+            </router-link>
 
             <a
               href="#kategori"

@@ -16,8 +16,7 @@ const bookCounts = computed(() => {
   return map
 })
 
-// Popular = most books in the category, capped at four, and reactive to admin
-// category changes because it reads the shared store.
+// Show up to four categories with the most books.
 const popularCategories = computed(() =>
   [...state.categories]
     .map((category) => ({
@@ -121,16 +120,15 @@ function goToSection(hash) {
           </h4>
           <ul class="space-y-2.5 font-sans text-sm font-bold text-white/70">
             <li>
-              <RouterLink to="/#katalog" class="hover:text-white transition-colors"
+              <RouterLink to="/catalog" class="hover:text-white transition-colors"
                 >Semua Buku</RouterLink
               >
             </li>
             <li v-for="category in popularCategories" :key="category.slug || category.name">
               <RouterLink
                 :to="{
-                  path: '/',
+                  path: '/catalog',
                   query: { category: category.slug || category.name },
-                  hash: '#katalog',
                 }"
                 class="hover:text-white transition-colors"
               >
@@ -181,7 +179,7 @@ function goToSection(hash) {
                 Alamat
               </p>
               <p class="leading-relaxed text-white/70">
-                Jl. Literasi Nusantara No. 42, Senopati, Jakarta Selatan
+                Jl. Adadeh Pokoknaya No. 42, Jepara, Jawa Tengah
               </p>
             </div>
             <div>

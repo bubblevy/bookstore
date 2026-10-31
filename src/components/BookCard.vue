@@ -67,20 +67,20 @@ function goToDetail() {
   <article
     :class="animate ? 'book-card-animate' : 'book-card-hidden'"
     :style="animate && delay ? { animationDelay: `${delay}ms` } : {}"
-    class="group bg-white border-3 border-black rounded-[2px] shadow-neo transition-all duration-200 hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-neo-md flex flex-col justify-between overflow-hidden cursor-pointer"
+    class="group bg-white border-2 sm:border-3 border-black rounded-[2px] shadow-neo-sm sm:shadow-neo transition-all duration-200 hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-neo-md flex flex-col justify-between overflow-hidden cursor-pointer select-none"
     @click="goToDetail"
   >
-    <div
-      class="relative w-full aspect-[4/3.4] bg-background border-b-3 border-black p-2.5 sm:p-3 flex items-center justify-center overflow-hidden"
+        <div
+      class="relative w-full aspect-[4/3.8] sm:aspect-[4/3.4] bg-background border-b-2 sm:border-b-3 border-black p-2 sm:p-3 flex items-center justify-center overflow-hidden"
     >
       <div
-        class="w-full h-full max-w-[130px] sm:max-w-[145px] transition-transform duration-200 group-hover:scale-103 flex items-center justify-center"
+        class="w-full h-full max-w-[110px] sm:max-w-[145px] transition-transform duration-200 group-hover:scale-103 flex items-center justify-center"
       >
         <img
           v-if="coverUrl && !imgError"
           :src="coverUrl"
           :alt="book.title"
-          class="w-full h-full object-cover border-2 border-black rounded-[2px] shadow-neo-sm"
+          class="w-full h-full object-cover border border-black sm:border-2 rounded-[2px] shadow-neo-xs sm:shadow-neo-sm"
           loading="lazy"
           @load="imgLoaded = true"
           @error="imgError = true"
@@ -94,37 +94,47 @@ function goToDetail() {
         />
       </div>
 
-      <span
-        class="absolute bottom-2 left-2 bg-black text-white px-2 py-0.5 rounded-[2px] font-outfit font-bold text-[9px] uppercase tracking-wide"
+            <span
+        class="absolute bottom-1.5 left-1.5 sm:bottom-2 sm:left-2 bg-black text-white px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-[1px] font-outfit font-bold text-[8px] sm:text-[9px] uppercase tracking-wide"
       >
         {{ book.category }}
       </span>
 
-      <span
+            <span
         v-if="(Number(book.stock) || 0) <= 0"
-        class="absolute bottom-2 right-2 bg-red-600 text-white border-2 border-black px-2 py-0.5 rounded-[2px] font-outfit font-black text-[9px] uppercase tracking-wide shadow-neo-sm"
+        class="absolute bottom-1.5 right-1.5 sm:bottom-2 sm:right-2 bg-red-600 text-white border border-black sm:border-2 px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-[1px] font-outfit font-black text-[8px] sm:text-[9px] uppercase tracking-wide shadow-neo-xs"
       >
-        Stok Habis
+        Habis
       </span>
 
-      <span
+            <span
         v-if="hasDiscount"
-        class="absolute top-2 left-2 bg-neo-yellow text-black border-2 border-black px-2 py-0.5 rounded-[2px] font-outfit font-black text-[10px] shadow-neo-sm"
+        class="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 bg-neo-yellow text-black border border-black sm:border-2 px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-[1px] font-outfit font-black text-[8px] sm:text-[10px] shadow-neo-xs"
       >
         -{{ discount }}%
       </span>
 
-      <button
-        v-if="state.isLoggedIn"
+            <button
         type="button"
         :disabled="isWishlistPending(book.id)"
-        class="absolute top-2 right-2 w-8 h-8 bg-white border-2 border-black rounded-full flex items-center justify-center shadow-neo-sm hover:bg-neo-pink disabled:opacity-50"
+        class="group/btn absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-7 h-7 sm:w-8 sm:h-8 bg-white border border-black sm:border-2 rounded-full flex items-center justify-center shadow-neo-xs sm:shadow-neo-sm hover:bg-red-50 disabled:opacity-50 cursor-pointer transition-all active:scale-125 z-10"
         :aria-label="wishlisted ? 'Hapus dari wishlist' : 'Tambah ke wishlist'"
+        :title="wishlisted ? 'Hapus dari wishlist' : 'Tambah ke wishlist'"
         @click.stop="toggleWishlist(book)"
       >
-        <svg
-          class="w-4 h-4"
-          :class="wishlisted ? 'fill-red-500 text-red-500' : 'fill-none text-black'"
+                <svg
+          v-if="wishlisted"
+          class="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-red-500 text-red-500"
+          viewBox="0 0 24 24"
+        >
+          <path
+            d="m11.645 20.91-.007-.003-.022-.012a15.247 15.247 0 0 1-.383-.218 25.18 25.18 0 0 1-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0 1 12 5.052 5.5 5.5 0 0 1 16.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 0 1-4.244 3.17 15.247 15.247 0 0 1-.383.219l-.022.012-.007.004-.003.001a.752.752 0 0 1-.704 0l-.003-.001Z"
+          />
+        </svg>
+                <svg
+          v-else
+          class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-black group-hover/btn:text-red-500 transition-colors"
+          fill="none"
           stroke="currentColor"
           stroke-width="2.2"
           viewBox="0 0 24 24"
@@ -138,36 +148,36 @@ function goToDetail() {
       </button>
     </div>
 
-    <div class="p-3 sm:p-3.5 flex flex-col flex-1 justify-between gap-2">
+        <div class="p-2.5 sm:p-3.5 flex flex-col flex-1 justify-between gap-1.5 sm:gap-2">
       <div>
         <h3
-          class="font-outfit font-black text-sm sm:text-base leading-snug line-clamp-1 group-hover:text-neo-violet transition-colors"
+          class="font-outfit font-black text-xs sm:text-sm md:text-base leading-snug line-clamp-2 group-hover:text-neo-violet transition-colors"
         >
           {{ book.title }}
         </h3>
-        <p class="font-sans text-xs font-semibold text-muted-foreground truncate mt-0.5">
+        <p class="font-sans text-[10px] sm:text-xs font-semibold text-muted-foreground truncate mt-0.5">
           {{ book.author }}
         </p>
 
-        <div class="flex items-center gap-1.5 mt-1.5 text-xs font-sans">
-          <span class="text-muted-foreground text-[11px]">{{ soldLabel }}</span>
+        <div class="flex items-center gap-1.5 mt-1 text-[10px] sm:text-xs font-sans">
+          <span class="text-muted-foreground font-semibold text-[10px] sm:text-[11px]">{{ soldLabel }}</span>
         </div>
       </div>
 
-      <div class="pt-2 border-t border-black/10 flex items-end justify-between gap-2">
+      <div class="pt-1.5 sm:pt-2 border-t border-black/10 flex items-end justify-between gap-1.5">
         <div class="min-w-0">
-          <span class="block font-outfit font-black text-sm sm:text-base text-black">
+          <span class="block font-outfit font-black text-xs sm:text-sm md:text-base text-black whitespace-nowrap">
             {{ formattedPrice }}
           </span>
           <span
             v-if="hasDiscount"
-            class="block font-sans text-[11px] font-bold text-muted-foreground line-through"
+            class="block font-sans text-[9px] sm:text-[11px] font-bold text-muted-foreground line-through"
           >
             {{ formattedOriginal }}
           </span>
         </div>
         <span
-          class="font-outfit font-bold text-[11px] text-neo-violet group-hover:underline shrink-0"
+          class="font-outfit font-bold text-[10px] sm:text-[11px] text-neo-violet group-hover:underline shrink-0"
         >
           Detail →
         </span>

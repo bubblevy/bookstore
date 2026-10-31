@@ -28,7 +28,7 @@ import { RouterLink } from 'vue-router'
           Kembali ke Beranda
         </RouterLink>
         <RouterLink
-          to="/#katalog"
+          to="/catalog"
           class="w-full sm:w-auto neubrutal-btn bg-white text-black border-3 border-black px-6 py-3 font-outfit font-black text-sm shadow-neo"
         >
           Lihat Katalog

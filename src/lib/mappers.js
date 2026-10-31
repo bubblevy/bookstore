@@ -30,7 +30,7 @@ export function mapCategory(raw = {}, index = 0) {
     theme: style.theme,
     bg: style.bg,
     text: style.text,
-    image: raw.image_url || '',
+    image: raw.image_url || raw.image || raw.icon_url || raw.thumbnail || '',
   }
 }
 
@@ -55,14 +55,19 @@ export function mapBook(raw = {}) {
         : originalPrice > price
           ? Math.round(((originalPrice - price) / originalPrice) * 100)
           : 0,
-    sold: Number(raw.sold) || 0,
-    stock: Number(raw.stock) || 0,
+    sold:
+      Number(
+        raw.sold ?? 0,
+      ) || 0,
+    stock: Number(raw.stock ?? raw.total_stock ?? 0) || 0,
     weightGrams: Number(raw.weight_grams) || 0,
     coverImage: raw.cover_image || '',
     cover: raw.cover_image || '',
     theme: themeFor(raw.category?.slug || raw.slug || raw.id),
     accentColor: '',
     subtitle: '',
+    synopsis: raw.synopsis || raw.description || '',
+    format: raw.format || 'Paperback',
   }
 }
 
@@ -90,19 +95,152 @@ export function mapBookDetail(raw = {}) {
 
 export function mapCartItem(item = {}, cache = {}) {
   const book = item.book || {}
-  const cached = cache[book.id] || {}
+  const bookId = item.book_id || item.bookId || book.id
+  const cached = cache[bookId] || cache[book.id] || {}
+  const cover =
+    book.cover_image ||
+    book.coverImage ||
+    book.cover ||
+    cached.coverImage ||
+    cached.cover ||
+    ''
 
   return {
     id: item.id,
-    bookId: item.book_id,
+    bookId,
     slug: book.slug || cached.slug || '',
     title: book.title || cached.title || 'Buku',
-    author: cached.author || 'Penulis',
+    author:
+      (typeof book.author === 'object' ? book.author?.name : book.author) ||
+      cached.author ||
+      'Penulis',
     price: Number(book.price) || 0,
     originalPrice: 0,
-    theme: cached.theme || themeFor(book.slug || book.id),
+    theme: cached.theme || themeFor(book.slug || bookId),
     quantity: Number(item.quantity) || 1,
     stock: Number(book.stock) || 0,
     selected: true,
+    coverImage: cover,
+    cover: cover,
   }
+}
+
+export function formatFullAddress(addr) {
+  if (!addr) return ''
+
+  if (typeof addr === 'string') {
+    return addr
+      .trim()
+      .replace(/^[\s,.-]+/, '')
+      .replace(/[\s,.-]+$/, '')
+      .replace(/\s*,\s*,+/g, ', ')
+  }
+
+    let street = (
+    addr.address_line ||
+    addr.address ||
+    addr.fullAddress ||
+    addr.full_address ||
+    addr.street ||
+    ''
+  ).trim()
+
+    street = street
+    .replace(/^[\s,.-]+/, '')
+    .replace(/[\s,.-]+$/, '')
+    .replace(/\s*,\s*,+/g, ', ')
+
+    const subdistrict = (
+    addr.subdistrict_name ||
+    addr.subdistrict ||
+    addr.administrative_division_level_4_name ||
+    ''
+  ).trim()
+  const district = (
+    addr.district_name ||
+    addr.district ||
+    addr.administrative_division_level_3_name ||
+    ''
+  ).trim()
+  const city = (
+    addr.city_name ||
+    addr.city ||
+    addr.administrative_division_level_2_name ||
+    ''
+  ).trim()
+  const province = (
+    addr.province_name ||
+    addr.province ||
+    addr.administrative_division_level_1_name ||
+    ''
+  ).trim()
+  const postal = String(
+    addr.postal_code ||
+    addr.postalCode ||
+    addr.zip_code ||
+    ''
+  ).trim()
+
+  const parts = []
+  if (street) parts.push(street)
+
+  const streetLower = street.toLowerCase()
+
+    if (subdistrict) {
+    const rawSub = subdistrict.replace(/^(kelurahan|desa|kel\.?|ds\.?)\s+/i, '').trim().toLowerCase()
+    const alreadyIncluded =
+      streetLower === rawSub ||
+      streetLower.includes(`kel. ${rawSub}`) ||
+      streetLower.includes(`kelurahan ${rawSub}`) ||
+      streetLower.includes(`desa ${rawSub}`)
+    if (!alreadyIncluded) {
+      const label = /^(kelurahan|desa|kel\.?|ds\.?)\s+/i.test(subdistrict)
+        ? subdistrict
+        : `Kel. ${subdistrict}`
+      parts.push(label)
+    }
+  }
+
+    if (district) {
+    const rawDist = district.replace(/^(kecamatan|kec\.?)\s+/i, '').trim().toLowerCase()
+    const alreadyIncluded =
+      streetLower === rawDist ||
+      streetLower.includes(`kec. ${rawDist}`) ||
+      streetLower.includes(`kecamatan ${rawDist}`)
+    if (!alreadyIncluded) {
+      const label = /^(kecamatan|kec\.?)\s+/i.test(district) ? district : `Kec. ${district}`
+      parts.push(label)
+    }
+  }
+
+    if (city) {
+    const rawCity = city.replace(/^(kota|kabupaten|kab\.?)\s+/i, '').trim().toLowerCase()
+    const alreadyIncluded =
+      streetLower === rawCity ||
+      parts.some((p) => {
+        const pClean = p.replace(/^(kota|kabupaten|kab\.?)\s+/i, '').trim().toLowerCase()
+        return pClean === rawCity
+      })
+    if (!alreadyIncluded) {
+      parts.push(city)
+    }
+  }
+
+    if (province) {
+    const provLower = province.toLowerCase()
+    const alreadyIncluded =
+      streetLower === provLower ||
+      parts.some((p) => p.toLowerCase() === provLower)
+    if (!alreadyIncluded) {
+      parts.push(province)
+    }
+  }
+
+  let full = parts.filter(Boolean).join(', ')
+
+    if (postal && !full.includes(postal)) {
+    full = full ? `${full} ${postal}` : postal
+  }
+
+  return full.replace(/^[\s,]+/, '').replace(/,\s*,/g, ', ').trim()
 }
