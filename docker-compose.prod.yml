@@ -1,0 +1,9 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bookstore_fe_prod
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:80"

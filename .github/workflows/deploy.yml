@@ -1,0 +1,51 @@
+name: Deploy Frontend to Azure VM
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - '.gitignore'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Prepare VM Folder & Permissions
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USERNAME }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          timeout: 10m
+          command_timeout: 10m
+          script: |
+            mkdir -p /home/${{ secrets.VM_USERNAME }}/bookstore-fe
+            sudo chown -R ${{ secrets.VM_USERNAME }}:${{ secrets.VM_USERNAME }} /home/${{ secrets.VM_USERNAME }}/bookstore-fe
+
+      - name: Copy Source Files to VM via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USERNAME }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          source: ".,!node_modules,!dist"
+          target: "/home/${{ secrets.VM_USERNAME }}/bookstore-fe"
+
+      - name: Build & Run Container on VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USERNAME }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          timeout: 15m
+          command_timeout: 15m
+          script: |
+            cd /home/${{ secrets.VM_USERNAME }}/bookstore-fe
+            docker compose -f docker-compose.prod.yml up -d --build --remove-orphans

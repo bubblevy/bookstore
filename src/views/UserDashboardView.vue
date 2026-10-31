@@ -1,500 +1,221 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRoute, RouterLink } from 'vue-router'
+import { ref, computed, watch, onMounted } from 'vue'
+import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useStore } from '@/composables/useStore'
-import { api } from '@/lib/api'
-import { assetUrl } from '@/lib/assets'
-import BookCover from '@/components/BookCover.vue'
-import PasswordValidation from '@/components/PasswordValidation.vue'
-import { getPasswordStrength } from '@/lib/password'
-import { COMPANY_NAME, COMPANY_ADDRESS } from '@/lib/brand'
-import PaymentInstructions from '@/components/PaymentInstructions.vue'
-import StatusBadge from '@/components/StatusBadge.vue'
+import FullScreenLoader from '@/components/FullScreenLoader.vue'
+import { useOrderStatusSSE } from '@/composables/useOrderStatusSSE'
+
+import UserOrdersTab from '@/components/user/tabs/UserOrdersTab.vue'
+import UserWishlistTab from '@/components/user/tabs/UserWishlistTab.vue'
+import UserAddressesTab from '@/components/user/tabs/UserAddressesTab.vue'
+import UserProfileTab from '@/components/user/tabs/UserProfileTab.vue'
 
 const route = useRoute()
+const router = useRouter()
 const {
   state,
-  showToast,
-  reorderBook,
-  addAddress,
-  updateAddress,
-  removeAddress,
-  setDefaultAddress,
   loadOrders,
+  applyOrderPaymentUpdate,
+  applyOrderShippingUpdate,
   loadAddresses,
   loadWishlist,
-  toggleWishlist,
-  clearWishlist,
-  moveWishlistToCart,
-  changePassword,
+  loadBooks,
 } = useStore()
 
-const busy = ref({})
-const isBusy = (key) => Boolean(busy.value[key])
-const setBusy = (key, value) => {
-  busy.value = { ...busy.value, [key]: value }
+useOrderStatusSSE({
+  onPaymentStatus(data) {
+    if (!data?.invoice_number) return
+    applyOrderPaymentUpdate(data)
+    loadOrders('', { silent: true }).catch(() => {})
+  },
+  onShippingStatus(data) {
+    if (!data?.invoice_number) return
+    applyOrderShippingUpdate(data)
+    loadOrders('', { silent: true }).catch(() => {})
+  },
+})
+
+const isInitialLoading = ref(true)
+const activeTab = ref('orders')
+
+function maskEmail(email) {
+  if (!email || !email.includes('@')) return email || ''
+  const [user, domain] = email.split('@')
+  if (user.length <= 2) return `${user[0] || ''}***@${domain}`
+  return `${user.slice(0, 2)}***${user.slice(-1)}@${domain}`
 }
 
-const activeTab = ref('orders') // 'orders' | 'library' | 'wishlist' | 'addresses' | 'profile'
-const orderFilter = ref('all') // 'all' | 'menunggu' | 'diproses' | 'dikirim' | 'selesai' | 'dibatalkan'
-const addressSaving = ref(false)
-const downloadingInvoice = ref(false)
-const checkingOrderPayment = ref(false)
-const failedWishlistCovers = ref({})
+const maskedEmail = computed(() => maskEmail(state.userProfile.email))
 
-const hasUnpaidOrder = computed(() => state.orders.some((order) => canPay(order)))
+const activeOrdersCount = computed(() => {
+  return state.orders.filter((order) =>
+    ['menunggu', 'diproses', 'dikirim'].includes(order.status),
+  ).length
+})
+const totalOrdersCount = computed(() => state.orders.length)
+const wishlistCount = computed(() => state.wishlist.length)
+const addressesCount = computed(() => state.userProfile.addresses.length)
 
-function showPaymentNotice(order) {
-  showToast(`Pembayaran ${order.id} berhasil diterima!`, { type: 'success' })
-}
-
-async function refreshOrders() {
-  const before = new Map(state.orders.map((order) => [order.id, order.status]))
-  await loadOrders()
-
-  const paidOrder = state.orders.find(
-    (order) =>
-      before.get(order.id) === 'menunggu' &&
-      ['diproses', 'dikirim', 'selesai'].includes(order.status),
-  )
-
-  if (selectedOrder.value) {
-    selectedOrder.value =
-      state.orders.find((order) => order.id === selectedOrder.value.id) || selectedOrder.value
+function switchTab(tab) {
+  activeTab.value = tab
+  router.replace({ query: { ...route.query, tab } }).catch(() => {})
+  if (tab === 'orders' && !state.orders.length) loadOrders()
+  else if (tab === 'wishlist' && !state.wishlist.length) loadWishlist()
+  else if (tab === 'addresses') {
+    const hasIncomplete = state.userProfile.addresses.some(
+      (a) => !a.address_line || (!a.province && !a.postalCode),
+    )
+    if (!state.userProfile.addresses.length || hasIncomplete) {
+      loadAddresses(true)
+    }
   }
-
-  if (paidOrder) showPaymentNotice(paidOrder)
 }
+
+watch(
+  () => route.query.tab,
+  (newTab) => {
+    if (newTab && ['orders', 'wishlist', 'addresses', 'profile'].includes(newTab)) {
+      activeTab.value = newTab
+    }
+  },
+)
 
 onMounted(async () => {
   if (route.query.tab) {
-    activeTab.value = String(route.query.tab)
+    const tab = String(route.query.tab)
+    if (['orders', 'wishlist', 'addresses', 'profile'].includes(tab)) {
+      activeTab.value = tab
+    } else {
+      activeTab.value = 'orders'
+    }
   }
 
-  await Promise.all([loadOrders(), loadAddresses(), loadWishlist()])
+  // Load active tab data first to dismiss loader quickly.
+  const primaryTask =
+    activeTab.value === 'addresses'
+      ? loadAddresses(true)
+      : activeTab.value === 'wishlist'
+        ? loadWishlist()
+        : loadOrders()
+
+  try {
+    await primaryTask
+  } finally {
+    isInitialLoading.value = false
+  }
+
+  // Fetch remaining tab data in background without duplicate active tab fetch.
+  const remainingTasks = []
+  if (!state.books.length) remainingTasks.push(loadBooks({ per_page: 100 }))
+  if (activeTab.value !== 'orders') remainingTasks.push(loadOrders())
+  if (activeTab.value !== 'addresses') remainingTasks.push(loadAddresses(true))
+  if (activeTab.value !== 'wishlist') remainingTasks.push(loadWishlist())
+  if (remainingTasks.length) {
+    Promise.allSettled(remainingTasks)
+  }
 })
-
-const filteredOrders = computed(() => {
-  if (orderFilter.value === 'all') return state.orders
-  return state.orders.filter((o) => o.status === orderFilter.value)
-})
-
-const activeOrdersCount = computed(() => {
-  return state.orders.filter((o) => ['menunggu', 'diproses', 'dikirim'].includes(o.status)).length
-})
-
-const myLibraryBooks = computed(() => {
-  const map = new Map()
-  state.orders
-    .filter((o) => o.status === 'selesai')
-    .forEach((order) => {
-      order.items.forEach((item) => {
-        if (!map.has(item.id)) {
-          const bookDetail = state.books.find((b) => b.id === item.id) || item
-          map.set(item.id, {
-            ...bookDetail,
-            purchaseDate: order.date,
-            orderId: order.id,
-          })
-        }
-      })
-    })
-  return Array.from(map.values())
-})
-
-function formatRupiah(val) {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-  }).format(val || 0)
-}
-
-const selectedOrder = ref(null)
-const showTrackingModal = ref(false)
-const showInvoiceModal = ref(false)
-const showReadingModal = ref(false)
-const readingBook = ref(null)
-const showAddAddressModal = ref(false)
-const showClearWishlistConfirm = ref(false)
-const clearingWishlist = ref(false)
-const trackingLoading = ref(false)
-const trackingError = ref('')
-const trackingData = ref(null)
-
-function formatTrackingTime(value) {
-  if (!value) return ''
-  const date = new Date(String(value).replace(' ', 'T'))
-  if (Number.isNaN(date.getTime())) return String(value)
-  return new Intl.DateTimeFormat('id-ID', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(date)
-}
-
-const trackingSteps = computed(() => {
-  const history = trackingData.value?.history
-  if (Array.isArray(history) && history.length) {
-    return history.map((item) => ({
-      title: item.note || item.status || 'Pembaruan pengiriman',
-      time: formatTrackingTime(item.updated_at),
-      done: true,
-      current: false,
-    }))
-  }
-  return selectedOrder.value?.timeline || []
-})
-
-async function openTracking(order) {
-  selectedOrder.value = order
-  showTrackingModal.value = true
-  trackingData.value = null
-  trackingError.value = ''
-  if (!order?.id) return
-
-  trackingLoading.value = true
-  try {
-    const response = await api.orderTracking(order.id)
-    trackingData.value = response.data || null
-  } catch (error) {
-    const status = Number(error?.status)
-    trackingError.value = [400, 404, 409].includes(status)
-      ? 'Nomor resi belum diterbitkan. Coba lagi setelah pesanan dikirim.'
-      : error?.message || 'Gagal memuat status pengiriman'
-  } finally {
-    trackingLoading.value = false
-  }
-}
-
-function openInvoice(order) {
-  selectedOrder.value = order
-  showInvoiceModal.value = true
-}
-
-function openReading(book) {
-  readingBook.value = book
-  showReadingModal.value = true
-}
-
-const passwordForm = ref({
-  current: '',
-  newPass: '',
-  confirmPass: '',
-})
-
-const passwordStrength = computed(() => getPasswordStrength(passwordForm.value.newPass))
-
-async function handleChangePassword() {
-  if (!passwordForm.value.current || !passwordForm.value.newPass) {
-    showToast('Harap isi password saat ini dan password baru.', { type: 'error' })
-    return
-  }
-  if (passwordForm.value.newPass !== passwordForm.value.confirmPass) {
-    showToast('Konfirmasi password tidak cocok.', { type: 'error' })
-    return
-  }
-  if (passwordStrength.value.score < 4) {
-    showToast('Password belum cukup kuat. Tambahkan variasi karakter.', { type: 'error' })
-    return
-  }
-
-  if (isBusy('password')) return
-  setBusy('password', true)
-  try {
-    const ok = await changePassword(
-      passwordForm.value.current,
-      passwordForm.value.newPass,
-      passwordForm.value.confirmPass,
-    )
-    if (ok) passwordForm.value = { current: '', newPass: '', confirmPass: '' }
-  } finally {
-    setBusy('password', false)
-  }
-}
-
-const editingAddressId = ref(null)
-
-function emptyAddressForm() {
-  return {
-    recipient: state.userProfile.name,
-    phone: state.userProfile.phone,
-    fullAddress: '',
-    city: '',
-    postalCode: '',
-    isDefault: false,
-  }
-}
-
-const newAddressForm = ref(emptyAddressForm())
-
-function openAddAddress() {
-  editingAddressId.value = null
-  newAddressForm.value = emptyAddressForm()
-  showAddAddressModal.value = true
-}
-
-function openEditAddress(addr) {
-  editingAddressId.value = addr.id
-  newAddressForm.value = {
-    recipient: addr.recipient || '',
-    phone: addr.phone || '',
-    fullAddress: addr.fullAddress || '',
-    city: addr.city || '',
-    postalCode: addr.postalCode || '',
-    isDefault: Boolean(addr.isDefault),
-  }
-  showAddAddressModal.value = true
-}
-
-async function handleSaveAddress() {
-  if (addressSaving.value) return
-  if (
-    !newAddressForm.value.recipient ||
-    !newAddressForm.value.fullAddress ||
-    !newAddressForm.value.city
-  ) {
-    showToast('Harap lengkapi semua kolom alamat wajib.', { type: 'error' })
-    return
-  }
-  addressSaving.value = true
-  try {
-    const payload = { ...newAddressForm.value }
-    const ok = editingAddressId.value
-      ? await updateAddress(editingAddressId.value, payload)
-      : await addAddress(payload)
-    if (!ok) return
-    showAddAddressModal.value = false
-    editingAddressId.value = null
-    newAddressForm.value = emptyAddressForm()
-  } finally {
-    addressSaving.value = false
-  }
-}
-
-async function handleClearWishlist() {
-  if (clearingWishlist.value) return
-  clearingWishlist.value = true
-  try {
-    const cleared = await clearWishlist()
-    if (cleared) showClearWishlistConfirm.value = false
-  } finally {
-    clearingWishlist.value = false
-  }
-}
-
-async function handleRemoveAddress(addr) {
-  const key = `addr-delete-${addr.id}`
-  if (isBusy(key)) return
-  setBusy(key, true)
-  try {
-    await removeAddress(addr.id)
-  } finally {
-    setBusy(key, false)
-  }
-}
-
-async function handleSetPrimary(addr) {
-  const key = `addr-primary-${addr.id}`
-  if (isBusy(key)) return
-  setBusy(key, true)
-  try {
-    await setDefaultAddress(addr.id)
-  } finally {
-    setBusy(key, false)
-  }
-}
-
-async function handleWishlistRemove(item) {
-  const key = `wish-remove-${item.bookId}`
-  if (isBusy(key)) return
-  setBusy(key, true)
-  try {
-    await toggleWishlist(item)
-  } finally {
-    setBusy(key, false)
-  }
-}
-
-async function handleWishlistMove(item) {
-  const key = `wish-move-${item.bookId}`
-  if (isBusy(key)) return
-  setBusy(key, true)
-  try {
-    await moveWishlistToCart(item.bookId)
-  } finally {
-    setBusy(key, false)
-  }
-}
-
-async function handleReorder(order) {
-  if (isBusy('reorder')) return
-  setBusy('reorder', true)
-  try {
-    await reorderBook(order)
-  } finally {
-    setBusy('reorder', false)
-  }
-}
-
-async function downloadInvoice(order) {
-  if (!order?.id || downloadingInvoice.value) return
-  downloadingInvoice.value = true
-  try {
-    const { blob, filename } = await api.orderPdf(order.id)
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = filename || `invoice-${order.id}.pdf`
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    URL.revokeObjectURL(url)
-    showToast('Faktur berhasil diunduh.', { type: 'success' })
-  } catch (error) {
-    showToast(error?.message || 'Gagal mengunduh faktur', { type: 'error' })
-  } finally {
-    downloadingInvoice.value = false
-  }
-}
-
-async function checkSelectedPayment() {
-  if (checkingOrderPayment.value) return
-  checkingOrderPayment.value = true
-  try {
-    await refreshOrders()
-  } finally {
-    checkingOrderPayment.value = false
-  }
-}
-
-function canPay(order) {
-  const payment = String(order?.paymentStatus || '').toLowerCase()
-  const deadline = order?.paymentDeadlineAt ? new Date(order.paymentDeadlineAt).getTime() : null
-  const withinWindow = !Number.isFinite(deadline) || deadline === null || Date.now() < deadline
-  return (
-    order?.status === 'menunggu' &&
-    withinWindow &&
-    ![
-      'settlement',
-      'capture',
-      'paid',
-      'expire',
-      'expired',
-      'deny',
-      'denied',
-      'cancel',
-      'cancelled',
-      'failure',
-      'failed',
-    ].includes(payment)
-  )
-}
-
-function paymentStatusLabel(order) {
-  const value = String(order?.paymentStatus || '').toLowerCase()
-  const deadline = order?.paymentDeadlineAt ? new Date(order.paymentDeadlineAt).getTime() : null
-  const expired =
-    Number.isFinite(deadline) &&
-    deadline !== null &&
-    Date.now() >= deadline &&
-    !['settlement', 'capture', 'paid'].includes(value)
-  if (expired) return 'Kedaluwarsa'
-  if (canPay(order)) return 'Menunggu Pembayaran'
-  if (['expire', 'expired'].includes(value)) return 'Kedaluwarsa'
-  if (['deny', 'denied', 'failure', 'failed'].includes(value)) return 'Gagal'
-  if (['pending'].includes(value)) return 'Menunggu Pembayaran'
-  if (['settlement', 'capture', 'paid'].includes(value)) return 'Lunas'
-  if (value === 'cancel' || value === 'cancelled') return 'Dibatalkan'
-  return value || '—'
-}
-
-function paymentMethodLabel(order) {
-  const value = String(order?.paymentMethod || '').toLowerCase()
-  if (order?.qrUrl || value.includes('qris')) return 'QRIS'
-  if (order?.vaNumber) return (order.bank || 'Virtual Account').toUpperCase()
-  if (value.includes('gopay')) return 'GoPay'
-  if (value.includes('shopeepay')) return 'ShopeePay'
-  if (value.includes('bank') || value.includes('va')) return 'Transfer Bank'
-  return order?.paymentMethod && order.paymentMethod !== '—' ? order.paymentMethod : '—'
-}
 </script>
 
 <template>
-  <div class="min-h-screen bg-background py-6 sm:py-10">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+  <div class="min-h-screen bg-background py-5 sm:py-8 lg:py-10">
+        <FullScreenLoader :show="isInitialLoading" />
+
+        <div class="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8">
+            <nav
+        aria-label="Breadcrumb"
+        class="flex flex-wrap items-center justify-between gap-3 mb-4 sm:mb-6"
+      >
         <div
           class="flex items-center gap-2 text-xs sm:text-sm font-outfit font-extrabold text-muted-foreground"
         >
-          <RouterLink to="/" class="hover:text-black">Beranda</RouterLink>
+          <RouterLink to="/" class="hover:text-black transition-colors flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+            </svg>
+            Beranda
+          </RouterLink>
           <span>/</span>
-          <span class="text-black uppercase">Dashboard Pengguna</span>
+          <span class="text-black tracking-wide">Dashboard</span>
         </div>
-      </div>
+      </nav>
 
-      <section
-        class="bg-white border-3 sm:border-4 border-black p-5 sm:p-7 rounded-[2px] shadow-neo-md sm:shadow-neo-lg mb-8"
+            <section
+        class="bg-white border-2 sm:border-3 border-black p-4 sm:p-6 lg:p-7 rounded-[2px] shadow-neo-sm mb-6 sm:mb-8"
       >
-        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div class="flex items-start sm:items-center gap-4 sm:gap-5">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-5 sm:gap-6">
+                    <div class="flex items-start sm:items-center gap-3.5 sm:gap-5 min-w-0">
             <div
-              class="w-16 h-16 sm:w-20 sm:h-20 bg-neo-violet text-white border-3 border-black rounded-[2px] shadow-neo flex items-center justify-center font-outfit font-black text-2xl sm:text-3xl shrink-0"
+              class="w-14 h-14 sm:w-18 sm:h-18 lg:w-20 lg:h-20 bg-neo-violet text-white border-2 border-black rounded-[2px] shadow-neo-sm flex items-center justify-center font-outfit font-black text-xl sm:text-2xl lg:text-3xl shrink-0 select-none"
             >
-              {{ state.userProfile.name.slice(0, 2).toUpperCase() }}
+              {{ state.userProfile.name ? state.userProfile.name.slice(0, 2).toUpperCase() : 'US' }}
             </div>
-            <div>
+
+            <div class="min-w-0 flex-1">
               <div class="flex flex-wrap items-center gap-2">
-                <h1 class="font-outfit font-black text-2xl sm:text-3xl tracking-tight text-black">
-                  {{ state.userProfile.name }}
+                <h1
+                  class="font-outfit font-black text-xl sm:text-2xl lg:text-3xl tracking-tight text-black truncate"
+                >
+                  {{ state.userProfile.name || 'Pengguna BookStore' }}
                 </h1>
                 <span
-                  class="bg-black text-white px-2.5 py-0.5 rounded-[2px] font-outfit font-black text-[11px] uppercase tracking-wide"
+                  v-if="state.userRole === 'admin'"
+                  class="bg-neo-violet text-white border-2 border-black px-2 py-0.5 rounded-[2px] font-outfit font-black text-[10px] sm:text-xs uppercase tracking-wide shadow-neo-xs"
                 >
-                  {{ state.userRole === 'admin' ? 'Admin' : 'Akun Pembeli' }}
+                  Admin
                 </span>
               </div>
-              <p class="font-sans text-xs sm:text-sm font-bold text-muted-foreground mt-0.5">
-                {{ state.userProfile.email }} | Terdaftar sejak {{ state.userProfile.memberSince }}
-              </p>
+
+              <div class="flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-xs sm:text-sm font-semibold text-muted-foreground mt-1">
+                <span class="truncate max-w-[220px] sm:max-w-none">{{ maskedEmail }}</span>
+                <span v-if="state.userProfile.memberSince" class="hidden sm:inline">•</span>
+                <span v-if="state.userProfile.memberSince" class="text-neutral-500">
+                  Member sejak {{ state.userProfile.memberSince }}
+                </span>
+              </div>
             </div>
           </div>
 
-          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 lg:gap-4 shrink-0">
-            <div
-              class="bg-background border-2 border-black p-3 rounded-[2px] shadow-neo-sm text-center"
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 lg:gap-4 shrink-0 w-full lg:w-auto">
+                        <div
+              class="bg-background border-2 border-black p-2.5 sm:p-3 rounded-[2px] shadow-neo-sm text-left select-none"
             >
-              <span class="block font-outfit font-black text-xl sm:text-2xl text-neo-violet">
+              <span class="font-outfit font-black text-xl sm:text-2xl text-black block mb-1">
                 {{ activeOrdersCount }}
               </span>
-              <span
-                class="font-outfit font-bold text-[10px] sm:text-xs uppercase text-muted-foreground"
-              >
+              <span class="font-outfit font-black text-[10px] sm:text-xs uppercase text-muted-foreground block truncate">
                 Pesanan Aktif
               </span>
             </div>
 
-            <div
-              class="bg-background border-2 border-black p-3 rounded-[2px] shadow-neo-sm text-center"
+                        <div
+              class="bg-background border-2 border-black p-2.5 sm:p-3 rounded-[2px] shadow-neo-sm text-left select-none"
             >
-              <span class="block font-outfit font-black text-xl sm:text-2xl text-black">
-                {{ myLibraryBooks.length }}
+              <span class="font-outfit font-black text-xl sm:text-2xl text-black block mb-1">
+                {{ totalOrdersCount }}
               </span>
-              <span
-                class="font-outfit font-bold text-[10px] sm:text-xs uppercase text-muted-foreground"
-              >
-                Buku Dimiliki
+              <span class="font-outfit font-black text-[10px] sm:text-xs uppercase text-muted-foreground block truncate">
+                Total Belanja
               </span>
             </div>
 
-            <div
-              class="bg-background border-2 border-black p-3 rounded-[2px] shadow-neo-sm text-center"
+                        <div
+              class="bg-background border-2 border-black p-2.5 sm:p-3 rounded-[2px] shadow-neo-sm text-left select-none"
             >
-              <span class="block font-outfit font-black text-xl sm:text-2xl text-black">
-                {{ state.userProfile.addresses.length }}
+              <span class="font-outfit font-black text-xl sm:text-2xl text-black block mb-1">
+                {{ wishlistCount }}
               </span>
-              <span
-                class="font-outfit font-bold text-[10px] sm:text-xs uppercase text-muted-foreground"
-              >
+              <span class="font-outfit font-black text-[10px] sm:text-xs uppercase text-muted-foreground block truncate">
+                Wishlist
+              </span>
+            </div>
+
+                        <div
+              class="bg-background border-2 border-black p-2.5 sm:p-3 rounded-[2px] shadow-neo-sm text-left select-none"
+            >
+              <span class="font-outfit font-black text-xl sm:text-2xl text-black block mb-1">
+                {{ addressesCount }}
+              </span>
+              <span class="font-outfit font-black text-[10px] sm:text-xs uppercase text-muted-foreground block truncate">
                 Alamat Kirim
               </span>
             </div>
@@ -502,1323 +223,66 @@ function paymentMethodLabel(order) {
         </div>
       </section>
 
-      <div class="flex items-center gap-2 overflow-x-auto pb-3 mb-6 scrollbar-none">
-        <button
-          class="neubrutal-btn px-4 sm:px-5 py-2.5 rounded-[2px] font-outfit font-black text-xs sm:text-sm whitespace-nowrap transition-all flex items-center gap-2 border-2 sm:border-3 border-black"
-          :class="
-            activeTab === 'orders'
-              ? 'bg-neo-yellow text-black shadow-neo -translate-y-0.5'
-              : 'bg-white text-muted-foreground hover:bg-gray-100 shadow-neo-sm'
-          "
-          @click="activeTab = 'orders'"
-        >
-          <svg
-            class="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.2"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"
-            />
-          </svg>
-          <span>Pesanan Saya</span>
-          <span
-            v-if="state.orders.length > 0"
-            class="px-1.5 py-0.2 bg-black text-white text-[10px] rounded-full"
-          >
-            {{ state.orders.length }}
-          </span>
-        </button>
-
-        <button
-          class="neubrutal-btn px-4 sm:px-5 py-2.5 rounded-[2px] font-outfit font-black text-xs sm:text-sm whitespace-nowrap transition-all flex items-center gap-2 border-2 sm:border-3 border-black"
-          :class="
-            activeTab === 'library'
-              ? 'bg-neo-yellow text-black shadow-neo -translate-y-0.5'
-              : 'bg-white text-muted-foreground hover:bg-gray-100 shadow-neo-sm'
-          "
-          @click="activeTab = 'library'"
-        >
-          <svg
-            class="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.2"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25"
-            />
-          </svg>
-          <span>Rak Buku Saya</span>
-          <span
-            v-if="myLibraryBooks.length > 0"
-            class="px-1.5 py-0.2 bg-black text-white text-[10px] rounded-full"
-          >
-            {{ myLibraryBooks.length }}
-          </span>
-        </button>
-
-        <button
-          class="neubrutal-btn px-4 sm:px-5 py-2.5 rounded-[2px] font-outfit font-black text-xs sm:text-sm whitespace-nowrap transition-all flex items-center gap-2 border-2 sm:border-3 border-black"
-          :class="
-            activeTab === 'wishlist'
-              ? 'bg-neo-yellow text-black shadow-neo -translate-y-0.5'
-              : 'bg-white text-muted-foreground hover:bg-gray-100 shadow-neo-sm'
-          "
-          @click="activeTab = 'wishlist'"
-        >
-          <svg
-            class="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.2"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z"
-            />
-          </svg>
-          <span>Wishlist</span>
-          <span
-            v-if="state.wishlist.length > 0"
-            class="px-1.5 py-0.2 bg-black text-white text-[10px] rounded-full"
-          >
-            {{ state.wishlist.length }}
-          </span>
-        </button>
-
-        <button
-          class="neubrutal-btn px-4 sm:px-5 py-2.5 rounded-[2px] font-outfit font-black text-xs sm:text-sm whitespace-nowrap transition-all flex items-center gap-2 border-2 sm:border-3 border-black"
-          :class="
-            activeTab === 'addresses'
-              ? 'bg-neo-yellow text-black shadow-neo -translate-y-0.5'
-              : 'bg-white text-muted-foreground hover:bg-gray-100 shadow-neo-sm'
-          "
-          @click="activeTab = 'addresses'"
-        >
-          <svg
-            class="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.2"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-            />
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"
-            />
-          </svg>
-          <span>Alamat Pengiriman</span>
-        </button>
-
-        <button
-          class="neubrutal-btn px-4 sm:px-5 py-2.5 rounded-[2px] font-outfit font-black text-xs sm:text-sm whitespace-nowrap transition-all flex items-center gap-2 border-2 sm:border-3 border-black"
-          :class="
-            activeTab === 'profile'
-              ? 'bg-neo-yellow text-black shadow-neo -translate-y-0.5'
-              : 'bg-white text-muted-foreground hover:bg-gray-100 shadow-neo-sm'
-          "
-          @click="activeTab = 'profile'"
-        >
-          <svg
-            class="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.2"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 0 1 0 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 0 1 0-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281Z"
-            />
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-            />
-          </svg>
-          <span>Pengaturan Akun</span>
-        </button>
-      </div>
-
-      <div v-if="activeTab === 'orders'" class="space-y-6">
-        <div
-          class="bg-white border-3 border-black p-3.5 rounded-[2px] shadow-neo-sm flex flex-wrap items-center justify-between gap-3"
-        >
-          <div class="flex items-center gap-2 overflow-x-auto">
-            <span class="font-outfit font-black text-xs uppercase text-muted-foreground mr-1"
-              >Status:</span
-            >
-            <button
-              v-for="flt in [
-                { key: 'all', label: 'Semua' },
-                { key: 'menunggu', label: 'Menunggu Bayar' },
-                { key: 'diproses', label: 'Diproses' },
-                { key: 'dikirim', label: 'Dikirim' },
-                { key: 'selesai', label: 'Selesai' },
-                { key: 'dibatalkan', label: 'Dibatalkan' },
-              ]"
-              :key="flt.key"
-              class="neubrutal-btn px-3 py-1 font-outfit font-black text-xs border-2 border-black rounded-[2px]"
-              :class="
-                orderFilter === flt.key
-                  ? 'bg-black text-white shadow-neo-sm'
-                  : 'bg-background hover:bg-gray-200 text-black'
-              "
-              @click="orderFilter = flt.key"
-            >
-              {{ flt.label }}
-            </button>
-          </div>
-
-          <div class="flex items-center gap-3">
-            <span
-              v-if="hasUnpaidOrder"
-              class="hidden sm:flex items-center gap-1.5 font-sans text-[11px] font-bold text-muted-foreground"
-            >
-              <span class="relative flex h-2 w-2">
-                <span
-                  class="animate-ping absolute inline-flex h-full w-full rounded-full bg-neo-violet opacity-75"
-                ></span>
-                <span class="relative inline-flex rounded-full h-2 w-2 bg-neo-violet"></span>
-              </span>
-              Memantau pembayaran
-            </span>
-            <div class="font-outfit font-bold text-xs text-muted-foreground">
-              Total <strong class="text-black">{{ filteredOrders.length }}</strong> transaksi
-            </div>
-            <button
-              type="button"
-              class="neubrutal-btn bg-white border-2 border-black px-3 py-1.5 font-outfit font-black text-[11px] shadow-neo-sm hover:bg-neo-yellow"
-              @click="refreshOrders"
-            >
-              Perbarui Status
-            </button>
-          </div>
-        </div>
-
-        <div v-if="state.ordersLoading" class="space-y-5">
-          <div
-            v-for="n in 3"
-            :key="`order-skeleton-${n}`"
-            class="h-44 bg-gray-100 border-3 border-black rounded-[2px] animate-pulse"
-          ></div>
-        </div>
-
-        <div
-          v-else-if="filteredOrders.length === 0"
-          class="bg-white border-3 border-black p-12 text-center rounded-[2px] shadow-neo"
-        >
-          <div
-            class="w-16 h-16 mx-auto mb-4 bg-neo-yellow border-3 border-black flex items-center justify-center shadow-neo"
-          >
-            <svg
-              class="w-8 h-8"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"
-              />
-            </svg>
-          </div>
-          <h3 class="font-outfit font-black text-lg">Tidak Ada Pesanan Ditemukan</h3>
-          <p class="font-sans text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-            Belum ada transaksi pada kategori status ini.
-          </p>
-          <RouterLink
-            to="/#katalog"
-            class="mt-4 inline-block neubrutal-btn bg-neo-yellow text-black border-3 border-black px-6 py-2.5 font-outfit font-black text-sm shadow-neo hover:bg-yellow-300"
-          >
-            Mulai Belanja Buku
-          </RouterLink>
-        </div>
-
-        <div v-else class="space-y-5">
-          <div
-            v-for="order in filteredOrders"
-            :key="order.id"
-            class="bg-white border-3 border-black rounded-[2px] shadow-neo overflow-hidden transition-all hover:shadow-neo-md"
-          >
-            <div
-              class="bg-surface border-b-3 border-black px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3"
-            >
-              <div class="flex items-center gap-3">
-                <span class="font-outfit font-black text-sm sm:text-base text-black tracking-tight">
-                  #{{ order.id }}
-                </span>
-                <span class="text-xs font-sans font-bold text-muted-foreground">
-                  | {{ order.date }}
-                </span>
-              </div>
-
-              <div class="flex items-center gap-2">
-                <StatusBadge :status="order.rawStatus" size="xs" />
-              </div>
-            </div>
-
-            <div class="p-4 sm:p-6 space-y-4">
-              <div
-                v-for="item in order.items"
-                :key="item.id"
-                class="flex items-center justify-between gap-4 border-b border-black/10 pb-4 last:border-b-0 last:pb-0"
-              >
-                <div class="flex items-center gap-3 sm:gap-4 min-w-0">
-                  <div
-                    class="w-14 h-18 sm:w-16 sm:h-20 bg-background border-2 border-black shrink-0 overflow-hidden shadow-neo-sm p-1"
-                  >
-                    <BookCover
-                      :theme="item.theme || 'violet'"
-                      :title="item.title"
-                      :author="item.author"
-                    />
-                  </div>
-                  <div class="min-w-0">
-                    <h4 class="font-outfit font-black text-sm sm:text-base text-black truncate">
-                      {{ item.title }}
-                    </h4>
-                    <p class="font-sans text-xs text-muted-foreground truncate">
-                      {{ item.author }}
-                    </p>
-                    <span
-                      class="inline-block mt-1 bg-neutral-100 border border-black px-2 py-0.5 text-[10px] font-outfit font-black rounded-[2px]"
-                    >
-                      x {{ item.quantity }}
-                    </span>
-                  </div>
-                </div>
-
-                <div class="text-right shrink-0">
-                  <span class="font-outfit font-black text-sm sm:text-base text-black block">
-                    {{ formatRupiah(item.price * item.quantity) }}
-                  </span>
-                  <span class="font-sans text-[11px] text-muted-foreground">
-                    @ {{ formatRupiah(item.price) }}
-                  </span>
-                </div>
-              </div>
-
-              <div
-                class="bg-background border-2 border-black p-3 rounded-[2px] flex flex-wrap items-center justify-between gap-3 text-xs font-sans"
-              >
-                <div class="space-y-0.5">
-                  <div class="flex items-center gap-1.5">
-                    <span class="font-outfit font-black text-muted-foreground uppercase text-[10px]"
-                      >Kurir:</span
-                    >
-                    <span class="font-bold text-black">{{ order.courier }}</span>
-                  </div>
-                  <div v-if="order.trackingNumber" class="text-muted-foreground">
-                    Resi:
-                    <span class="font-mono font-bold text-black">{{ order.trackingNumber }}</span>
-                  </div>
-                </div>
-
-                <div class="space-y-0.5 text-right">
-                  <div class="flex items-center gap-1.5 justify-end">
-                    <span class="font-outfit font-black text-muted-foreground uppercase text-[10px]"
-                      >Payment Gateway:</span
-                    >
-                    <span class="font-bold text-black">{{ paymentMethodLabel(order) }}</span>
-                  </div>
-                  <div class="text-muted-foreground text-[10px]">
-                    Status:
-                    <span class="font-bold text-green-700 uppercase">{{
-                      paymentStatusLabel(order)
-                    }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div
-              class="bg-white border-t-3 border-black px-4 sm:px-6 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-            >
-              <div>
-                <span class="font-sans text-xs font-bold text-muted-foreground block">
-                  Total Transaksi
-                </span>
-                <span class="font-outfit font-black text-lg sm:text-xl text-neo-violet">
-                  {{ formatRupiah(order.total) }}
-                </span>
-              </div>
-
-              <div class="flex flex-wrap items-center gap-2">
-                <button
-                  v-if="canPay(order)"
-                  class="neubrutal-btn bg-neo-violet text-white border-2 border-black px-3.5 py-2 font-outfit font-black text-xs shadow-neo-sm hover:bg-purple-700"
-                  @click="openInvoice(order)"
-                >
-                  Bayar
-                </button>
-                <button
-                  class="neubrutal-btn bg-white border-2 border-black px-3.5 py-2 font-outfit font-black text-xs shadow-neo-sm hover:bg-gray-100 flex items-center gap-1.5"
-                  @click="openTracking(order)"
-                >
-                  <svg
-                    class="w-3.5 h-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2.2"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.948c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75"
-                    />
-                  </svg>
-                  <span>Lacak Pengiriman</span>
-                </button>
-
-                <button
-                  class="neubrutal-btn bg-white border-2 border-black px-3.5 py-2 font-outfit font-black text-xs shadow-neo-sm hover:bg-gray-100 flex items-center gap-1.5"
-                  @click="openInvoice(order)"
-                >
-                  <svg
-                    class="w-3.5 h-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2.2"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
-                    />
-                  </svg>
-                  <span>Lihat Faktur</span>
-                </button>
-
-                <button
-                  :disabled="isBusy('reorder')"
-                  class="neubrutal-btn bg-neo-yellow text-black border-2 border-black px-4 py-2 font-outfit font-black text-xs shadow-neo-sm hover:bg-yellow-300 disabled:opacity-60"
-                  @click="handleReorder(order)"
-                >
-                  {{ isBusy('reorder') ? 'Memproses...' : 'Beli Lagi' }}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div v-if="activeTab === 'library'" class="space-y-6">
-        <div
-          class="flex items-center justify-between bg-white border-3 border-black p-4 rounded-[2px] shadow-neo-sm"
-        >
-          <div>
-            <h2 class="font-outfit font-black text-lg text-black">Rak Koleksi Buku Pribadi</h2>
-            <p class="font-sans text-xs text-muted-foreground font-semibold">
-              Koleksi buku resmi yang telah berhasil Anda beli. Akses cuplikan e-reader kapan saja.
-            </p>
-          </div>
-          <span
-            class="bg-neo-lime border-2 border-black px-3 py-1 font-outfit font-black text-xs shadow-neo-sm"
-          >
-            {{ myLibraryBooks.length }} Koleksi Buku
-          </span>
-        </div>
-
-        <div
-          v-if="myLibraryBooks.length === 0"
-          class="bg-white border-3 border-black p-12 text-center rounded-[2px] shadow-neo"
-        >
-          <h3 class="font-outfit font-black text-lg">Belum Ada Buku di Rak Anda</h3>
-          <p class="font-sans text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-            Setiap buku dari transaksi berhasil akan otomatis diarsipkan di halaman ini.
-          </p>
-        </div>
-
-        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          <div
-            v-for="book in myLibraryBooks"
-            :key="book.id"
-            class="bg-white border-3 border-black rounded-[2px] shadow-neo p-4 flex gap-4 items-start"
-          >
-            <div
-              class="w-20 h-28 bg-background border-2 border-black shrink-0 overflow-hidden shadow-neo-sm p-1"
-            >
-              <BookCover :theme="book.theme" :title="book.title" :author="book.author" />
-            </div>
-
-            <div class="flex-1 flex flex-col justify-between min-h-[112px]">
-              <div>
-                <span
-                  class="bg-neo-yellow border border-black text-[9px] font-outfit font-black px-1.5 py-0.5 rounded-[2px]"
-                >
-                  TERDAFTAR RESMI
-                </span>
-                <h4 class="font-outfit font-black text-sm text-black mt-1 line-clamp-1">
-                  {{ book.title }}
-                </h4>
-                <p class="font-sans text-xs text-muted-foreground">
-                  {{ book.author }}
-                </p>
-              </div>
-
-              <div class="flex items-center gap-2 mt-3">
-                <button
-                  class="neubrutal-btn bg-black text-white border-2 border-black px-3 py-1.5 font-outfit font-black text-xs shadow-neo-sm hover:bg-neutral-800"
-                  @click="openReading(book)"
-                >
-                  Baca Sampel
-                </button>
-                <RouterLink
-                  :to="`/book/${book.id}`"
-                  class="neubrutal-btn bg-white text-black border-2 border-black px-3 py-1.5 font-outfit font-bold text-xs shadow-neo-sm hover:bg-gray-100"
-                >
-                  Detail
-                </RouterLink>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div v-if="activeTab === 'wishlist'" class="space-y-6">
-        <div
-          class="flex items-center justify-between gap-3 bg-white border-3 border-black p-4 rounded-[2px] shadow-neo-sm"
-        >
-          <div>
-            <h2 class="font-outfit font-black text-lg text-black">Wishlist Saya</h2>
-            <p class="font-sans text-xs text-muted-foreground font-semibold">
-              Buku yang kamu simpan untuk dibeli nanti.
-            </p>
-          </div>
-          <div class="flex items-center gap-2 shrink-0">
-            <span
-              class="bg-neo-lime border-2 border-black px-3 py-1 font-outfit font-black text-xs shadow-neo-sm"
-            >
-              {{ state.wishlist.length }} Buku
-            </span>
-            <button
-              v-if="state.wishlist.length"
-              type="button"
-              class="neubrutal-btn bg-white text-red-600 border-2 border-black px-3 py-1 font-outfit font-black text-xs shadow-neo-sm hover:bg-red-50"
-              @click="showClearWishlistConfirm = true"
-            >
-              Hapus Semua
-            </button>
-          </div>
-        </div>
-
-        <div
-          v-if="state.wishlistLoading"
-          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-        >
-          <div
-            v-for="n in 3"
-            :key="`wish-skeleton-${n}`"
-            class="h-44 bg-gray-100 border-3 border-black animate-pulse"
-          ></div>
-        </div>
-
-        <div
-          v-else-if="state.wishlist.length === 0"
-          class="bg-white border-3 border-black p-12 text-center rounded-[2px] shadow-neo"
-        >
-          <h3 class="font-outfit font-black text-lg">Wishlist Masih Kosong</h3>
-          <p class="font-sans text-xs text-muted-foreground mt-1">
-            Tekan ikon hati pada buku untuk menyimpannya di sini.
-          </p>
-          <RouterLink
-            to="/"
-            class="inline-block mt-4 neubrutal-btn bg-neo-yellow text-black border-2 border-black px-4 py-2 font-outfit font-black text-xs shadow-neo-sm"
-          >
-            Jelajahi Buku
-          </RouterLink>
-        </div>
-
-        <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <article
-            v-for="item in state.wishlist"
-            :key="item.id"
-            class="bg-white border-3 border-black rounded-[2px] shadow-neo p-4 flex gap-3"
-          >
-            <RouterLink
-              :to="`/book/${item.slug || item.bookId}`"
-              class="w-20 h-28 shrink-0 border-2 border-black bg-background flex items-center justify-center overflow-hidden"
-            >
-              <img
-                v-if="item.cover && !failedWishlistCovers[item.id]"
-                :src="assetUrl(item.cover)"
-                :alt="item.title"
-                class="w-full h-full object-cover"
-                loading="lazy"
-                @error="failedWishlistCovers[item.id] = true"
-              />
-              <BookCover v-else theme="violet" :title="item.title" :author="item.author" />
-            </RouterLink>
-            <div class="min-w-0 flex-1 flex flex-col justify-between">
-              <div>
-                <RouterLink
-                  :to="`/book/${item.slug || item.bookId}`"
-                  class="font-outfit font-black text-sm leading-snug hover:text-neo-violet line-clamp-2"
-                >
-                  {{ item.title }}
-                </RouterLink>
-                <p class="font-sans text-[11px] font-semibold text-muted-foreground mt-0.5">
-                  {{ item.author }}
-                </p>
-                <p class="font-outfit font-black text-sm mt-2">
-                  {{ formatRupiah(item.price) }}
-                </p>
-              </div>
-              <div class="flex flex-wrap gap-2 mt-3">
-                <button
-                  type="button"
-                  :disabled="isBusy(`wish-move-${item.bookId}`)"
-                  class="neubrutal-btn bg-neo-yellow text-black border-2 border-black px-2.5 py-1 font-outfit font-black text-[10px] shadow-neo-sm disabled:opacity-60"
-                  @click="handleWishlistMove(item)"
-                >
-                  {{ isBusy(`wish-move-${item.bookId}`) ? 'Memproses...' : 'Ke Keranjang' }}
-                </button>
-                <button
-                  type="button"
-                  :disabled="isBusy(`wish-remove-${item.bookId}`)"
-                  class="neubrutal-btn bg-white text-red-600 border-2 border-black px-2.5 py-1 font-outfit font-black text-[10px] shadow-neo-sm disabled:opacity-60"
-                  @click="handleWishlistRemove(item)"
-                >
-                  {{ isBusy(`wish-remove-${item.bookId}`) ? 'Menghapus...' : 'Hapus' }}
-                </button>
-              </div>
-            </div>
-          </article>
-        </div>
-      </div>
-
-      <div v-if="activeTab === 'addresses'" class="space-y-6">
-        <div
-          class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border-3 border-black p-4 rounded-[2px] shadow-neo-sm"
-        >
-          <div>
-            <h2 class="font-outfit font-black text-lg text-black">Alamat Pengiriman Tersimpan</h2>
-            <p class="font-sans text-xs text-muted-foreground font-semibold">
-              Kelola alamat pengiriman yang terhubung dengan tarif otomatis kurir.
-            </p>
-          </div>
-          <button
-            class="neubrutal-btn bg-neo-yellow text-black border-2 border-black px-4 py-2 font-outfit font-black text-xs shadow-neo-sm hover:bg-yellow-300 shrink-0"
-            @click="openAddAddress"
-          >
-            + Tambah Alamat Baru
-          </button>
-        </div>
-
-        <div v-if="state.addressesLoading" class="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div
-            v-for="n in 2"
-            :key="`address-skeleton-${n}`"
-            class="h-40 bg-gray-100 border-3 border-black animate-pulse"
-          ></div>
-        </div>
-
-        <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div
-            v-for="addr in state.userProfile.addresses"
-            :key="addr.id"
-            class="bg-white border-3 border-black p-5 rounded-[2px] shadow-neo relative flex flex-col justify-between"
-            :class="addr.isDefault ? 'border-neo-violet' : ''"
-          >
-            <div>
-              <div class="flex items-center justify-between gap-2 mb-2">
-                <div class="flex items-center gap-2">
-                  <h3 class="font-outfit font-black text-base text-black">{{ addr.title }}</h3>
-                  <span
-                    v-if="addr.isDefault"
-                    class="bg-neo-lime border-2 border-black px-2 py-0.5 rounded-[2px] font-outfit font-black text-[10px] uppercase shadow-neo-sm"
-                  >
-                    UTAMA
-                  </span>
-                </div>
-
-                <div class="flex items-center gap-2">
-                  <button
-                    class="text-xs font-outfit font-bold hover:underline"
-                    @click="openEditAddress(addr)"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    v-if="!addr.isDefault"
-                    :disabled="isBusy(`addr-delete-${addr.id}`)"
-                    class="text-xs font-outfit font-bold text-red-600 hover:underline disabled:opacity-50"
-                    @click="handleRemoveAddress(addr)"
-                  >
-                    {{ isBusy(`addr-delete-${addr.id}`) ? 'Menghapus...' : 'Hapus' }}
-                  </button>
-                </div>
-              </div>
-
-              <p class="font-outfit font-black text-sm text-black">{{ addr.recipient }}</p>
-              <p class="font-sans text-xs text-muted-foreground font-semibold">{{ addr.phone }}</p>
-              <p
-                class="font-sans text-xs text-gray-700 mt-2 bg-background p-2.5 border-2 border-black rounded-[2px]"
-              >
-                {{ addr.fullAddress }}, {{ addr.city }} ({{ addr.postalCode }})
-              </p>
-            </div>
-
-            <div class="mt-4 pt-3 border-t border-black/10 flex items-center justify-between">
-              <button
-                v-if="!addr.isDefault"
-                :disabled="isBusy(`addr-primary-${addr.id}`)"
-                class="neubrutal-btn bg-white border-2 border-black px-3 py-1 font-outfit font-black text-xs shadow-neo-sm hover:bg-neo-yellow disabled:opacity-60"
-                @click="handleSetPrimary(addr)"
-              >
-                {{ isBusy(`addr-primary-${addr.id}`) ? 'Memproses...' : 'Jadikan Alamat Utama' }}
-              </button>
-              <span v-else class="text-xs font-sans font-bold text-green-700">
-                Alamat pengiriman aktif utama
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div v-if="activeTab === 'profile'" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div
-          class="lg:col-span-7 bg-white border-3 border-black p-6 rounded-[2px] shadow-neo space-y-5"
-        >
-          <div class="border-b-2 border-black pb-3">
-            <h2 class="font-outfit font-black text-xl text-black">Informasi Profil Akun</h2>
-            <p class="font-sans text-xs text-muted-foreground">Data akun langsung dari server.</p>
-          </div>
-
-          <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-            <div class="bg-background border-2 border-black p-3">
-              <dt class="font-outfit font-black text-xs uppercase text-muted-foreground">
-                Nama Lengkap
-              </dt>
-              <dd class="font-sans font-bold text-black mt-1">
-                {{ state.userProfile.name || '—' }}
-              </dd>
-            </div>
-            <div class="bg-background border-2 border-black p-3">
-              <dt class="font-outfit font-black text-xs uppercase text-muted-foreground">
-                Alamat Email
-              </dt>
-              <dd class="font-sans font-bold text-black mt-1 break-all">
-                {{ state.userProfile.email || '—' }}
-              </dd>
-            </div>
-            <div class="bg-background border-2 border-black p-3">
-              <dt class="font-outfit font-black text-xs uppercase text-muted-foreground">Peran</dt>
-              <dd class="font-sans font-bold text-black mt-1">
-                {{ state.userRole === 'admin' ? 'Admin' : 'Pembeli' }}
-              </dd>
-            </div>
-            <div class="bg-background border-2 border-black p-3">
-              <dt class="font-outfit font-black text-xs uppercase text-muted-foreground">
-                Status Akun
-              </dt>
-              <dd class="font-sans font-bold text-black mt-1">
-                {{ state.userProfile.isActive ? 'Aktif' : 'Tidak aktif' }}
-              </dd>
-            </div>
-            <div class="bg-background border-2 border-black p-3 sm:col-span-2">
-              <dt class="font-outfit font-black text-xs uppercase text-muted-foreground">
-                Terdaftar Sejak
-              </dt>
-              <dd class="font-sans font-bold text-black mt-1">
-                {{ state.userProfile.memberSince || '—' }}
-              </dd>
-            </div>
-          </dl>
-
-          <p class="font-sans text-xs text-muted-foreground">
-            Edit profil belum tersedia lewat API. Hubungi admin untuk perubahan data akun.
-          </p>
-        </div>
-
-        <div
-          class="lg:col-span-5 bg-white border-3 border-black p-6 rounded-[2px] shadow-neo space-y-4"
-        >
-          <div class="border-b-2 border-black pb-2">
-            <h3 class="font-outfit font-black text-lg text-black">Keamanan Akun</h3>
-            <p class="font-sans text-xs text-muted-foreground">
-              Perbarui password akun secara berkala.
-            </p>
-          </div>
-
-          <form class="space-y-3" @submit.prevent="handleChangePassword">
-            <div>
-              <label class="block font-outfit font-black text-xs uppercase mb-1"
-                >Password Saat Ini</label
-              >
-              <input
-                v-model="passwordForm.current"
-                type="password"
-                autocomplete="current-password"
-                placeholder="Password lama"
-                class="w-full bg-background border-2 border-black p-2.5 font-sans text-sm outline-none shadow-neo-sm"
-              />
-            </div>
-
-            <div>
-              <label class="block font-outfit font-black text-xs uppercase mb-1"
-                >Password Baru</label
-              >
-              <input
-                v-model="passwordForm.newPass"
-                type="password"
-                autocomplete="new-password"
-                placeholder="Minimal 8 karakter"
-                class="w-full bg-background border-2 border-black p-2.5 font-sans text-sm outline-none shadow-neo-sm"
-              />
-              <PasswordValidation
-                :password="passwordForm.newPass"
-                :confirm="passwordForm.confirmPass"
-                class="mt-2"
-              />
-            </div>
-
-            <div>
-              <label class="block font-outfit font-black text-xs uppercase mb-1"
-                >Konfirmasi Password Baru</label
-              >
-              <input
-                v-model="passwordForm.confirmPass"
-                type="password"
-                autocomplete="new-password"
-                placeholder="Ulangi password baru"
-                class="w-full bg-background border-2 border-black p-2.5 font-sans text-sm outline-none shadow-neo-sm"
-              />
-            </div>
-
-            <button
-              type="submit"
-              :disabled="isBusy('password')"
-              class="w-full neubrutal-btn bg-white text-black border-2 border-black py-2.5 font-outfit font-black text-xs shadow-neo hover:bg-gray-100 disabled:opacity-60"
-            >
-              {{ isBusy('password') ? 'Menyimpan...' : 'Ubah Password' }}
-            </button>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <div
-      v-if="showTrackingModal && selectedOrder"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
-      @click.self="showTrackingModal = false"
-    >
-      <div
-        class="bg-white border-4 border-black max-w-lg w-full rounded-[2px] shadow-neo-xl overflow-hidden animate-hero-entrance"
-      >
-        <div class="bg-neo-yellow border-b-3 border-black p-4 flex items-center justify-between">
-          <h3 class="font-outfit font-black text-base text-black uppercase">LACAK PENGIRIMAN</h3>
-          <button
-            class="w-8 h-8 rounded-[2px] bg-white border-2 border-black flex items-center justify-center font-outfit font-black text-sm hover:bg-black hover:text-white"
-            @click="showTrackingModal = false"
-          >
-            X
-          </button>
-        </div>
-
-        <div class="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
-          <div class="bg-background border-2 border-black p-3 rounded-[2px]">
-            <div class="flex justify-between text-xs font-sans mb-1">
-              <span class="text-muted-foreground">Invoice:</span>
-              <span class="font-outfit font-black">#{{ selectedOrder.id }}</span>
-            </div>
-            <div class="flex justify-between text-xs font-sans mb-1">
-              <span class="text-muted-foreground">Kurir Ekspedisi:</span>
-              <span class="font-outfit font-black">
-                {{ selectedOrder.courier || trackingData?.courier_name }}
-              </span>
-            </div>
-            <div class="flex justify-between text-xs font-sans">
-              <span class="text-muted-foreground">Nomor Resi:</span>
-              <span class="font-mono font-bold text-neo-violet">
-                {{ trackingData?.waybill_id || selectedOrder.trackingNumber || 'Sedang Diproses' }}
-              </span>
-            </div>
-            <div v-if="trackingData?.status" class="flex justify-between text-xs font-sans mt-1">
-              <span class="text-muted-foreground">Status Kurir:</span>
-              <span class="font-outfit font-black uppercase">{{ trackingData.status }}</span>
-            </div>
-            <a
-              v-if="trackingData?.courier?.link"
-              :href="trackingData.courier.link"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="inline-block mt-2 font-outfit font-black text-[11px] underline"
-            >
-              Buka Halaman Lacak Kurir
-            </a>
-          </div>
-
-          <div
-            v-if="trackingLoading"
-            class="flex items-center gap-2 font-sans text-xs font-bold text-muted-foreground"
-          >
-            <span
-              class="w-3.5 h-3.5 rounded-full border-2 border-black border-t-transparent animate-spin"
-            ></span>
-            Memuat status pengiriman...
-          </div>
-
-          <p
-            v-else-if="trackingError"
-            class="border-2 border-black bg-red-50 p-3 font-sans text-xs font-semibold text-red-700"
-          >
-            {{ trackingError }}
-          </p>
-
-          <div
-            v-if="!trackingLoading && trackingSteps.length"
-            class="relative pl-6 space-y-5 border-l-3 border-black ml-3 my-4"
-          >
-            <div v-for="(step, idx) in trackingSteps" :key="idx" class="relative">
-              <div
-                class="absolute -left-[31px] top-0.5 w-4 h-4 rounded-full border-2 border-black"
-                :class="
-                  step.current
-                    ? 'bg-neo-yellow ring-3 ring-black/20'
-                    : step.done
-                      ? 'bg-neo-lime'
-                      : 'bg-white'
-                "
-              ></div>
-
-              <div>
-                <h4
-                  class="font-outfit font-black text-xs sm:text-sm"
-                  :class="
-                    step.current
-                      ? 'text-black'
-                      : step.done
-                        ? 'text-neutral-800'
-                        : 'text-neutral-400'
-                  "
-                >
-                  {{ step.title }}
-                </h4>
-                <p class="font-sans text-[11px] text-muted-foreground mt-0.5">
-                  {{ step.time }}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div class="border-t-2 border-black pt-3">
-            <span class="font-outfit font-black text-xs uppercase text-muted-foreground block mb-1"
-              >Alamat Pengiriman Tujuan:</span
-            >
-            <p class="font-sans text-xs text-black font-semibold">{{ selectedOrder.address }}</p>
-          </div>
-        </div>
-
-        <div class="bg-background border-t-3 border-black p-3 text-right">
-          <button
-            class="neubrutal-btn bg-black text-white border-2 border-black px-5 py-2 font-outfit font-black text-xs shadow-neo-sm hover:bg-neutral-800"
-            @click="showTrackingModal = false"
-          >
-            Tutup
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div
-      v-if="showInvoiceModal && selectedOrder"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
-      @click.self="showInvoiceModal = false"
-    >
-      <div
-        class="bg-white border-4 border-black max-w-xl w-full rounded-[2px] shadow-neo-xl overflow-hidden max-h-[90vh] flex flex-col animate-hero-entrance"
-      >
-        <div class="bg-white border-b-3 border-black p-5 flex items-center justify-between">
-          <div>
-            <h3 class="font-outfit font-black text-2xl tracking-tight text-black">
-              BOOKSTORE INVOICE
-            </h3>
-            <p class="font-sans text-xs font-bold text-muted-foreground">
-              Kuitansi Transaksi Resmi
-            </p>
-          </div>
-          <button
-            class="w-8 h-8 rounded-[2px] bg-white border-2 border-black flex items-center justify-center font-outfit font-black text-sm hover:bg-black hover:text-white"
-            @click="showInvoiceModal = false"
-          >
-            X
-          </button>
-        </div>
-
-        <div class="p-6 overflow-y-auto space-y-5 print:p-0">
-          <PaymentInstructions
-            v-if="selectedOrder"
-            :payment="selectedOrder"
-            :amount="selectedOrder.total"
-            :deadline="selectedOrder.paymentDeadline || ''"
-            :deadline-at="selectedOrder.paymentDeadlineAt || ''"
-            :started-at="selectedOrder.createdAt || ''"
-            :status="selectedOrder.rawStatus"
-          />
-
-          <div v-if="canPay(selectedOrder)" class="flex items-center gap-3">
-            <button
-              type="button"
-              :disabled="checkingOrderPayment"
-              class="neubrutal-btn bg-white border-2 border-black px-3.5 py-2 font-outfit font-black text-xs shadow-neo-sm hover:bg-neo-yellow disabled:opacity-60"
-              @click="checkSelectedPayment"
-            >
-              {{ checkingOrderPayment ? 'Mengecek...' : 'Cek Status Pembayaran' }}
-            </button>
-            <span class="font-sans text-[11px] font-semibold text-muted-foreground">
-              Status tidak diperbarui otomatis.
-            </span>
-          </div>
-
-          <div class="flex justify-between items-start border-b-2 border-black/15 pb-4">
-            <div>
-              <span class="font-outfit font-black text-xs text-muted-foreground block"
-                >DIBAYAR KEPADA:</span
-              >
-              <p class="font-outfit font-black text-sm text-black">{{ COMPANY_NAME }}</p>
-              <p class="font-sans text-xs text-muted-foreground">{{ COMPANY_ADDRESS }}</p>
-              <p class="font-mono text-xs text-muted-foreground mt-1">
-                Ref Gateway: {{ selectedOrder.paymentGatewayTxId || '—' }}
-              </p>
-            </div>
-
-            <div class="text-right">
-              <span
-                class="inline-block bg-neo-lime border-2 border-black px-2.5 py-0.5 rounded-[2px] font-outfit font-black text-xs uppercase shadow-neo-sm mb-1"
-              >
-                {{ paymentStatusLabel(selectedOrder) }}
-              </span>
-              <p class="font-outfit font-black text-sm">#{{ selectedOrder.id }}</p>
-              <p class="font-sans text-xs text-muted-foreground">{{ selectedOrder.date }}</p>
-            </div>
-          </div>
-
-          <div
-            class="bg-surface border-2 border-black p-3.5 rounded-[2px] text-xs font-sans space-y-1"
-          >
-            <span class="font-outfit font-black text-xs uppercase block text-muted-foreground"
-              >PEMBELI:</span
-            >
-            <p class="font-outfit font-black text-black">{{ selectedOrder.customerName }}</p>
-            <p class="text-gray-700">
-              {{ selectedOrder.customerPhone }} | {{ selectedOrder.customerEmail }}
-            </p>
-            <p class="text-gray-700">{{ selectedOrder.address }}</p>
-            <p class="text-gray-700 pt-1 font-bold">Kurir: {{ selectedOrder.courier }}</p>
-          </div>
-
-          <table class="w-full text-xs font-sans border-collapse">
-            <thead>
-              <tr class="bg-black text-white font-outfit font-black">
-                <th class="p-2 text-left">JUDUL BUKU</th>
-                <th class="p-2 text-center">QTY</th>
-                <th class="p-2 text-right">HARGA</th>
-                <th class="p-2 text-right">TOTAL</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="item in selectedOrder.items"
-                :key="item.id"
-                class="border-b border-black/10"
-              >
-                <td class="p-2 font-bold text-black">
-                  {{ item.title }}
-                  <span class="block text-[10px] text-muted-foreground font-normal">
-                    {{ item.author }}
-                  </span>
-                </td>
-                <td class="p-2 text-center font-bold">{{ item.quantity }}</td>
-                <td class="p-2 text-right">{{ formatRupiah(item.price) }}</td>
-                <td class="p-2 text-right font-bold">
-                  {{ formatRupiah(item.price * item.quantity) }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-
-          <div class="space-y-1.5 pt-2 border-t-2 border-black text-xs font-sans">
-            <div class="flex justify-between">
-              <span class="text-muted-foreground">Subtotal Buku:</span>
-              <span class="font-bold">{{ formatRupiah(selectedOrder.subtotal) }}</span>
-            </div>
-            <div v-if="selectedOrder.discount" class="flex justify-between text-green-700">
-              <span>Diskon Voucher:</span>
-              <span class="font-bold">-{{ formatRupiah(selectedOrder.discount) }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-muted-foreground"
-                >Biaya Pengiriman ({{ selectedOrder.courier }}):</span
-              >
-              <span class="font-bold">{{ formatRupiah(selectedOrder.shipping) }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-muted-foreground">Biaya Admin:</span>
-              <span class="font-bold">{{ formatRupiah(selectedOrder.adminFee) }}</span>
-            </div>
-            <div
-              class="flex justify-between text-base font-outfit font-black pt-2 border-t-2 border-black"
-            >
-              <span>TOTAL DIBAYAR:</span>
-              <span class="text-neo-violet">{{ formatRupiah(selectedOrder.total) }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-background border-t-3 border-black p-4 flex items-center justify-between">
-          <span class="font-sans text-[11px] text-muted-foreground"
-            >Dokumen digital sah BookStore Payment Gateway.</span
-          >
-          <div class="flex items-center gap-2">
-            <button
-              :disabled="downloadingInvoice"
-              class="neubrutal-btn bg-white border-2 border-black px-4 py-2 font-outfit font-black text-xs shadow-neo-sm hover:bg-gray-100 disabled:opacity-60"
-              @click="downloadInvoice(selectedOrder)"
-            >
-              {{ downloadingInvoice ? 'Mengunduh...' : 'Download Faktur' }}
-            </button>
-            <button
-              class="neubrutal-btn bg-neo-yellow text-black border-2 border-black px-4 py-2 font-outfit font-black text-xs shadow-neo-sm hover:bg-yellow-300"
-              @click="showInvoiceModal = false"
-            >
-              Selesai
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div
-      v-if="showReadingModal && readingBook"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs"
-      @click.self="showReadingModal = false"
-    >
-      <div
-        class="bg-paper border-4 border-black max-w-2xl w-full rounded-[2px] shadow-neo-xl overflow-hidden max-h-[85vh] flex flex-col"
-      >
-        <div class="bg-white border-b-3 border-black p-4 flex items-center justify-between">
-          <div>
-            <span
-              class="bg-neo-yellow border border-black text-[9px] font-outfit font-black px-1.5 py-0.2 rounded-[2px]"
-            >
-              CUPLIKAN DIGITAL RESMI
-            </span>
-            <h3 class="font-outfit font-black text-base text-black mt-0.5">
-              {{ readingBook.title }}
-            </h3>
-            <p class="font-sans text-xs text-muted-foreground">Karya {{ readingBook.author }}</p>
-          </div>
-          <button
-            class="w-8 h-8 rounded-[2px] bg-white border-2 border-black flex items-center justify-center font-outfit font-black text-sm hover:bg-black hover:text-white"
-            @click="showReadingModal = false"
-          >
-            X
-          </button>
-        </div>
-
-        <div class="p-6 overflow-y-auto space-y-4 font-serif text-sm leading-relaxed text-gray-800">
-          <h4
-            class="font-outfit font-black text-base text-center border-b border-black/10 pb-2 text-black"
-          >
-            BAGIAN PERTAMA
-          </h4>
-          <p>
-            Matahari baru saja merekah di ufuk timur, membiaskan sinar keemasan yang menembus
-            sela-sela jendela kayu tua. Udara pagi terasa sejuk menggigit, namun di dalam dada
-            tersimpan kehangatan yang tak mampu dipadamkan oleh angin manapun: harapan.
-          </p>
-          <p>
-            {{
-              readingBook.description ||
-              'Setiap halaman buku ini dirancang untuk membimbing pikiran kita menemukan makna baru dalam rutinitas keseharian, menyadarkan bahwa perubahan besar tidak pernah datang sekaligus, melainkan ditumpuk dari keberanian-keberanian kecil yang kita ambil setiap fajar.'
-            }}
-          </p>
-          <div
-            class="bg-neo-yellow/30 border-2 border-black p-4 text-center rounded-[2px] my-6 font-sans"
-          >
-            <span class="font-outfit font-black text-xs uppercase block text-black">
-              Akhir dari Cuplikan Bacaan
-            </span>
-            <p class="text-xs text-muted-foreground mt-1">
-              Buku fisik pesanan Anda sedang dalam proses pengiriman kurir menuju alamat tujuan.
-            </p>
-          </div>
-        </div>
-
-        <div class="bg-white border-t-3 border-black p-3 text-right">
-          <button
-            class="neubrutal-btn bg-black text-white border-2 border-black px-5 py-2 font-outfit font-black text-xs shadow-neo-sm hover:bg-neutral-800"
-            @click="showReadingModal = false"
-          >
-            Tutup Pembaca
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div
-      v-if="showAddAddressModal"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
-      @click.self="showAddAddressModal = false"
-    >
-      <div
-        class="bg-white border-4 border-black max-w-md w-full rounded-[2px] shadow-neo-xl overflow-hidden animate-hero-entrance"
-      >
-        <div class="bg-neo-yellow border-b-3 border-black p-4 flex items-center justify-between">
-          <h3 class="font-outfit font-black text-base text-black uppercase">
-            {{ editingAddressId ? 'EDIT ALAMAT PENGIRIMAN' : 'TAMBAH ALAMAT PENGIRIMAN' }}
-          </h3>
-          <button
-            class="w-8 h-8 rounded-[2px] bg-white border-2 border-black flex items-center justify-center font-outfit font-black text-sm hover:bg-black hover:text-white"
-            @click="showAddAddressModal = false"
-          >
-            X
-          </button>
-        </div>
-
-        <form class="p-5 space-y-3.5" @submit.prevent="handleSaveAddress">
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block font-outfit font-black text-xs uppercase mb-1"
-                >Nama Penerima</label
-              >
-              <input
-                v-model="newAddressForm.recipient"
-                type="text"
-                required
-                class="w-full bg-background border-2 border-black p-2.5 font-outfit font-bold text-xs outline-none shadow-neo-sm"
-              />
-            </div>
-            <div>
-              <label class="block font-outfit font-black text-xs uppercase mb-1"
-                >Nomor Telepon</label
-              >
-              <input
-                v-model="newAddressForm.phone"
-                type="tel"
-                required
-                class="w-full bg-background border-2 border-black p-2.5 font-outfit font-bold text-xs outline-none shadow-neo-sm"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label class="block font-outfit font-black text-xs uppercase mb-1"
-              >Alamat Lengkap</label
-            >
-            <textarea
-              v-model="newAddressForm.fullAddress"
-              rows="2"
-              required
-              placeholder="Jl. Merdeka Barat No. 42"
-              class="w-full bg-background border-2 border-black p-2.5 font-sans text-xs outline-none shadow-neo-sm"
-            ></textarea>
-          </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block font-outfit font-black text-xs uppercase mb-1"
-                >Kota / Kabupaten</label
-              >
-              <input
-                v-model="newAddressForm.city"
-                type="text"
-                required
-                placeholder="Jakarta Pusat"
-                class="w-full bg-background border-2 border-black p-2.5 font-outfit font-bold text-xs outline-none shadow-neo-sm"
-              />
-            </div>
-            <div>
-              <label class="block font-outfit font-black text-xs uppercase mb-1">Kode Pos</label>
-              <input
-                v-model="newAddressForm.postalCode"
-                type="text"
-                placeholder="10110"
-                class="w-full bg-background border-2 border-black p-2.5 font-outfit font-bold text-xs outline-none shadow-neo-sm"
-              />
-            </div>
-          </div>
-
-          <label class="flex items-center gap-2 pt-1 cursor-pointer">
-            <input
-              v-model="newAddressForm.isDefault"
-              type="checkbox"
-              class="w-4 h-4 border-2 border-black accent-black rounded-[2px]"
-            />
-            <span class="font-sans text-xs font-bold">Jadikan sebagai alamat pengiriman utama</span>
-          </label>
-
-          <button
-            type="submit"
-            :disabled="addressSaving"
-            class="w-full neubrutal-btn bg-neo-yellow text-black border-3 border-black py-3 font-outfit font-black text-sm shadow-neo hover:bg-yellow-300 mt-2 disabled:opacity-60"
-          >
-            {{
-              addressSaving
-                ? 'Menyimpan...'
-                : editingAddressId
-                  ? 'Simpan Perubahan'
-                  : 'Simpan Alamat'
-            }}
-          </button>
-        </form>
-      </div>
-    </div>
-
-    <div
-      v-if="showClearWishlistConfirm"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
-      @click.self="showClearWishlistConfirm = false"
-    >
-      <div
-        class="bg-white border-4 border-black max-w-sm w-full rounded-[2px] shadow-neo-xl p-5 space-y-4 text-center"
-      >
-        <h3 class="font-outfit font-black text-base text-black">Hapus Semua Wishlist?</h3>
-        <p class="font-sans text-xs text-muted-foreground">
-          {{ state.wishlist.length }} buku akan dihapus dari wishlist kamu.
-        </p>
-
-        <div class="flex items-center justify-center gap-2 pt-2">
-          <button
+            <div class="relative mb-6">
+        <div class="flex items-center gap-2 overflow-x-auto pb-2 -mb-2 pt-1 pr-2 scrollbar-none">
+                    <button
             type="button"
-            class="neubrutal-btn bg-white border-2 border-black px-4 py-2 font-outfit font-black text-xs shadow-neo-sm hover:bg-gray-100"
-            @click="showClearWishlistConfirm = false"
+            class="neubrutal-btn px-3.5 sm:px-5 py-2.5 rounded-[2px] font-outfit font-black text-xs sm:text-sm whitespace-nowrap transition-all border-2 sm:border-3 border-black shrink-0 cursor-pointer"
+            :class="
+              activeTab === 'orders'
+                ? 'bg-neo-yellow text-black shadow-neo-sm -translate-y-0.5'
+                : 'bg-white text-muted-foreground hover:bg-gray-100 shadow-neo-sm'
+            "
+            @click="switchTab('orders')"
           >
-            Batal
+            Pesanan Saya
           </button>
-          <button
+
+                    <button
             type="button"
-            :disabled="clearingWishlist"
-            class="neubrutal-btn bg-red-500 text-white border-2 border-black px-4 py-2 font-outfit font-black text-xs shadow-neo hover:bg-red-600 disabled:opacity-60"
-            @click="handleClearWishlist"
+            class="neubrutal-btn px-3.5 sm:px-5 py-2.5 rounded-[2px] font-outfit font-black text-xs sm:text-sm whitespace-nowrap transition-all border-2 sm:border-3 border-black shrink-0 cursor-pointer"
+            :class="
+              activeTab === 'wishlist'
+                ? 'bg-neo-yellow text-black shadow-neo-sm -translate-y-0.5'
+                : 'bg-white text-muted-foreground hover:bg-gray-100 shadow-neo-sm'
+            "
+            @click="switchTab('wishlist')"
           >
-            {{ clearingWishlist ? 'Menghapus...' : 'Ya, Hapus Semua' }}
+            Wishlist
+          </button>
+
+                    <button
+            type="button"
+            class="neubrutal-btn px-3.5 sm:px-5 py-2.5 rounded-[2px] font-outfit font-black text-xs sm:text-sm whitespace-nowrap transition-all border-2 sm:border-3 border-black shrink-0 cursor-pointer"
+            :class="
+              activeTab === 'addresses'
+                ? 'bg-neo-yellow text-black shadow-neo-sm -translate-y-0.5'
+                : 'bg-white text-muted-foreground hover:bg-gray-100 shadow-neo-sm'
+            "
+            @click="switchTab('addresses')"
+          >
+            Alamat Pengiriman
+          </button>
+
+                    <button
+            type="button"
+            class="neubrutal-btn px-3.5 sm:px-5 py-2.5 rounded-[2px] font-outfit font-black text-xs sm:text-sm whitespace-nowrap transition-all border-2 sm:border-3 border-black shrink-0 cursor-pointer"
+            :class="
+              activeTab === 'profile'
+                ? 'bg-neo-yellow text-black shadow-neo-sm -translate-y-0.5'
+                : 'bg-white text-muted-foreground hover:bg-gray-100 shadow-neo-sm'
+            "
+            @click="switchTab('profile')"
+          >
+            Pengaturan Akun
           </button>
         </div>
       </div>
+
+            <UserOrdersTab v-if="activeTab === 'orders'" />
+      <UserWishlistTab v-if="activeTab === 'wishlist'" />
+      <UserAddressesTab v-if="activeTab === 'addresses'" />
+      <UserProfileTab v-if="activeTab === 'profile'" :masked-email="maskedEmail" />
     </div>
   </div>
 </template>

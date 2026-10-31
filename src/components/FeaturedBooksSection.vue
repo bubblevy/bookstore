@@ -1,19 +1,18 @@
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import BookCard from './BookCard.vue'
 import { useStore } from '@/composables/useStore'
-import AOS from 'aos'
 
-const { state } = useStore()
-const route = useRoute()
-const router = useRouter()
+const { state, loadPopularBooks } = useStore()
 
 const sectionRef = ref(null)
 const isSectionVisible = ref(false)
 let observer = null
 
 onMounted(() => {
+  if (!state.popularBooks.length) {
+    loadPopularBooks({ per_page: 100 }).catch(() => {})
+  }
   if ('IntersectionObserver' in window && sectionRef.value) {
     observer = new IntersectionObserver(
       (entries) => {
@@ -34,97 +33,39 @@ onUnmounted(() => {
   if (observer) observer.disconnect()
 })
 
-const activeFilter = ref('Semua')
-const fallbackFilters = [
-  'Semua',
-  'Fiksi Populer',
-  'Self-Growth',
-  'Sci-Fi & Fantasy',
-  'Sejarah & Biografi',
-  'Seni & Desain',
-]
-
-const filters = computed(() => {
-  if (!state.categories.length) return fallbackFilters
-  return ['Semua', ...state.categories.map((category) => category.name)]
-})
-
-function syncCategoryFromQuery() {
-  const value = String(route.query.category || '')
-    .trim()
-    .toLowerCase()
-  if (!value) {
-    activeFilter.value = 'Semua'
-    return
-  }
-  const category = state.categories.find(
-    (item) => String(item.slug).toLowerCase() === value || item.name.toLowerCase() === value,
-  )
-  if (!category) {
-    activeFilter.value = 'Semua'
-    if (route.query.category) {
-      const query = { ...route.query }
-      delete query.category
-      router.replace({ path: route.path, query, hash: route.hash })
-    }
-    return
-  }
-  activeFilter.value = category.name
-}
-
-function selectFilter(filter) {
-  activeFilter.value = filter
-  if (filter === 'Semua') {
-    if (!route.query.category) return
-    const query = { ...route.query }
-    delete query.category
-    router.replace({ path: route.path, query, hash: route.hash })
-    return
-  }
-
-  const category = state.categories.find((item) => item.name === filter)
-  const slug = category?.slug || filter
-  if (route.query.category === slug) return
-  router.replace({
-    path: route.path,
-    query: { ...route.query, category: slug },
-    hash: route.hash,
-  })
-}
-
-watch(() => route.query.category, syncCategoryFromQuery, { immediate: true })
-watch(() => state.categories, syncCategoryFromQuery)
-
 const visibleCount = ref(8)
 
-const filteredBooks = computed(() => {
-  if (activeFilter.value === 'Semua') return state.books
-  return state.books.filter((book) => book.category === activeFilter.value)
+const popularBooks = computed(() => {
+  if (state.popularBooks && state.popularBooks.length > 0) {
+    return state.popularBooks
+  }
+  return [...state.books].sort(
+    (a, b) =>
+      (Number(b.sold) || 0) - (Number(a.sold) || 0) ||
+      String(a.title).localeCompare(String(b.title)),
+  )
+})
+
+const isPopularLoading = computed(() => {
+  return state.popularBooksLoading || (state.catalogLoading && !popularBooks.value.length)
 })
 
 const visibleBooks = computed(() => {
-  return filteredBooks.value.slice(0, visibleCount.value)
+  return popularBooks.value.slice(0, visibleCount.value)
 })
 
 const hasMore = computed(() => {
-  return visibleCount.value < filteredBooks.value.length
+  return visibleCount.value < popularBooks.value.length
 })
 
 function loadMore() {
   visibleCount.value += 4
 }
-
-watch(activeFilter, () => {
-  visibleCount.value = 8
-  nextTick(() => {
-    AOS.refreshHard()
-  })
-})
 </script>
 
 <template>
   <section
-    id="katalog"
+    id="populer"
     ref="sectionRef"
     class="w-full bg-background border-b-4 border-black py-16 md:py-20 scroll-mt-20 relative overflow-hidden"
   >
@@ -170,58 +111,41 @@ watch(activeFilter, () => {
         class="absolute top-6 right-8 hidden lg:flex items-center gap-2 opacity-25 border border-black px-2 py-0.5 rounded-[2px] text-[10px] font-outfit font-black tracking-widest uppercase"
       >
         <span>||||||| | ||||| |||</span>
-        <span>CATALOG-ID · 2026</span>
+        <span>POPULAR · 2026</span>
       </div>
     </div>
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-      <div data-aos="fade-up" class="mb-8 md:mb-12">
+      <div data-aos="fade-up" class="mb-8 md:mb-12 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <span
             class="inline-block bg-neo-yellow border-2 border-black px-3 py-0.5 rounded-[2px] font-outfit font-black text-xs uppercase tracking-wider shadow-neo-sm mb-3"
           >
-            Original & Terjamin
+            Pilihan Populer
           </span>
           <h2
             class="font-outfit font-black text-3xl sm:text-4xl md:text-5xl tracking-tight leading-none text-black"
           >
-            KATALOG BUKU.
+            BUKU POPULER.
           </h2>
           <p
             class="font-sans text-sm md:text-base font-semibold text-muted-foreground mt-2 max-w-lg"
           >
-            Ribuan pilihan bacaan dari berbagai genre dan disiplin ilmu. Siap menemanimu menemukan
-            gagasan dan perspektif baru setiap hari.
+            Pilihan buku paling diminati dan paling banyak dibaca. Temukan karya-karya best-seller dari penulis favoritmu.
           </p>
         </div>
+
+                <router-link
+          :to="{ path: '/catalog', query: { sort: 'popular' } }"
+          class="font-outfit font-black text-xs sm:text-sm text-black hover:text-neo-violet transition-colors inline-flex items-center gap-1.5 self-start sm:self-auto shrink-0 group py-1"
+        >
+          <span class="underline decoration-2 underline-offset-4 group-hover:text-neo-violet">Lihat Semua Buku</span>
+          <span class="text-sm sm:text-base font-bold transition-transform group-hover:translate-x-1">→</span>
+        </router-link>
       </div>
 
-      <div
-        data-aos="fade-up"
-        data-aos-delay="80"
-        class="relative mb-8 md:mb-10 -mx-4 px-4 sm:-mx-16 sm:px-16 lg:-mx-24 lg:px-24 xl:-mx-36 xl:px-36"
-      >
-        <div class="overflow-x-auto scrollbar-hide pb-1">
-          <div class="flex items-center gap-2 w-max sm:flex-wrap">
-            <button
-              v-for="filter in filters"
-              :key="filter"
-              class="neubrutal-btn border-2 border-black px-3.5 py-1.5 rounded-[2px] font-outfit font-black text-xs shadow-neo-sm transition-all whitespace-nowrap"
-              :class="
-                activeFilter === filter
-                  ? 'bg-neo-yellow text-black'
-                  : 'bg-white hover:bg-gray-100 text-black'
-              "
-              @click="selectFilter(filter)"
-            >
-              {{ filter }}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div
-        v-if="state.catalogLoading"
+            <div
+        v-if="isPopularLoading"
         class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6"
       >
         <div
@@ -241,53 +165,35 @@ watch(activeFilter, () => {
 
       <div
         v-else
-        :key="`${activeFilter}-${isSectionVisible}`"
         class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6"
       >
         <BookCard
           v-for="(book, idx) in visibleBooks"
-          :key="`${activeFilter}-${book.id}`"
+          :key="book.id"
           :book="book"
           :animate="isSectionVisible"
           :delay="(idx % 8) * 90"
         />
       </div>
 
-      <div v-if="!state.catalogLoading && hasMore" class="mt-10 sm:mt-12 text-center">
+      <div v-if="!isPopularLoading && hasMore" class="mt-10 sm:mt-12 text-center">
         <button
-          class="neubrutal-btn bg-neo-yellow text-black border-3 border-black py-3 px-8 rounded-[2px] font-outfit font-black text-xs sm:text-sm shadow-neo hover:bg-yellow-300 active:translate-x-0.5 active:translate-y-0.5 inline-flex items-center gap-2"
+          class="neubrutal-btn bg-neo-yellow text-black border-3 border-black py-3 px-8 rounded-[2px] font-outfit font-black text-xs sm:text-sm shadow-neo hover:bg-yellow-300 active:translate-x-0.5 active:translate-y-0.5 inline-flex items-center gap-2 cursor-pointer"
           @click="loadMore"
         >
           <span>Muat Lebih Banyak Buku</span>
           <span class="text-base font-bold">↓</span>
         </button>
         <p class="font-sans text-[11px] font-bold text-muted-foreground mt-2.5">
-          Menampilkan {{ visibleBooks.length }} dari {{ filteredBooks.length }} judul buku
+          Menampilkan {{ visibleBooks.length }} dari {{ popularBooks.length }} judul buku
         </p>
       </div>
 
       <div
-        v-else-if="!state.catalogLoading && filteredBooks.length > 8"
+        v-else-if="!isPopularLoading && popularBooks.length > 8"
         class="mt-10 text-center text-xs font-outfit font-bold text-muted-foreground uppercase tracking-wider"
       >
-        ✦ Seluruh {{ filteredBooks.length }} buku dalam kategori ini telah ditampilkan ✦
-      </div>
-
-      <div
-        v-if="!state.catalogLoading && filteredBooks.length === 0"
-        class="text-center py-16 bg-white border-3 border-black rounded-[2px] shadow-neo p-8 mt-6"
-      >
-        <div class="text-4xl mb-3">🔍</div>
-        <p class="font-outfit font-black text-xl">Koleksi Belum Tersedia</p>
-        <p class="font-sans text-xs text-muted-foreground mt-1">
-          Belum ada judul untuk kategori ini. Silakan pilih kategori lain.
-        </p>
-        <button
-          class="mt-4 neubrutal-btn bg-neo-yellow text-black border-2 border-black py-2 px-5 rounded-[2px] font-outfit font-black text-xs shadow-neo-sm"
-          @click="selectFilter('Semua')"
-        >
-          Tampilkan Semua Buku
-        </button>
+        ✦ Seluruh {{ popularBooks.length }} buku populer telah ditampilkan ✦
       </div>
     </div>
   </section>

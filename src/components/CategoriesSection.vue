@@ -1,12 +1,53 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, reactive } from 'vue'
 import { useStore } from '@/composables/useStore'
 import { assetUrl } from '@/lib/assets'
-import BookArt from './BookArt.vue'
 
 const { state } = useStore()
 const categories = computed(() => state.categories)
-const failedImages = ref({})
+const failedImages = reactive({})
+const loadedImages = reactive({})
+
+const defaultCategoryFallback = '/category-placeholder.jpg'
+
+// Fallback genre images if category image is missing or fails to load.
+function getCategoryFallback(cat) {
+  const name = String(cat?.name || cat?.slug || '').toLowerCase()
+  if (name.includes('fiksi') || name.includes('novel') || name.includes('sastra')) {
+    return 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=300&q=80'
+  }
+  if (name.includes('bisnis') || name.includes('ekonomi') || name.includes('keuangan')) {
+    return 'https://images.unsplash.com/photo-1591994843349-f415893b3a6b?auto=format&fit=crop&w=300&q=80'
+  }
+  if (name.includes('sains') || name.includes('teknologi') || name.includes('tech') || name.includes('it')) {
+    return 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=300&q=80'
+  }
+  if (name.includes('komik') || name.includes('manga') || name.includes('anak')) {
+    return 'https://images.unsplash.com/photo-1618336753974-aae8e04506aa?auto=format&fit=crop&w=300&q=80'
+  }
+  if (name.includes('sejarah') || name.includes('biografi')) {
+    return 'https://images.unsplash.com/photo-1461360370896-922624d12aa1?auto=format&fit=crop&w=300&q=80'
+  }
+  if (name.includes('agama') || name.includes('spiritual') || name.includes('filsafat')) {
+    return 'https://images.unsplash.com/photo-1507842229458-577903823ffb?auto=format&fit=crop&w=300&q=80'
+  }
+  return defaultCategoryFallback
+}
+
+function getCategoryImage(cat) {
+  const key = cat.slug || cat.id || cat.name
+  if (cat.image && !failedImages[key]) {
+    return assetUrl(cat.image)
+  }
+  return getCategoryFallback(cat)
+}
+
+function handleImageError(cat) {
+  const key = cat.slug || cat.id || cat.name
+  if (!failedImages[key]) {
+    failedImages[key] = true
+  }
+}
 </script>
 
 <template>
@@ -18,25 +59,6 @@ const failedImages = ref({})
       <div
         class="absolute inset-0 opacity-[0.05] bg-[radial-gradient(var(--color-black)_1.5px,transparent_1.5px)] [background-size:24px_24px]"
       ></div>
-
-      <svg
-        viewBox="0 0 100 80"
-        class="absolute -left-10 top-1/2 -translate-y-1/2 w-72 h-60 opacity-[0.04] text-black"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-      >
-        <path d="M 50 20 Q 25 10 5 18 L 5 70 Q 25 62 50 72 Q 75 62 95 70 L 95 18 Q 75 10 50 20 Z" />
-        <line x1="50" y1="20" x2="50" y2="72" />
-        <path
-          d="M 12 28 Q 28 22 45 30 M 12 38 Q 28 32 45 40 M 12 48 Q 28 42 45 50"
-          stroke-width="1.5"
-        />
-        <path
-          d="M 88 28 Q 72 22 55 30 M 88 38 Q 72 32 55 40 M 88 48 Q 72 42 55 50"
-          stroke-width="1.5"
-        />
-      </svg>
 
       <div
         class="absolute top-0 right-16 w-12 h-28 bg-neo-yellow/20 border-b-2 border-x-2 border-black/15 flex flex-col justify-end items-center pb-2"
@@ -86,43 +108,48 @@ const failedImages = ref({})
         </p>
       </div>
 
-      <div
+            <div
         v-if="state.categoriesLoading"
         class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-5"
       >
         <div
           v-for="n in 6"
           :key="`cat-skeleton-${n}`"
-          class="bg-background border-3 border-black rounded-[2px] p-4 shadow-neo flex flex-col items-center text-center gap-3 animate-pulse"
+          class="bg-background border-2 sm:border-3 border-black rounded-[2px] p-4 shadow-neo-sm sm:shadow-neo flex flex-col items-center text-center gap-3 animate-pulse"
         >
-          <div class="w-14 h-14 rounded-[2px] border-2 border-black bg-gray-200"></div>
-          <div class="w-20 h-3 bg-gray-200 rounded"></div>
-          <div class="w-12 h-2.5 bg-gray-200 rounded"></div>
+                    <div class="w-14 h-14 rounded-[2px] border-2 border-black bg-neutral-200 animate-pulse"></div>
+                    <div class="w-20 h-3.5 bg-neutral-200 border border-black/15 rounded animate-pulse"></div>
+                    <div class="w-12 h-2.5 bg-neutral-200 rounded animate-pulse"></div>
         </div>
       </div>
 
-      <div v-else class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-5">
-        <a
+            <div v-else class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-5">
+        <router-link
           v-for="(cat, idx) in categories"
-          :key="cat.name"
-          href="#katalog"
+          :key="cat.slug || cat.name"
+          :to="{ path: '/catalog', query: { category: cat.slug || cat.name } }"
           data-aos="fade-up"
           :data-aos-delay="idx * 150"
           :style="`transition-delay: ${idx * 150}ms !important`"
-          class="group bg-background border-3 border-black rounded-[2px] p-4 shadow-neo flex flex-col items-center text-center gap-3 hover:-translate-y-1 hover:shadow-neo-md transition-all"
+          class="group bg-background border-2 sm:border-3 border-black rounded-[2px] p-4 shadow-neo-sm sm:shadow-neo transition-all duration-200 hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-neo-md flex flex-col items-center text-center gap-3 cursor-pointer"
         >
-          <div
-            class="w-14 h-14 rounded-[2px] border-2 border-black flex items-center justify-center overflow-hidden shadow-neo-sm group-hover:scale-105 transition-transform bg-white"
+                    <div
+            class="w-14 h-14 rounded-[2px] border-2 border-black overflow-hidden relative shadow-neo-sm group-hover:scale-105 group-hover:rotate-1 transition-transform bg-neutral-100 flex items-center justify-center shrink-0"
           >
-            <img
-              v-if="cat.image && !failedImages[cat.id]"
-              :src="assetUrl(cat.image)"
+                        <div
+              v-if="!loadedImages[cat.slug || cat.id || cat.name]"
+              class="absolute inset-0 bg-neutral-200 animate-pulse z-10"
+            ></div>
+
+                        <img
+              :src="getCategoryImage(cat)"
               :alt="cat.name"
-              class="w-full h-full object-cover"
+              class="w-full h-full object-cover aspect-square transition-all duration-300"
+              :class="loadedImages[cat.slug || cat.id || cat.name] ? 'opacity-100 scale-100' : 'opacity-0 scale-95'"
               loading="lazy"
-              @error="failedImages[cat.id] = true"
+              @load="loadedImages[cat.slug || cat.id || cat.name] = true"
+              @error="handleImageError(cat)"
             />
-            <BookArt v-else :name="cat.icon" />
           </div>
 
           <div>
@@ -135,7 +162,7 @@ const failedImages = ref({})
               {{ cat.count }}
             </span>
           </div>
-        </a>
+        </router-link>
       </div>
     </div>
   </section>

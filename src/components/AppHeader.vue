@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useStore } from '@/composables/useStore'
 import { STORE_NAV } from '@/data/navigation'
@@ -37,8 +37,8 @@ async function confirmLogout() {
   loggingOut.value = true
   try {
     await logout()
-    if (['/admin', '/dashboard', '/checkout'].includes(router.currentRoute.value.path)) {
-      router.push('/')
+    if (router.currentRoute.value.name !== 'login') {
+      router.push({ name: 'login' })
     }
   } finally {
     loggingOut.value = false
@@ -50,8 +50,50 @@ function cancelLogout() {
   showLogoutConfirm.value = false
 }
 
-function navigateToSection(hash) {
+const headerSearch = ref('')
+const headerSearchInput = ref(null)
+
+function handleHeaderSearch() {
+  const q = headerSearch.value.trim()
+  router.push({ path: '/catalog', query: q ? { q } : {} })
+}
+
+function handleMobileSearch() {
+  openModal('search')
+}
+
+watch(
+  () => router.currentRoute.value.query?.q,
+  (q) => {
+    headerSearch.value = q ? String(q) : ''
+  },
+  { immediate: true },
+)
+
+function navigateToSection(item) {
   closeMobile()
+  if (typeof item === 'string') {
+    if (item === '#katalog' || item === '/catalog' || item === '/search') {
+      router.push({ name: 'catalog' })
+      return
+    }
+    if (router.currentRoute.value.path === '/' && router.currentRoute.value.hash === item) {
+      document.querySelector(item)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      return
+    }
+    router.push({ name: 'home', hash: item })
+    return
+  }
+
+  if (item?.to) {
+    router.push(item.to)
+    return
+  }
+  const hash = item?.hash || ''
+  if (hash === '#katalog' || hash === '/catalog' || hash === '/search') {
+    router.push({ name: 'catalog' })
+    return
+  }
   if (router.currentRoute.value.path === '/' && router.currentRoute.value.hash === hash) {
     document.querySelector(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     return
@@ -59,14 +101,15 @@ function navigateToSection(hash) {
   router.push({ name: 'home', hash })
 }
 
-function handleSearchClick() {
-  openModal('search')
-}
-
 function handleKeydown(e) {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
     e.preventDefault()
-    handleSearchClick()
+    if (headerSearchInput.value) {
+      headerSearchInput.value.focus()
+      headerSearchInput.value.select()
+    } else {
+      router.push({ path: '/catalog' })
+    }
   }
   if (e.key === 'Escape' && showLogoutConfirm.value) {
     cancelLogout()
@@ -114,55 +157,78 @@ defineExpose({ closeMobile, openMobile })
         </router-link>
 
         <nav
-          v-if="!isAdminMode"
           class="hidden lg:flex items-center gap-7 font-outfit font-black text-sm"
         >
           <a
             v-for="item in STORE_NAV"
-            :key="item.hash"
-            :href="item.hash"
+            :key="item.label"
+            :href="item.to || item.hash"
             class="link-under-link hover:text-neo-violet"
-            @click.prevent="navigateToSection(item.hash)"
+            @click.prevent="navigateToSection(item)"
             >{{ item.label }}</a
           >
         </nav>
 
         <div class="flex items-center gap-2 sm:gap-3">
-          <button
-            v-if="!isAdminMode"
-            class="neubrutal-btn bg-white border-2 md:border-3 border-black w-10 h-10 md:w-64 lg:w-80 md:px-3.5 rounded-[2px] shadow-neo-sm hover:bg-gray-100 flex items-center justify-center md:justify-between shrink-0 transition-all"
-            aria-label="Cari buku"
-            @click="handleSearchClick"
+                    <form
+            class="hidden md:flex items-center relative w-48 md:w-56 lg:w-72 h-10 shrink-0"
+            @submit.prevent="handleHeaderSearch"
           >
-            <div class="flex items-center gap-2 min-w-0">
-              <svg
-                class="w-5 h-5 text-black shrink-0"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.5"
-                viewBox="0 0 24 24"
+            <input
+              ref="headerSearchInput"
+              v-model="headerSearch"
+              type="text"
+              placeholder="Cari buku apa hari ini ?"
+              class="w-full h-10 bg-white border-2 md:border-3 border-black pl-3 pr-18 rounded-[2px] font-sans text-xs font-semibold shadow-neo-sm focus:outline-none focus:bg-yellow-50/40 placeholder:text-neutral-500 transition-colors"
+            />
+            <div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none">
+              <kbd class="hidden xl:inline-flex items-center text-[10px] font-mono font-bold text-neutral-500 bg-neutral-100 border border-black/25 px-1 py-0.5 rounded-[2px] shadow-xs">
+                Ctrl K
+              </kbd>
+              <button
+                type="submit"
+                class="p-1 text-black hover:text-neo-violet transition-colors cursor-pointer pointer-events-auto"
+                aria-label="Cari buku"
               >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
-                />
-              </svg>
-              <span
-                class="hidden md:inline font-outfit font-semibold text-xs text-neutral-500 truncate"
-              >
-                Cari judul buku, penulis...
-              </span>
+                <svg
+                  class="w-4 h-4 text-black"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
+                  />
+                </svg>
+              </button>
             </div>
-            <kbd
-              class="hidden md:inline-flex items-center text-[10px] font-mono font-bold bg-neutral-100 text-neutral-600 border border-black/30 px-1.5 py-0.5 rounded-[2px] shrink-0"
+          </form>
+
+                    <button
+            type="button"
+            class="md:hidden neubrutal-btn bg-white border-2 border-black w-10 h-10 rounded-[2px] shadow-neo-sm hover:bg-gray-100 flex items-center justify-center shrink-0 cursor-pointer"
+            aria-label="Cari buku (Buka popup pencarian)"
+            @click="handleMobileSearch"
+          >
+            <svg
+              class="w-5 h-5 text-black"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              viewBox="0 0 24 24"
             >
-              Ctrl K
-            </kbd>
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
+              />
+            </svg>
           </button>
 
           <button
-            v-if="!isAdminMode"
             class="relative neubrutal-btn bg-neo-yellow text-black border-2 md:border-3 border-black w-10 h-10 rounded-[2px] shadow-neo-sm hover:bg-yellow-300 flex items-center justify-center shrink-0"
             aria-label="Buka keranjang belanja"
             @click="openCart"
@@ -241,16 +307,6 @@ defineExpose({ closeMobile, openMobile })
                   <p class="font-outfit font-black text-xs text-black truncate">
                     {{ state.userName }}
                   </p>
-                  <span
-                    class="border border-black px-1.5 py-0.2 text-[9px] font-outfit font-black uppercase rounded-[2px]"
-                    :class="
-                      state.userRole === 'admin'
-                        ? 'bg-neo-violet text-white'
-                        : 'bg-neo-lime text-black'
-                    "
-                  >
-                    {{ state.userRole === 'admin' ? 'ADMIN' : 'MEMBER' }}
-                  </span>
                 </div>
                 <p class="font-sans text-[10px] text-muted-foreground truncate">
                   {{ state.userEmail }}
@@ -276,7 +332,7 @@ defineExpose({ closeMobile, openMobile })
                       d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"
                     />
                   </svg>
-                  {{ isAdminMode ? 'Panel Admin' : 'Dashboard Pembeli' }}
+                  Dashboard
                 </router-link>
               </div>
 
@@ -430,50 +486,24 @@ defineExpose({ closeMobile, openMobile })
         <nav
           class="flex flex-col px-6 py-4 gap-1 font-outfit font-black text-base flex-1 overflow-y-auto"
         >
-          <template v-if="!isAdminMode">
-            <a
-              v-for="item in STORE_NAV"
-              :key="item.hash"
-              :href="item.hash"
-              class="py-2.5 border-b-2 border-black/10 hover:text-neo-violet flex items-center justify-between"
-              @click.prevent="navigateToSection(item.hash)"
-            >
-              <span>{{ item.label }}</span>
-              <span class="text-xs font-mono text-muted-foreground">→</span>
-            </a>
-          </template>
-
-          <div
-            class="pt-3 pb-1 text-[11px] font-sans font-extrabold uppercase text-muted-foreground tracking-wider"
+          <a
+            v-for="item in STORE_NAV"
+            :key="item.label"
+            :href="item.to || item.hash"
+            class="py-2.5 border-b-2 border-black/10 hover:text-neo-violet flex items-center justify-between"
+            @click.prevent="navigateToSection(item)"
           >
-            Portal Akun & Manajemen
-          </div>
+            <span>{{ item.label }}</span>
+            <span class="text-xs font-mono text-muted-foreground">→</span>
+          </a>
 
           <router-link
             :to="isAdminMode ? '/admin' : '/dashboard'"
             class="py-2.5 border-b-2 border-black/10 hover:text-neo-violet flex items-center justify-between"
             @click="closeMobile"
           >
-            <span class="flex items-center gap-2">
-              <svg
-                class="w-4 h-4 text-black"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"
-                />
-              </svg>
-              {{ isAdminMode ? 'Panel Admin' : 'Dashboard Pembeli' }}
-            </span>
-            <span
-              class="bg-neo-lime text-black text-[9px] font-outfit font-black px-1.5 py-0.5 rounded-[2px] border border-black"
-              >{{ isAdminMode ? 'Admin' : 'User' }}</span
-            >
+            <span>Dashboard</span>
+            <span class="text-xs font-mono text-muted-foreground">→</span>
           </router-link>
         </nav>
 
@@ -500,7 +530,7 @@ defineExpose({ closeMobile, openMobile })
                 <div
                   class="w-8 h-8 rounded-[2px] bg-neo-violet text-white border-2 border-black flex items-center justify-center font-outfit font-black text-xs shadow-neo-sm shrink-0"
                 >
-                  {{ state.userName.slice(0, 2).toUpperCase() }}
+                  {{ (state.userName || 'U').slice(0, 2).toUpperCase() }}
                 </div>
                 <div class="truncate">
                   <span class="font-outfit font-black text-sm block truncate">{{

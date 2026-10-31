@@ -1,14 +1,27 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useStore } from '@/composables/useStore'
 import { api } from '@/lib/api'
+import { formatFullAddress } from '@/lib/mappers'
 import { assetUrl } from '@/lib/assets'
 import BookCover from '@/components/BookCover.vue'
 import PaymentInstructions from '@/components/PaymentInstructions.vue'
+import FullScreenLoader from '@/components/FullScreenLoader.vue'
 
+const route = useRoute()
 const router = useRouter()
-const { state, bootstrap, refreshCart, updateQuantity, showToast, isCartPending } = useStore()
+const {
+  state,
+  bootstrap,
+  refreshCart,
+  loadBooks,
+  updateQuantity,
+  showToast,
+  isCartPending,
+  loadAddresses,
+  openCart,
+} = useStore()
 
 const form = ref({
   courier: '',
@@ -17,6 +30,19 @@ const form = ref({
 })
 
 const items = computed(() => state.cart.filter((item) => item.selected))
+const failedCovers = ref({})
+
+function coverUrl(item) {
+  let url = item?.coverImage || item?.cover || ''
+  if (!url) {
+    const found =
+      state.books.find((b) => String(b.id) === String(item?.bookId || item?.id)) ||
+      state.books.find((b) => b.title === item?.title)
+    url = found?.coverImage || found?.cover || ''
+  }
+  return url ? assetUrl(url) : ''
+}
+
 const subtotal = computed(() =>
   items.value.reduce((sum, item) => sum + item.price * item.quantity, 0),
 )
@@ -39,7 +65,12 @@ const shippingRate = computed(() => {
   )
 })
 
+const previewShippingCost = ref(null)
+
 const shippingCost = computed(() => {
+  if (previewShippingCost.value !== null && previewShippingCost.value !== undefined) {
+    return previewShippingCost.value
+  }
   const price = Number(shippingRate.value?.price)
   return Number.isFinite(price) && price > 0 ? price : 0
 })
@@ -67,10 +98,9 @@ function normalize(value) {
     .toLowerCase()
 }
 
+
 const formattedSubtotal = computed(() => formatCurrency(subtotal.value))
-const formattedShipping = computed(() =>
-  shippingRate.value ? formatCurrency(shippingCost.value) : 'Pilih kurir',
-)
+const formattedShipping = computed(() => formatCurrency(shippingCost.value))
 const formattedAdminFee = computed(() => formatCurrency(adminFee.value))
 const formattedDiscount = computed(() => formatCurrency(discountAmount.value))
 const formattedTotal = computed(() => formatCurrency(finalTotal.value))
@@ -107,7 +137,7 @@ const paymentDisplay = computed(() => {
 })
 const successStatusLabel = computed(() => {
   if (paymentPaid.value) return 'Lunas'
-  if (paymentExpired.value) return 'Kedaluwarsa'
+  if (paymentExpired.value) return 'Dibatalkan'
   return paymentInfo.value.va_number ||
     paymentInfo.value.qr_url ||
     paymentInfo.value.payment_code ||
@@ -175,6 +205,24 @@ const paymentMethods = computed(() =>
   ),
 )
 
+const paymentTab = ref('all')
+
+const paymentTabs = computed(() => {
+  if (!paymentGroups.value.length) return []
+  return [
+    { id: 'all', name: 'Semua' },
+    ...paymentGroups.value.map((g) => ({
+      id: g.category,
+      name: g.name,
+    })),
+  ]
+})
+
+const activePaymentGroups = computed(() => {
+  if (paymentTab.value === 'all') return paymentGroups.value
+  return paymentGroups.value.filter((g) => g.category === paymentTab.value)
+})
+
 function paymentFeeLabel(method) {
   if (method.fee_type === 'percentage') {
     const percent = Number(method.fee_percent) * 100
@@ -200,7 +248,7 @@ async function loadPaymentMethods() {
       .filter((group) => group.methods.length)
 
     if (!paymentMethods.value.some((method) => method.code === form.value.payment)) {
-      form.value.payment = paymentMethods.value[0]?.code || ''
+      form.value.payment = ''
     }
   } catch (error) {
     paymentGroups.value = []
@@ -257,38 +305,81 @@ function buildPayload(rate) {
 }
 
 let previewRequestId = 0
+let previewTimer = null
+let lastPreviewPayloadKey = ''
 
-async function refreshPreview() {
+async function refreshPreview(immediate = false) {
   const rate = shippingRate.value
   if (!rate || !addressId.value || !paymentMethod() || items.value.length === 0) {
     adminFee.value = 0
     previewLoading.value = false
+    lastPreviewPayloadKey = ''
     return
   }
 
-  const requestId = ++previewRequestId
-  previewLoading.value = true
-  try {
-    const response = await api.preview(buildPayload(rate))
-    if (requestId === previewRequestId) {
-      adminFee.value = Number(response.data?.admin_fee) || 0
+  // Precompute administrative fees for immediate UI feedback.
+  const selectedMethod = paymentMethods.value.find((m) => m.code === form.value.payment)
+  if (selectedMethod) {
+    const fee = Number(selectedMethod.fee_amount ?? selectedMethod.estimated_fee ?? 0)
+    if (fee >= 0) adminFee.value = fee
+  }
+
+  const payload = buildPayload(rate)
+  const payloadKey = JSON.stringify(payload)
+  if (payloadKey === lastPreviewPayloadKey) {
+    return
+  }
+
+  const executePreview = async () => {
+    const requestId = ++previewRequestId
+    previewLoading.value = true
+    try {
+      const response = await api.preview(payload)
+      if (requestId === previewRequestId) {
+        lastPreviewPayloadKey = payloadKey
+        adminFee.value = Number(response.data?.admin_fee) || 0
+        if (response.data?.discount_amount !== undefined) {
+          discountAmount.value = Number(response.data.discount_amount) || 0
+        }
+        if (response.data?.shipping_cost !== undefined && response.data?.shipping_cost !== null) {
+          previewShippingCost.value = Number(response.data.shipping_cost)
+        }
+        if (response.data?.address) {
+          address.value = { ...address.value, ...response.data.address }
+        }
+      }
+    } catch {
+      // Fall back to local fee estimate if API calculation fails.
+    } finally {
+      if (requestId === previewRequestId) previewLoading.value = false
     }
-  } catch {
-    if (requestId === previewRequestId) adminFee.value = 0
-  } finally {
-    if (requestId === previewRequestId) previewLoading.value = false
+  }
+
+  if (immediate) {
+    clearTimeout(previewTimer)
+    await executePreview()
+  } else {
+    clearTimeout(previewTimer)
+    previewTimer = setTimeout(executePreview, 150)
   }
 }
 
-async function loadRates(targetAddressId) {
+async function loadRates(targetAddressId, force = false) {
   if (!targetAddressId || items.value.length === 0) {
     rates.value = []
     ratesAddressId.value = null
     selectedRateKey.value = ''
+    previewShippingCost.value = null
+    return
+  }
+
+  // Reuse cached shipping rates for this address.
+  if (!force && ratesAddressId.value === targetAddressId && rates.value.length > 0) {
     return
   }
 
   ratesLoading.value = true
+  previewShippingCost.value = null
   try {
     const response = await api.rates(
       items.value.map((item) => item.id),
@@ -307,13 +398,11 @@ async function loadRates(targetAddressId) {
       (rate) => `${rate.courier_code}|${rate.courier_service_code}` === current,
     )
     if (!exists) {
-      const cheapest = rates.value.reduce((best, rate) => {
-        if (!best) return rate
-        return Number(rate.price) < Number(best.price) ? rate : best
-      }, null)
-      selectedRateKey.value = cheapest
-        ? `${cheapest.courier_code}|${cheapest.courier_service_code}`
-        : ''
+      if (rates.value.length > 0) {
+        selectedRateKey.value = `${rates.value[0].courier_code}|${rates.value[0].courier_service_code}`
+      } else {
+        selectedRateKey.value = ''
+      }
     }
   } catch (error) {
     rates.value = []
@@ -359,15 +448,18 @@ async function selectAddress(addr) {
     return
   }
 
-  try {
-    const response = await api.address(addr.id)
-    if (response.data) address.value = response.data
-  } catch (error) {
-    showToast(error?.message || 'Gagal memuat detail alamat', { type: 'error' })
+  ratesLoading.value = true
+
+  // Use cached address data without additional network requests.
+  if (!addr.address_line && !addr.biteship_area_id) {
+    try {
+      const response = await api.address(addr.id)
+      if (response.data) address.value = response.data
+    } catch {
+    }
   }
 
-  await loadRates(addressId.value)
-  await refreshPreview()
+  await loadRates(addr.id)
 }
 
 function openAddressModal() {
@@ -420,10 +512,15 @@ async function saveNewAddress() {
       return
     }
 
+    const cleanAddressLine = payloadForm.fullAddress
+      .trim()
+      .replace(/^[\s,.-]+/, '')
+      .replace(/[\s,.-]+$/, '')
+
     const response = await api.createAddress({
       receiver_name: payloadForm.recipient.trim(),
       phone: payloadForm.phone.trim(),
-      address_line: payloadForm.fullAddress.trim(),
+      address_line: cleanAddressLine,
       biteship_area_id: area.id,
       province_name: area.administrative_division_level_1_name || '',
       city_name: area.administrative_division_level_2_name || keyword,
@@ -437,8 +534,7 @@ async function saveNewAddress() {
       const detail = await api.address(saved.id)
       saved = detail.data || saved
     } catch {
-      // keep the create response
-    }
+          }
     savedAddresses.value = [...savedAddresses.value.filter((item) => item.id !== saved.id), saved]
     if (saved.is_primary) {
       savedAddresses.value.forEach((item) => {
@@ -476,7 +572,7 @@ async function applyPromo() {
     promoCode.value = code
     discountApplied.value = true
     discountAmount.value = Number(response.data?.discount_amount) || 0
-    showToast(`Kupon "${response.data?.code || code}" berhasil dipasang!`, { type: 'success' })
+    showToast('Berhasil menggunakan kupon', { type: 'success' })
     await refreshPreview()
   } catch (error) {
     discountApplied.value = false
@@ -490,6 +586,14 @@ async function applyPromo() {
   } finally {
     applyingPromo.value = false
   }
+}
+
+async function removePromo() {
+  promoCode.value = ''
+  discountApplied.value = false
+  discountAmount.value = 0
+  showToast('Kupon berhasil dihapus', { type: 'info' })
+  await refreshPreview()
 }
 
 async function placeOrder() {
@@ -528,14 +632,24 @@ async function placeOrder() {
     orderStartedAt.value = Date.now()
     paymentExpired.value = false
     paymentPaid.value = false
-    successInfo.value = order.data
-    orderSuccess.value = true
+    const invoiceNumber = order.data?.invoice_number || order.data?.id
     await refreshCart()
+    loadBooks().catch(() => {})
     showToast('Pesanan berhasil dibuat!', { type: 'success' })
+    if (invoiceNumber) {
+      await router.push({
+        path: `/orders/${encodeURIComponent(invoiceNumber)}`,
+        state: { initialOrder: order.data },
+      })
+      // Keep submitting state true during route transition to invoice page.
+    } else {
+      successInfo.value = order.data
+      orderSuccess.value = true
+      isSubmitting.value = false
+    }
   } catch (error) {
-    showToast(error?.message || 'Gagal membuat pesanan', { type: 'error' })
-  } finally {
     isSubmitting.value = false
+    showToast(error?.message || 'Gagal membuat pesanan', { type: 'error' })
   }
 }
 
@@ -543,9 +657,14 @@ function goBack() {
   router.push({ name: 'home' })
 }
 
+async function handleQuantityChange(item, nextQty) {
+  if (nextQty < 1 || isCartPending(item.id)) return
+  await updateQuantity(item.id, nextQty)
+}
+
 function decrement(item) {
   if (item.quantity > 1) {
-    updateQuantity(item.id, item.quantity - 1)
+    handleQuantityChange(item, item.quantity - 1)
   }
 }
 
@@ -557,43 +676,34 @@ onMounted(async () => {
     return
   }
 
-  const addressesTask = (async () => {
-    const response = await api.addresses()
-    const list = response.data || []
-    savedAddresses.value = await Promise.all(
-      list.map(async (address) => {
-        try {
-          const detail = await api.address(address.id)
-          return detail.data || address
-        } catch {
-          return address
-        }
-      }),
-    )
+  // Redirect to home if cart is empty.
+  if (!items.value.length) {
     addressesLoading.value = false
-    return savedAddresses.value
-  })()
+    showToast('Keranjang belanja kosong. Silakan pilih buku terlebih dahulu.', { type: 'info' })
+    router.replace({ name: 'home' })
+    return
+  }
 
-  await Promise.all([loadPaymentMethods(), loadCouriers(), addressesTask.catch(() => null)])
+  // Fetch payment methods and couriers in parallel.
+  loadPaymentMethods()
+  loadCouriers()
 
+  // Load saved addresses independently to set default address quickly.
   try {
-    const list = await addressesTask
-
-    let primary = null
-    try {
-      const primaryResponse = await api.primaryAddress()
-      primary = primaryResponse.data || null
-    } catch (error) {
-      if (error?.status !== 404) throw error
-    }
+    addressesLoading.value = true
+    const list = await loadAddresses()
+    savedAddresses.value = list
 
     const resolved =
-      list.find((item) => item.id === primary?.id) ||
-      list.find((item) => item.is_primary) ||
+      list.find((item) => item.is_primary || item.isDefault) ||
       list[0] ||
       null
-    if (resolved) await selectAddress(resolved)
+    if (resolved) {
+      ratesLoading.value = true
+      selectAddress(resolved).catch(() => {})
+    }
   } catch (error) {
+    savedAddresses.value = []
     if (error?.status !== 401) {
       showToast(error?.message || 'Gagal memuat alamat pengiriman', { type: 'error' })
     }
@@ -605,8 +715,7 @@ onMounted(async () => {
 watch(courierFilter, () => {
   const keyOf = (rate) => `${rate.courier_code}|${rate.courier_service_code}`
   if (!visibleRates.value.some((rate) => keyOf(rate) === selectedRateKey.value)) {
-    const first = visibleRates.value[0]
-    selectedRateKey.value = first ? keyOf(first) : ''
+    selectedRateKey.value = ''
   }
 })
 
@@ -617,40 +726,95 @@ watch(
   },
 )
 
+const itemsSignature = computed(() =>
+  items.value.map((item) => `${item.id}:${item.quantity}`).join(','),
+)
+
+let itemsWatchTimer = null
+watch(itemsSignature, (newVal, oldVal) => {
+  if (newVal === oldVal) return
+  clearTimeout(itemsWatchTimer)
+  itemsWatchTimer = setTimeout(async () => {
+    if (addressId.value) {
+      await loadRates(addressId.value, true)
+    }
+    refreshPreview()
+  }, 200)
+})
+
 watch(orderSuccess, (value) => {
   if (value) {
     paymentPaid.value = false
     paymentExpired.value = false
   }
 })
+
+watch(
+  () => [state.cartLoading, items.value.length],
+  ([loading, count]) => {
+    if (!loading && count === 0 && !orderSuccess.value && !isSubmitting.value) {
+      showToast('Keranjang belanja kosong. Silakan pilih buku terlebih dahulu.', { type: 'info' })
+      router.replace({ name: 'home' })
+    }
+  },
+)
 </script>
 
 <template>
   <div class="min-h-screen bg-background">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 flex items-center gap-4">
-      <button
-        class="neubrutal-btn bg-white border-2 border-black w-10 h-10 flex items-center justify-center shadow-neo-sm hover:bg-gray-100"
-        @click="goBack"
+    <FullScreenLoader :show="isSubmitting" />
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 pb-1">
+            <nav
+        class="flex items-center gap-2 text-xs font-sans font-bold text-neutral-500 mb-3.5 overflow-x-auto whitespace-nowrap scrollbar-hide select-none"
+        aria-label="Breadcrumb"
       >
-        <svg
-          class="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2.5"
-          viewBox="0 0 24 24"
+        <router-link
+          to="/"
+          class="hover:text-black transition-colors flex items-center gap-1.5 shrink-0"
         >
-          <path
+          <svg
+            class="w-3.5 h-3.5 text-neutral-700"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.2"
             stroke-linecap="round"
             stroke-linejoin="round"
-            d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
-          />
-        </svg>
-      </button>
-      <div>
-        <h1 class="font-outfit font-black text-xl">CHECKOUT</h1>
-        <p class="font-sans text-xs font-bold text-muted-foreground">
-          Lengkapi data & buat pesanan
-        </p>
+          >
+            <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            <polyline points="9 22 9 12 15 12 15 22" />
+          </svg>
+          <span>Beranda</span>
+        </router-link>
+        <span class="text-neutral-400 shrink-0">/</span>
+        <router-link to="/catalog" class="hover:text-black transition-colors shrink-0">
+          Katalog
+        </router-link>
+        <span class="text-neutral-400 shrink-0">/</span>
+        <button
+          type="button"
+          class="hover:text-black transition-colors cursor-pointer shrink-0 inline-flex items-center gap-1"
+          @click="openCart"
+        >
+          <span>Keranjang</span>
+        </button>
+        <span class="text-neutral-400 shrink-0">/</span>
+        <span class="text-neutral-900 font-black shrink-0">
+          Checkout
+        </span>
+      </nav>
+
+            <div class="flex items-center justify-between">
+        <div>
+          <h1
+            class="font-outfit font-black text-2xl sm:text-3xl text-neutral-900 tracking-tight leading-none"
+          >
+            CHECKOUT
+          </h1>
+          <p class="font-sans text-xs sm:text-sm font-semibold text-neutral-500 mt-1.5">
+            Lengkapi data & buat pesanan
+          </p>
+        </div>
       </div>
     </div>
 
@@ -777,40 +941,20 @@ watch(orderSuccess, (value) => {
       </div>
     </div>
 
-    <div v-else class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-      <div v-if="!state.cartLoading && items.length === 0" class="text-center py-20">
+    <div v-else class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-12 sm:pb-16">
+            <div v-if="!state.cartLoading && items.length === 0" class="text-center py-20">
         <div
-          class="w-20 h-20 mx-auto mb-4 bg-white border-3 border-black flex items-center justify-center shadow-neo"
+          class="w-14 h-14 mx-auto mb-3 bg-white border-3 border-black flex items-center justify-center shadow-neo"
         >
-          <svg
-            class="w-10 h-10 text-black"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <circle cx="8" cy="21" r="1.2" fill="currentColor" />
-            <circle cx="19" cy="21" r="1.2" fill="currentColor" />
-            <path
-              d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"
-            />
-          </svg>
+          <div class="w-6 h-6 border-3 border-black border-t-transparent rounded-full animate-spin"></div>
         </div>
-        <h3 class="font-outfit font-black text-xl">Tidak Ada Item Dipilih</h3>
+        <h3 class="font-outfit font-black text-lg">Keranjang Kosong</h3>
         <p class="font-sans text-xs font-bold text-muted-foreground mt-1">
-          Yuk jelajahi rak buku kami dan temukan bacaan seru berikutnya!
+          Mengarahkan kembali ke beranda...
         </p>
-        <button
-          class="mt-5 neubrutal-btn bg-neo-yellow text-black border-3 border-black py-2.5 px-6 font-outfit font-black text-sm shadow-neo"
-          @click="goBack"
-        >
-          Mulai Belanja →
-        </button>
       </div>
 
-      <div v-else class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+            <div v-else class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
         <div class="lg:col-span-7 space-y-6">
           <div class="bg-white border-3 border-black shadow-neo p-6 space-y-4">
             <div class="flex items-center gap-2 border-b-2 border-black pb-2">
@@ -878,8 +1022,8 @@ watch(orderSuccess, (value) => {
                   <p class="font-sans text-[11px] font-bold text-muted-foreground mt-1">
                     {{ addr.phone }}
                   </p>
-                  <p class="font-sans text-xs font-semibold text-black mt-1 leading-snug">
-                    {{ addr.address_line }}, {{ addr.city_name }} {{ addr.postal_code }}
+                  <p class="font-sans text-xs font-semibold text-black mt-1 leading-relaxed">
+                    {{ formatFullAddress(addr) }}
                   </p>
                 </button>
               </div>
@@ -916,20 +1060,26 @@ watch(orderSuccess, (value) => {
               </svg>
               <h2 class="font-outfit font-black text-lg">PILIH KURIR</h2>
             </div>
-            <div v-if="ratesLoading" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div v-if="addressesLoading || ratesLoading" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div
                 v-for="n in 3"
                 :key="`rate-skeleton-${n}`"
                 class="h-24 bg-gray-100 border-2 border-black animate-pulse"
               ></div>
             </div>
+            <div v-else-if="!savedAddresses.length" class="border-2 border-black bg-background p-4">
+              <p class="font-sans text-xs font-semibold text-muted-foreground">
+                Tambahkan alamat pengiriman di atas untuk melihat pilihan kurir & ongkir.
+              </p>
+            </div>
+            <div v-else-if="!addressId" class="border-2 border-black bg-background p-4">
+              <p class="font-sans text-xs font-semibold text-muted-foreground">
+                Pilih alamat pengiriman untuk melihat ongkir.
+              </p>
+            </div>
             <div v-else-if="!rates.length" class="border-2 border-black bg-background p-4">
               <p class="font-sans text-xs font-semibold text-muted-foreground">
-                {{
-                  addressId
-                    ? 'Layanan kurir belum tersedia untuk alamat ini.'
-                    : 'Pilih alamat pengiriman untuk melihat ongkir.'
-                }}
+                Layanan kurir belum tersedia untuk alamat ini.
               </p>
             </div>
             <template v-else>
@@ -998,10 +1148,10 @@ watch(orderSuccess, (value) => {
                       {{ formatCurrency(rate.price) }}
                     </span>
                     <span
+                      v-if="rate.etd || rate.description"
                       class="block font-sans text-[11px] font-semibold text-muted-foreground mt-0.5"
                     >
-                      {{ rate.etd ? `Estimasi ${rate.etd} hari` : rate.description || rate.type }}
-                      <template v-if="rate.type"> · {{ rate.type }}</template>
+                      {{ rate.etd ? `Estimasi ${rate.etd} hari` : rate.description }}
                     </span>
                   </div>
                 </label>
@@ -1054,8 +1204,26 @@ watch(orderSuccess, (value) => {
               </p>
             </div>
             <div v-else class="space-y-4">
-              <div v-for="group in paymentGroups" :key="group.category" class="space-y-2">
+                            <div v-if="paymentTabs.length > 2" class="flex flex-wrap gap-2 pb-1">
+                <button
+                  v-for="tab in paymentTabs"
+                  :key="tab.id"
+                  type="button"
+                  class="neubrutal-btn border-2 border-black px-3 py-1.5 font-outfit font-black text-[11px] transition-all cursor-pointer"
+                  :class="
+                    paymentTab === tab.id
+                      ? 'bg-black text-white shadow-neo-sm'
+                      : 'bg-background hover:bg-gray-100'
+                  "
+                  @click="paymentTab = tab.id"
+                >
+                  {{ tab.name }}
+                </button>
+              </div>
+
+              <div v-for="group in activePaymentGroups" :key="group.category" class="space-y-2">
                 <p
+                  v-if="paymentTab === 'all'"
                   class="font-outfit font-black text-[11px] uppercase tracking-wider text-muted-foreground"
                 >
                   {{ group.name }}
@@ -1076,27 +1244,44 @@ watch(orderSuccess, (value) => {
                           : 'bg-background shadow-neo-sm hover:bg-gray-100'
                       "
                     >
-                      <div class="flex items-center gap-2">
-                        <img
-                          v-if="method.image"
-                          :src="assetUrl(method.image)"
-                          :alt="method.name"
-                          class="w-8 h-8 object-contain shrink-0"
-                          loading="lazy"
-                        />
-                        <span class="font-outfit font-black text-sm">{{ method.name }}</span>
+                      <div class="flex items-center gap-3">
+                        <div
+                          class="w-10 h-10 border-2 border-black bg-white shrink-0 flex items-center justify-center p-1 rounded-[2px] shadow-neo-xs overflow-hidden"
+                        >
+                          <img
+                            v-if="method.image"
+                            :src="assetUrl(method.image)"
+                            :alt="method.name"
+                            class="max-w-full max-h-full object-contain"
+                            loading="lazy"
+                            @error="(e) => (e.target.style.display = 'none')"
+                          />
+                          <svg
+                            v-else
+                            class="w-5 h-5 text-black"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z"
+                            />
+                          </svg>
+                        </div>
+                        <div class="min-w-0">
+                          <span class="font-outfit font-black text-sm block leading-tight truncate">
+                            {{ method.name }}
+                          </span>
+                          <span
+                            class="block font-sans text-[11px] font-semibold text-muted-foreground mt-0.5"
+                          >
+                            {{ paymentFeeLabel(method) }}
+                          </span>
+                        </div>
                       </div>
-                      <span
-                        class="block font-sans text-[11px] font-semibold text-muted-foreground mt-1"
-                      >
-                        {{ paymentFeeLabel(method) }}
-                      </span>
-                      <span
-                        v-if="method.description"
-                        class="block font-sans text-[10px] text-muted-foreground mt-0.5 line-clamp-2"
-                      >
-                        {{ method.description }}
-                      </span>
                     </div>
                   </label>
                 </div>
@@ -1125,68 +1310,154 @@ watch(orderSuccess, (value) => {
             </div>
 
             <div class="space-y-3">
-              <div
-                v-for="item in items"
-                :key="item.id"
-                class="flex gap-3 pb-3 border-b border-black/10 last:border-b-0 last:pb-0"
-              >
-                <div
-                  class="w-20 h-28 shrink-0 border-2 border-black overflow-hidden shadow-neo-sm bg-background"
-                >
-                  <BookCover
-                    :theme="item.theme || 'violet'"
-                    :title="item.title"
-                    :author="item.author"
-                    class="w-full h-full"
-                  />
-                </div>
-                <div class="flex-1 min-w-0">
-                  <h4 class="font-outfit font-black text-sm leading-snug line-clamp-1">
-                    {{ item.title }}
-                  </h4>
-                  <p class="font-sans text-[11px] font-bold text-muted-foreground truncate">
-                    {{ item.author }}
-                  </p>
-                  <p class="font-sans text-[10px] font-bold text-muted-foreground mt-0.5">
-                    x {{ item.quantity }}
-                  </p>
-                  <div class="flex items-center justify-between mt-1.5">
-                    <div class="flex items-center border-2 border-black bg-white shadow-neo-sm">
-                      <button
-                        :disabled="isCartPending(item.id) || item.quantity <= 1"
-                        class="w-6 h-6 flex items-center justify-center font-outfit font-black text-[11px] border-r border-black disabled:opacity-40"
-                        :class="
-                          item.quantity <= 1
-                            ? 'text-gray-300 cursor-not-allowed'
-                            : 'hover:bg-gray-100'
-                        "
-                        :aria-disabled="item.quantity <= 1"
-                        @click="decrement(item)"
-                      >
-                        −
-                      </button>
-                      <span class="w-7 text-center font-outfit font-black text-[11px]">
-                        {{ isCartPending(item.id) ? '…' : item.quantity }}
-                      </span>
-                      <button
-                        :disabled="isCartPending(item.id)"
-                        class="w-6 h-6 flex items-center justify-center font-outfit font-black text-[11px] hover:bg-gray-100 border-l border-black disabled:opacity-40"
-                        @click="updateQuantity(item.id, item.quantity + 1)"
-                      >
-                        +
-                      </button>
-                    </div>
-                    <span class="font-outfit font-black text-sm">
-                      {{
-                        new Intl.NumberFormat('id-ID', {
-                          style: 'currency',
-                          currency: 'IDR',
-                          minimumFractionDigits: 0,
-                        }).format(item.price * item.quantity)
-                      }}
-                    </span>
+              <div v-if="state.cartLoading && items.length === 0" class="space-y-3 animate-pulse">
+                <div v-for="n in 2" :key="`item-skel-${n}`" class="flex gap-3 pb-3 border-b border-black/10">
+                  <div class="w-20 h-28 bg-neutral-200 border-2 border-black/20 rounded-[2px]"></div>
+                  <div class="flex-1 space-y-2 py-1">
+                    <div class="h-4 w-3/4 bg-neutral-200 rounded-[2px]"></div>
+                    <div class="h-3 w-1/2 bg-neutral-200 rounded-[2px]"></div>
+                    <div class="h-4 w-1/3 bg-neutral-200 rounded-[2px] mt-4"></div>
                   </div>
                 </div>
+              </div>
+              <template v-else>
+                <div
+                  v-for="item in items"
+                  :key="item.id"
+                  class="flex gap-3 pb-3 border-b border-black/10 last:border-b-0 last:pb-0"
+                >
+                  <div
+                    class="w-20 h-28 shrink-0 border-2 border-black overflow-hidden shadow-neo-sm bg-background relative flex items-center justify-center"
+                  >
+                    <img
+                      v-if="coverUrl(item) && !failedCovers[item.id]"
+                      :src="coverUrl(item)"
+                      :alt="item.title"
+                      class="w-full h-full object-cover"
+                      loading="lazy"
+                      @error="failedCovers[item.id] = true"
+                    />
+                    <BookCover
+                      v-else
+                      :theme="item.theme || 'violet'"
+                      :title="item.title"
+                      :author="item.author"
+                      class="w-full h-full"
+                    />
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <h4 class="font-outfit font-black text-sm leading-snug line-clamp-1">
+                      {{ item.title }}
+                    </h4>
+                    <p class="font-sans text-[11px] font-bold text-muted-foreground truncate">
+                      {{ item.author }}
+                    </p>
+                    <p class="font-sans text-[10px] font-bold text-muted-foreground mt-0.5">
+                      x {{ item.quantity }}
+                    </p>
+                    <div class="flex items-center justify-between mt-1.5">
+                      <div class="flex items-center border-2 border-black bg-white shadow-neo-sm">
+                        <button
+                          :disabled="isCartPending(item.id) || item.quantity <= 1"
+                          class="w-6 h-6 flex items-center justify-center font-outfit font-black text-[11px] border-r border-black disabled:opacity-40 cursor-pointer"
+                          :class="
+                            item.quantity <= 1
+                              ? 'text-gray-300 cursor-not-allowed'
+                              : 'hover:bg-gray-100'
+                          "
+                          :aria-disabled="item.quantity <= 1"
+                          @click="handleQuantityChange(item, item.quantity - 1)"
+                        >
+                          −
+                        </button>
+                        <span class="w-7 text-center font-outfit font-black text-[11px]">
+                          {{ isCartPending(item.id) ? '…' : item.quantity }}
+                        </span>
+                        <button
+                          :disabled="isCartPending(item.id)"
+                          class="w-6 h-6 flex items-center justify-center font-outfit font-black text-[11px] hover:bg-gray-100 border-l border-black disabled:opacity-40 cursor-pointer"
+                          @click="handleQuantityChange(item, item.quantity + 1)"
+                        >
+                          +
+                        </button>
+                      </div>
+                      <span class="font-outfit font-black text-sm">
+                        {{
+                          new Intl.NumberFormat('id-ID', {
+                            style: 'currency',
+                            currency: 'IDR',
+                            minimumFractionDigits: 0,
+                          }).format(item.price * item.quantity)
+                        }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+
+                        <div class="border-t-2 border-black pt-3.5 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="font-outfit font-black text-xs uppercase tracking-wide flex items-center gap-1.5 text-black">
+                  <svg
+                    class="w-4 h-4 text-black shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2.3"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                    />
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"
+                    />
+                  </svg>
+                  Tujuan Pengiriman
+                </span>
+                <span
+                  v-if="address?.is_primary"
+                  class="bg-black text-white text-[9px] font-outfit font-black px-1.5 py-0.5"
+                >
+                  UTAMA
+                </span>
+              </div>
+
+              <div
+                v-if="addressesLoading"
+                class="h-20 bg-neutral-100 border-2 border-black/20 rounded-[2px] animate-pulse"
+              ></div>
+
+              <div
+                v-else-if="address"
+                class="bg-neutral-50 border-2 border-black p-3 shadow-neo-xs space-y-1.5"
+              >
+                <div class="flex items-center justify-between gap-2 border-b border-black/10 pb-1.5">
+                  <span class="font-outfit font-black text-xs uppercase text-black">
+                    {{ address.receiver_name }}
+                  </span>
+                  <span class="font-sans text-[11px] font-bold text-muted-foreground">
+                    {{ address.phone }}
+                  </span>
+                </div>
+                <p class="font-sans text-xs font-semibold text-black leading-relaxed break-words">
+                  {{ formatFullAddress(address) }}
+                </p>
+                <div v-if="shippingRate" class="pt-1 flex items-center justify-between text-[11px] font-sans font-bold text-neutral-600 border-t border-black/10">
+                  <span class="truncate">Kurir: {{ shippingRate.courier_name }} ({{ shippingRate.courier_service_name }})</span>
+                  <span v-if="shippingRate.etd" class="shrink-0 text-muted-foreground">Est. {{ shippingRate.etd }} hari</span>
+                </div>
+              </div>
+
+              <div
+                v-else
+                class="border-2 border-dashed border-black/40 bg-amber-50 p-3 text-xs font-sans font-bold text-amber-900 shadow-neo-xs"
+              >
+                Belum ada alamat pengiriman yang dipilih. Silakan pilih alamat di sebelah kiri.
               </div>
             </div>
 
@@ -1202,69 +1473,75 @@ watch(orderSuccess, (value) => {
                   type="text"
                   placeholder="Kode Kupon (e.g. NEOBOOK)"
                   class="flex-1 bg-background border-2 border-black px-3 py-2 font-outfit font-bold text-xs uppercase outline-none shadow-neo-sm"
+                  @keyup.enter="applyPromo"
                 />
                 <button
-                  :disabled="applyingPromo"
-                  class="neubrutal-btn bg-neo-yellow text-black border-2 border-black px-4 py-2 font-outfit font-black text-xs shadow-neo-sm hover:bg-yellow-300 disabled:opacity-60"
+                  :disabled="applyingPromo || !promoCode.trim()"
+                  class="neubrutal-btn bg-neo-yellow text-black border-2 border-black px-4 py-2 font-outfit font-black text-xs shadow-neo-sm hover:bg-yellow-300 disabled:opacity-60 cursor-pointer"
                   @click="applyPromo"
                 >
                   {{ applyingPromo ? 'Memasang...' : 'Pasang' }}
                 </button>
               </div>
 
-              <div v-if="discountApplied" class="flex justify-between text-green-700">
-                <span class="font-outfit font-black text-sm">Diskon Kupon</span>
-                <span class="font-outfit font-black text-sm">-{{ formattedDiscount }}</span>
+              <div v-if="discountApplied" class="space-y-2">
+                <div class="flex items-center justify-between bg-green-50 border-2 border-black p-2.5 shadow-neo-xs">
+                  <div class="flex items-center gap-2">
+                    <span class="font-outfit font-black text-xs bg-black text-white px-2 py-0.5 uppercase tracking-wide">
+                      {{ promoCode }}
+                    </span>
+                    <span class="font-sans text-xs font-bold text-green-800">Kupon Terpasang</span>
+                  </div>
+                  <button
+                    type="button"
+                    title="Hapus kupon"
+                    class="w-6 h-6 flex items-center justify-center bg-white border-2 border-black font-outfit font-black text-xs text-red-600 hover:bg-red-500 hover:text-white transition-colors cursor-pointer shadow-neo-xs"
+                    @click="removePromo"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div class="flex justify-between text-green-700">
+                  <span class="font-outfit font-black text-sm">Diskon Kupon</span>
+                  <span class="font-outfit font-black text-sm">-{{ formattedDiscount }}</span>
+                </div>
               </div>
 
-              <div class="flex justify-between">
+              <div class="flex justify-between items-center">
                 <span class="text-muted-foreground">Ongkos Kirim</span>
-                <span class="font-outfit font-black">{{ formattedShipping }}</span>
+                <div
+                  v-if="ratesLoading"
+                  class="h-4 w-20 bg-neutral-200 border border-black/20 rounded-[2px] animate-pulse"
+                ></div>
+                <span v-else class="font-outfit font-black">{{ formattedShipping }}</span>
               </div>
-              <div class="flex justify-between">
+              <div class="flex justify-between items-center">
                 <span class="text-muted-foreground">Biaya Admin</span>
-                <span class="font-outfit font-black">{{
-                  previewLoading ? 'Menghitung...' : formattedAdminFee
-                }}</span>
+                <div
+                  v-if="previewLoading"
+                  class="h-4 w-16 bg-neutral-200 border border-black/20 rounded-[2px] animate-pulse"
+                ></div>
+                <span v-else class="font-outfit font-black">{{ formattedAdminFee }}</span>
               </div>
               <div
-                class="flex justify-between text-base font-outfit font-black pt-2 border-t-2 border-black"
+                class="flex justify-between items-center text-base font-outfit font-black pt-3 border-t-2 border-black"
               >
                 <span>TOTAL</span>
-                <span v-if="previewLoading" class="text-sm">Menghitung...</span>
+                <div
+                  v-if="previewLoading || ratesLoading"
+                  class="h-7 w-28 bg-neo-yellow/40 border-2 border-black/30 rounded-[2px] animate-pulse"
+                ></div>
                 <span v-else class="text-neo-violet text-xl">{{ formattedTotal }}</span>
               </div>
             </div>
 
             <button
-              v-if="!isSubmitting"
-              class="w-full neubrutal-btn bg-neo-yellow text-black border-3 border-black py-3.5 font-outfit font-black text-base shadow-neo hover:bg-yellow-300"
+              :disabled="isSubmitting"
+              class="w-full neubrutal-btn bg-neo-yellow text-black border-3 border-black py-3.5 font-outfit font-black text-base shadow-neo hover:bg-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               @click="placeOrder"
             >
               BUAT PESANAN
             </button>
-
-            <div
-              v-else
-              class="w-full bg-neo-yellow border-3 border-black p-3.5 shadow-neo"
-              role="status"
-              aria-live="polite"
-            >
-              <div class="flex items-center gap-3">
-                <span
-                  class="w-5 h-5 shrink-0 rounded-full border-3 border-black border-t-transparent animate-spin"
-                ></span>
-                <div>
-                  <p class="font-outfit font-black text-sm uppercase">Memproses pesanan...</p>
-                  <p class="font-sans text-[11px] font-semibold text-black/70">
-                    Membuat invoice dan menyiapkan pembayaran. Jangan tutup halaman ini.
-                  </p>
-                </div>
-              </div>
-              <div class="mt-3 h-2 overflow-hidden border-2 border-black bg-white">
-                <div class="h-full w-1/3 bg-black order-progress"></div>
-              </div>
-            </div>
 
             <p class="font-sans text-[11px] font-bold text-muted-foreground text-center">
               Dengan membuat pesanan, kamu menyetujui
@@ -1309,7 +1586,8 @@ watch(orderSuccess, (value) => {
                 v-model="addressForm.recipient"
                 type="text"
                 required
-                class="w-full bg-background border-2 border-black p-2.5 font-sans font-semibold text-sm outline-none shadow-neo-sm"
+                placeholder="Nama lengkap penerima"
+                class="w-full bg-background border-2 border-black p-2.5 font-sans font-semibold text-sm outline-none shadow-neo-sm focus:bg-white"
               />
             </div>
             <div>
@@ -1318,7 +1596,8 @@ watch(orderSuccess, (value) => {
                 v-model="addressForm.phone"
                 type="tel"
                 required
-                class="w-full bg-background border-2 border-black p-2.5 font-sans font-semibold text-sm outline-none shadow-neo-sm"
+                placeholder="08xxxxxxxxxx"
+                class="w-full bg-background border-2 border-black p-2.5 font-sans font-semibold text-sm outline-none shadow-neo-sm focus:bg-white"
               />
             </div>
             <div>
@@ -1329,7 +1608,8 @@ watch(orderSuccess, (value) => {
                 v-model="addressForm.fullAddress"
                 rows="2"
                 required
-                class="w-full bg-background border-2 border-black p-2.5 font-sans font-semibold text-sm outline-none shadow-neo-sm resize-none"
+                placeholder="Nama jalan, nomor rumah, RT/RW, patokan..."
+                class="w-full bg-background border-2 border-black p-2.5 font-sans font-semibold text-sm outline-none shadow-neo-sm resize-none focus:bg-white"
               ></textarea>
             </div>
             <div class="grid grid-cols-2 gap-3">
@@ -1341,7 +1621,8 @@ watch(orderSuccess, (value) => {
                   v-model="addressForm.city"
                   type="text"
                   required
-                  class="w-full bg-background border-2 border-black p-2.5 font-sans font-semibold text-sm outline-none shadow-neo-sm"
+                  placeholder="Contoh: Jakarta Pusat, Kudus..."
+                  class="w-full bg-background border-2 border-black p-2.5 font-sans font-semibold text-sm outline-none shadow-neo-sm focus:bg-white"
                 />
               </div>
               <div>
@@ -1350,7 +1631,7 @@ watch(orderSuccess, (value) => {
                   v-model="addressForm.postalCode"
                   type="text"
                   placeholder="10110"
-                  class="w-full bg-background border-2 border-black p-2.5 font-sans font-semibold text-sm outline-none shadow-neo-sm"
+                  class="w-full bg-background border-2 border-black p-2.5 font-sans font-semibold text-sm outline-none shadow-neo-sm focus:bg-white"
                 />
               </div>
             </div>

@@ -7,9 +7,11 @@ import FeaturedBooksSection from '@/components/FeaturedBooksSection.vue'
 import VibeSection from '@/components/VibeSection.vue'
 import CategoriesSection from '@/components/CategoriesSection.vue'
 import TestimonialsSection from '@/components/TestimonialsSection.vue'
+import { useStore } from '@/composables/useStore'
 import AOS from 'aos'
 
 const route = useRoute()
+const { loadBooks, loadPopularBooks } = useStore()
 
 function scrollToHash() {
   if (!route.hash) return
@@ -24,6 +26,8 @@ function scrollToHash() {
 }
 
 onMounted(() => {
+  loadBooks({ per_page: 100 }).catch(() => {})
+  loadPopularBooks({ per_page: 100 }).catch(() => {})
   nextTick(() => {
     setTimeout(() => {
       AOS.refreshHard()

@@ -1,4 +1,4 @@
-const BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/+$/, '')
+export const BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/+$/, '')
 
 const ACCESS_TOKEN_KEY = 'bookstore.access_token'
 const REFRESH_TOKEN_KEY = 'bookstore.refresh_token'
@@ -18,7 +18,7 @@ function setPersistence(persist) {
   try {
     localStorage.setItem(PERSIST_KEY, persist ? '1' : '0')
   } catch {
-    // Storage can be unavailable (private mode/quota).
+    // Fall back to in-memory storage if localStorage is unavailable.
   }
 }
 
@@ -38,8 +38,6 @@ function writeStorage(key, value) {
     else target.removeItem(key)
     other.removeItem(key)
   } catch {
-    // Storage can be unavailable (private mode/quota). The in-memory session
-    // still works until the tab is closed.
   }
 }
 
@@ -80,8 +78,7 @@ export const session = {
     try {
       localStorage.removeItem(PERSIST_KEY)
     } catch {
-      // Ignore storage errors.
-    }
+          }
   },
 }
 
@@ -342,7 +339,15 @@ export const api = {
   me: () => request('/v1/users/me'),
   users: (params = {}) => request(`/v1/users${toQuery(params)}`),
 
-  books: (params = {}) => request(`/v1/books${toQuery(params)}`),
+  books: (params = {}) => {
+    const query = { ...params }
+    if (query.sort_by === 'populer' || query.sort_by === 'terpopuler') {
+      query.sort_by = 'popular'
+    } else if (query.sort_by === 'terbaru') {
+      query.sort_by = 'newest'
+    }
+    return request(`/v1/books${toQuery(query)}`)
+  },
   book: (slug) => request(`/v1/books/${encodeURIComponent(slug)}`),
   createBook: (payload) => request('/v1/books', { method: 'POST', body: payload }),
   updateBook: (id, payload) => request(`/v1/books/${id}`, { method: 'PUT', body: payload }),
@@ -431,6 +436,7 @@ export const api = {
   adminOrders: (params = {}) => request(`/v1/orders/all${toQuery(params)}`),
   adminOrder: (invoice) => request(`/v1/orders/detail/${encodeURIComponent(invoice)}`),
   report: (params = {}) => request(`/v1/reports${toQuery(params)}`),
+  adminReport: (params = {}) => request(`/v1/reports${toQuery(params)}`),
   reportPdf: (params = {}) => requestBlob(`/v1/reports/pdf${toQuery(params)}`),
   googleLoginUrl: () => `${BASE_URL}/v1/auth/google/login`,
   changePassword: (currentPassword, newPassword, confirmPassword, refreshToken) =>
