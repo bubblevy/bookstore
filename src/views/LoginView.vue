@@ -31,13 +31,21 @@ const resendFromQuery = computed(() => {
   )
 })
 
-function redirectAfterAuth() {
+async function redirectAfterAuth() {
   const redirect = String(route.query.redirect || '')
   if (redirect.startsWith('/') && !redirect.startsWith('//')) {
-    router.push(redirect)
+    if (session.role === 'admin' && (redirect === '/dashboard' || redirect === '/user/dashboard')) {
+      await router.push('/admin')
+      return
+    }
+    if (session.role !== 'admin' && (redirect === '/admin' || redirect === '/admin/dashboard')) {
+      await router.push('/dashboard')
+      return
+    }
+    await router.push(redirect)
     return
   }
-  router.push(session.role === 'admin' ? '/admin' : '/dashboard')
+  await router.push(session.role === 'admin' ? '/admin' : '/dashboard')
 }
 
 async function handleLogin() {
@@ -63,9 +71,9 @@ async function handleLogin() {
   const result = await login(email.value.trim(), password.value, {
     remember: rememberMe.value,
   })
-  isLoading.value = false
 
   if (result !== true) {
+    isLoading.value = false
     if (result === 'inactive') {
       errorMessage.value = 'Akun belum aktif. Cek email aktivasi Anda.'
       showResendActivation.value = true
@@ -77,7 +85,8 @@ async function handleLogin() {
     return
   }
 
-  redirectAfterAuth()
+  await redirectAfterAuth()
+  isLoading.value = false
 }
 
 function handleGoogleLogin() {
@@ -289,7 +298,7 @@ onMounted(() => {
                 required
                 autocomplete="email"
                 placeholder="nama@email.com"
-                class="w-full bg-white border-3 border-black rounded-[2px] px-3.5 py-2.5 sm:py-3 font-outfit font-bold text-sm outline-none shadow-neo-sm focus:shadow-neo transition-all placeholder:text-gray-400 placeholder:font-medium"
+                class="w-full bg-white border-3 border-black rounded-[2px] px-3.5 py-2.5 sm:py-3 font-outfit font-bold text-sm outline-none shadow-neo-sm transition-all placeholder:text-gray-400 placeholder:font-medium"
               />
             </div>
           </label>
@@ -312,7 +321,7 @@ onMounted(() => {
                 required
                 autocomplete="current-password"
                 placeholder="Masukkan password Anda"
-                class="w-full bg-white border-3 border-black rounded-[2px] px-3.5 py-2.5 sm:py-3 pr-11 font-outfit font-bold text-sm outline-none shadow-neo-sm focus:shadow-neo transition-all placeholder:text-gray-400 placeholder:font-medium"
+                class="w-full bg-white border-3 border-black rounded-[2px] px-3.5 py-2.5 sm:py-3 pr-11 font-outfit font-bold text-sm outline-none shadow-neo-sm transition-all placeholder:text-gray-400 placeholder:font-medium"
               />
               <button
                 type="button"
@@ -357,7 +366,7 @@ onMounted(() => {
               <input
                 v-model="rememberMe"
                 type="checkbox"
-                class="w-4 h-4 rounded-[2px] border-2 border-black accent-neo-violet cursor-pointer"
+                class="w-4 h-4 rounded-[2px] border-2 border-black accent-black cursor-pointer"
               />
               <span class="font-sans text-xs font-semibold text-gray-700"
                 >Ingat saya di perangkat ini</span
@@ -368,7 +377,7 @@ onMounted(() => {
           <button
             type="submit"
             :disabled="isLoading"
-            class="w-full neubrutal-btn bg-neo-yellow text-black border-3 border-black py-3.5 rounded-[2px] font-outfit font-black text-sm sm:text-base shadow-neo hover:bg-yellow-300 flex items-center justify-center gap-2 transition-all active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-60 mt-2"
+            class="w-full neubrutal-btn bg-neo-yellow text-black border-3 border-black py-3 rounded-[2px] font-outfit font-black text-sm shadow-neo-sm hover:bg-yellow-300 flex items-center justify-center gap-2 transition-all active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-60 mt-2"
           >
             <span v-if="!isLoading">Masuk ke Akun</span>
             <span v-else>Memproses...</span>
@@ -405,7 +414,7 @@ onMounted(() => {
         @click.self="showForgotModal = false"
       >
         <div
-          class="w-full max-w-sm bg-white border-3 sm:border-4 border-black p-5 sm:p-6 shadow-[6px_6px_0px_0px_var(--color-black)]"
+          class="w-full max-w-sm bg-white border-3 sm:border-4 border-black p-5 sm:p-6 shadow-neo-sm"
           role="dialog"
           aria-modal="true"
         >
@@ -421,7 +430,7 @@ onMounted(() => {
               required
               autocomplete="email"
               placeholder="nama@email.com"
-              class="w-full bg-white border-3 border-black rounded-[2px] px-3.5 py-2.5 font-outfit font-bold text-sm outline-none shadow-neo-sm focus:shadow-neo"
+              class="w-full bg-white border-3 border-black rounded-[2px] px-3.5 py-2.5 font-outfit font-bold text-sm outline-none shadow-neo-sm"
             />
             <p v-if="forgotError" class="font-sans text-xs font-bold text-red-600">
               {{ forgotError }}
@@ -452,7 +461,7 @@ onMounted(() => {
         @click.self="showResendModal = false"
       >
         <div
-          class="w-full max-w-sm bg-white border-3 sm:border-4 border-black p-5 sm:p-6 shadow-[6px_6px_0px_0px_var(--color-black)]"
+          class="w-full max-w-sm bg-white border-3 sm:border-4 border-black p-5 sm:p-6 shadow-neo-sm"
           role="dialog"
           aria-modal="true"
         >
@@ -468,7 +477,7 @@ onMounted(() => {
               required
               autocomplete="email"
               placeholder="nama@email.com"
-              class="w-full bg-white border-3 border-black rounded-[2px] px-3.5 py-2.5 font-outfit font-bold text-sm outline-none shadow-neo-sm focus:shadow-neo"
+              class="w-full bg-white border-3 border-black rounded-[2px] px-3.5 py-2.5 font-outfit font-bold text-sm outline-none shadow-neo-sm"
             />
             <p v-if="resendError" class="font-sans text-xs font-bold text-red-600">
               {{ resendError }}

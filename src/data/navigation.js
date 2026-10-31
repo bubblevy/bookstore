@@ -1,6 +1,6 @@
 export const STORE_NAV = [
-  { label: 'Katalog Buku', hash: '#katalog' },
-  { label: 'Kategori', hash: '#kategori' },
-  { label: 'Ulasan Pembeli', hash: '#ulasan' },
-  { label: 'Kontak', hash: '#kontak' },
+  { label: 'Katalog Buku', to: '/catalog' },
+  { label: 'Buku Populer', hash: '#populer' },
+  { label: 'Kategori Buku', hash: '#kategori' },
+  { label: 'Kontak Kami', hash: '#kontak' },
 ]

@@ -13,7 +13,7 @@ const className = computed(() => orderStatusClass(props.status))
 
 <template>
   <span
-    class="inline-block border-2 border-black rounded-[2px] font-outfit font-black uppercase shadow-neo-sm"
+    class="inline-block border-2 border-black rounded-[2px] font-outfit font-black capitalize shadow-neo-sm"
     :class="[className, size === 'xs' ? 'text-[10px] py-1 px-2.5' : 'text-xs py-1 px-3']"
   >
     {{ label }}

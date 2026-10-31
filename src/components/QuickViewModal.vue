@@ -41,7 +41,7 @@ async function handleAddToCart() {
 
 function handleGoToDetail() {
   if (book.value) {
-    const id = book.value.id
+    const id = book.value.slug || book.value.id
     closeModal()
     router.push({ name: 'book-detail', params: { id } })
   }

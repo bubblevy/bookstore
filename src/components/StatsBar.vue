@@ -141,7 +141,7 @@ onUnmounted(() => {
           :key="stat.label"
           data-aos="fade-up"
           :data-aos-delay="idx * 100"
-          class="bg-white border-3 border-black rounded-[2px] p-4 sm:p-5 text-center shadow-neo flex flex-col items-center justify-center hover:-translate-y-1 hover:shadow-[5px_5px_0px_0px_var(--color-black)] transition-all duration-300"
+          class="bg-white border-3 border-black rounded-[2px] p-4 sm:p-5 text-center shadow-neo flex flex-col items-center justify-center"
         >
           <span
             class="font-outfit font-black text-2xl sm:text-3xl md:text-4xl tracking-tight leading-none text-black tabular-nums"
