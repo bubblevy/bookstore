@@ -1,6 +1,6 @@
 <p align="center">
   <kbd>
-    <img src="https://raw.githubusercontent.com/bubblevy/bookstore/main/public/app.png" width="100%" alt="BookStore Demo">
+    <img src="public/app.png" width="100%" alt="BookStore Demo">
   </kbd>
 </p>
 
