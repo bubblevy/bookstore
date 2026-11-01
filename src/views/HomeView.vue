@@ -11,7 +11,7 @@ import { useStore } from '@/composables/useStore'
 import AOS from 'aos'
 
 const route = useRoute()
-const { loadBooks, loadPopularBooks } = useStore()
+const { bootstrap } = useStore()
 
 function scrollToHash() {
   if (!route.hash) return
@@ -26,8 +26,7 @@ function scrollToHash() {
 }
 
 onMounted(() => {
-  loadBooks({ per_page: 100 }).catch(() => {})
-  loadPopularBooks({ per_page: 100 }).catch(() => {})
+  bootstrap().catch(() => {})
   nextTick(() => {
     setTimeout(() => {
       AOS.refreshHard()

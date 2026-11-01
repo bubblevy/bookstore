@@ -18,6 +18,7 @@ const {
   applyOrderPaymentUpdate,
   applyOrderShippingUpdate,
   loadAddresses,
+  enrichAddressDetails,
   loadWishlist,
   loadBooks,
 } = useStore()
@@ -65,8 +66,10 @@ function switchTab(tab) {
     const hasIncomplete = state.userProfile.addresses.some(
       (a) => !a.address_line || (!a.province && !a.postalCode),
     )
-    if (!state.userProfile.addresses.length || hasIncomplete) {
-      loadAddresses(true)
+    if (!state.userProfile.addresses.length) {
+      loadAddresses(true, { enrich: true })
+    } else if (hasIncomplete) {
+      enrichAddressDetails()
     }
   }
 }
@@ -93,7 +96,7 @@ onMounted(async () => {
   // Load active tab data first to dismiss loader quickly.
   const primaryTask =
     activeTab.value === 'addresses'
-      ? loadAddresses(true)
+      ? loadAddresses(true, { enrich: true })
       : activeTab.value === 'wishlist'
         ? loadWishlist()
         : loadOrders()
@@ -109,7 +112,6 @@ onMounted(async () => {
   if (!state.books.length) remainingTasks.push(loadBooks({ per_page: 100 }))
   if (activeTab.value !== 'orders') remainingTasks.push(loadOrders())
   if (activeTab.value !== 'addresses') remainingTasks.push(loadAddresses(true))
-  if (activeTab.value !== 'wishlist') remainingTasks.push(loadWishlist())
   if (remainingTasks.length) {
     Promise.allSettled(remainingTasks)
   }

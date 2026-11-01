@@ -22,8 +22,7 @@ const bookCache = readBookCache()
 function persistBookCache() {
   try {
     localStorage.setItem(BOOK_CACHE_KEY, JSON.stringify(bookCache))
-  } catch {
-      }
+  } catch {}
 }
 
 function rememberBook(book) {
@@ -262,7 +261,10 @@ function buildOrderTimeline(detail) {
 let ordersPromise = null
 let addressesPromise = null
 let wishlistPromise = null
-
+let booksPromise = null
+let booksPromiseKey = ''
+let popularBooksPromise = null
+let popularBooksPromiseKey = ''
 
 function mapOrder(detail) {
   const recipient = detail.recipient || {}
@@ -409,24 +411,6 @@ function mapOrder(detail) {
   }
 }
 
-async function enrichOrders(list) {
-  if (!Array.isArray(list) || !list.length) return
-  await Promise.allSettled(
-    list.map(async (order) => {
-      if (!order?.id) return
-      if (Array.isArray(order.items) && order.items.length > 1 && order.items[0]?.coverImage) return
-      try {
-        const res = await api.order(order.id)
-        if (res?.data) {
-          const detailed = mapOrder(res.data)
-          state.orders = state.orders.map((o) => (o.id === order.id ? { ...o, ...detailed } : o))
-        }
-      } catch {
-              }
-    }),
-  )
-}
-
 async function loadOrders(status, options = {}) {
   const isSilent = Boolean(options.silent)
   if (ordersPromise && !status) return ordersPromise
@@ -442,10 +426,6 @@ async function loadOrders(status, options = {}) {
       const list = response.data || []
       state.orders = list.map(mapOrder)
 
-      if (list.length > 0) {
-        enrichOrders(state.orders).catch(() => {})
-      }
-
       return state.orders
     } catch (error) {
       if (handleAuthFailure(error)) return []
@@ -458,6 +438,17 @@ async function loadOrders(status, options = {}) {
   })()
 
   return ordersPromise
+}
+
+async function loadOrderDetail(invoice) {
+  if (!invoice) return null
+  const response = await api.order(invoice)
+  if (!response?.data) return null
+  const detailed = mapOrder(response.data)
+  state.orders = state.orders.map((order) =>
+    order.id === detailed.id ? { ...order, ...detailed } : order,
+  )
+  return detailed
 }
 
 function applyOrderPaymentUpdate(event) {
@@ -551,12 +542,7 @@ function mapAddress(address = {}) {
     .replace(/[\s,.-]+$/, '')
     .trim()
 
-  const postal = String(
-    address.postal_code ||
-    address.postalCode ||
-    address.zip_code ||
-    ''
-  ).trim()
+  const postal = String(address.postal_code || address.postalCode || address.zip_code || '').trim()
 
   const recipient = (
     address.receiver_name ||
@@ -597,9 +583,7 @@ async function enrichAddresses(list) {
   if (!Array.isArray(list) || !list.length) return
   await Promise.allSettled(
     list.map(async (item) => {
-      if (!item?.id) return
-      // Skip address detail fetch if fields are already complete.
-      if (item.address_line && (item.province || item.postalCode)) return
+      if (!item?.id || (item.address_line && item.biteshipAreaId)) return
       try {
         const res = await api.address(item.id)
         if (res?.data) {
@@ -609,12 +593,18 @@ async function enrichAddresses(list) {
           )
         }
       } catch {
-              }
+        // Keep the list data when the detail request fails.
+      }
     }),
   )
 }
 
-async function loadAddresses(force = false) {
+async function enrichAddressDetails() {
+  await enrichAddresses(state.userProfile.addresses)
+  return state.userProfile.addresses
+}
+
+async function loadAddresses(force = false, options = {}) {
   if (addressesPromise && !force) return addressesPromise
 
   state.addressesLoading = true
@@ -623,15 +613,12 @@ async function loadAddresses(force = false) {
       const response = await api.addresses()
       const list = response.data || []
       state.userProfile.addresses = list.map(mapAddress)
-
-      if (list.length > 0) {
-        await enrichAddresses(state.userProfile.addresses)
-      }
+      if (options.enrich) await enrichAddresses(state.userProfile.addresses)
       return state.userProfile.addresses
     } catch (error) {
       if (handleAuthFailure(error)) return []
       showToast(errorText(error, 'Gagal memuat alamat'), { type: 'error' })
-      return []
+      return state.userProfile.addresses
     } finally {
       state.addressesLoading = false
       addressesPromise = null
@@ -677,68 +664,115 @@ async function loadCategories() {
     const response = await api.categories()
     state.categories = (response.data || []).map((category, index) => mapCategory(category, index))
   } catch (error) {
-    state.categories = []
     showToast(errorText(error, 'Gagal memuat kategori'), { type: 'error' })
   } finally {
     state.categoriesLoading = false
   }
 }
 
+// shortcut: catalog is loaded up to 10 pages (1000 books) so client-side
+// filters keep working; move to server paging when the catalog grows beyond it.
+const MAX_CATALOG_PAGES = 10
+
 async function loadBooks(params = {}) {
+  const key = JSON.stringify({ per_page: 100, ...params })
+  if (booksPromise && booksPromiseKey === key) return booksPromise
+
   state.catalogLoading = true
-  try {
-    const response = await api.books({ per_page: 100, ...params })
-    const fetchedBooks = (response.data || []).map(mapBook)
-    const existingMap = new Map(state.books.map((b) => [String(b.id), b]))
-    state.books = fetchedBooks.map((b) => {
-      const prev = existingMap.get(String(b.id))
-      return prev
-        ? {
-            ...prev,
-            ...b,
-            sold: Number(b.sold) || 0,
-            stock: Number(b.stock) || 0,
-          }
-        : b
-    })
-    return state.books
-  } catch (error) {
-    state.books = []
-    showToast(errorText(error, 'Gagal memuat katalog buku'), { type: 'error' })
-    return []
-  } finally {
-    state.catalogLoading = false
-  }
+  const promise = (async () => {
+    try {
+      const first = await api.books({ per_page: 100, ...params })
+      const items = [...(first.data || [])]
+      const totalPages = Math.min(
+        Math.max(1, Number(first.meta?.total_pages) || 1),
+        MAX_CATALOG_PAGES,
+      )
+
+      if (!params.page && totalPages > 1) {
+        const pageResults = await Promise.allSettled(
+          Array.from({ length: totalPages - 1 }, (_, index) =>
+            api.books({ per_page: 100, ...params, page: index + 2 }),
+          ),
+        )
+        pageResults.forEach((result) => {
+          if (result.status === 'fulfilled') items.push(...(result.value.data || []))
+        })
+      }
+
+      const fetchedBooks = items.map(mapBook)
+      const existingMap = new Map(state.books.map((b) => [String(b.id), b]))
+      state.books = fetchedBooks.map((b) => {
+        const prev = existingMap.get(String(b.id))
+        return prev
+          ? {
+              ...prev,
+              ...b,
+              sold: Number(b.sold) || 0,
+              stock: Number(b.stock) || 0,
+            }
+          : b
+      })
+      return state.books
+    } catch (error) {
+      showToast(errorText(error, 'Gagal memuat katalog buku'), { type: 'error' })
+      return state.books
+    } finally {
+      state.catalogLoading = false
+      if (booksPromise === promise) {
+        booksPromise = null
+        booksPromiseKey = ''
+      }
+    }
+  })()
+
+  booksPromise = promise
+  booksPromiseKey = key
+  return promise
 }
 
 async function loadPopularBooks(params = {}) {
-  state.popularBooksLoading = true
-  try {
-    const response = await api.books({ sort_by: 'popular', per_page: 100, ...params })
-    const fetchedBooks = (response.data || []).map(mapBook)
-    state.popularBooks = fetchedBooks
+  const key = JSON.stringify({ sort_by: 'popular', per_page: 100, ...params })
+  if (popularBooksPromise && popularBooksPromiseKey === key) return popularBooksPromise
 
-    // Synchronize updated book data into local store.
-    const existingMap = new Map(state.books.map((b) => [String(b.id), b]))
-    fetchedBooks.forEach((b) => {
-      const prev = existingMap.get(String(b.id))
-      if (prev) {
-        Object.assign(prev, b)
-      } else {
-        state.books.push(b)
+  state.popularBooksLoading = true
+  const promise = (async () => {
+    try {
+      const response = await api.books({ sort_by: 'popular', per_page: 100, ...params })
+      const fetchedBooks = (response.data || []).map(mapBook)
+      state.popularBooks = fetchedBooks
+
+      // Synchronize updated book data into local store.
+      const existingMap = new Map(state.books.map((b) => [String(b.id), b]))
+      fetchedBooks.forEach((b) => {
+        const prev = existingMap.get(String(b.id))
+        if (prev) {
+          Object.assign(prev, b)
+        } else {
+          state.books.push(b)
+        }
+      })
+      return state.popularBooks
+    } catch (error) {
+      if (!state.popularBooks.length) {
+        state.popularBooks = [...state.books].sort(
+          (a, b) =>
+            (Number(b.sold) || 0) - (Number(a.sold) || 0) ||
+            String(a.title).localeCompare(String(b.title)),
+        )
       }
-    })
-    return state.popularBooks
-  } catch (error) {
-    state.popularBooks = [...state.books].sort(
-      (a, b) =>
-        (Number(b.sold) || 0) - (Number(a.sold) || 0) ||
-        String(a.title).localeCompare(String(b.title)),
-    )
-    return state.popularBooks
-  } finally {
-    state.popularBooksLoading = false
-  }
+      return state.popularBooks
+    } finally {
+      state.popularBooksLoading = false
+      if (popularBooksPromise === promise) {
+        popularBooksPromise = null
+        popularBooksPromiseKey = ''
+      }
+    }
+  })()
+
+  popularBooksPromise = promise
+  popularBooksPromiseKey = key
+  return promise
 }
 
 async function loadBook(slugOrId) {
@@ -824,7 +858,9 @@ function bootstrap() {
           showToast(errorText(error, 'Gagal memuat sesi pengguna'), { type: 'error' })
         }
       }
-    })()
+    })().finally(() => {
+      if (!state.books.length) bootstrapPromise = null
+    })
   }
   return bootstrapPromise
 }
@@ -999,9 +1035,7 @@ async function loadWishlist(params = {}) {
         const book = item.book || {}
         const bookId = item.book_id || book.id
         const cachedBook =
-          state.books.find((b) => String(b.id) === String(bookId)) ||
-          bookCache[bookId] ||
-          {}
+          state.books.find((b) => String(b.id) === String(bookId)) || bookCache[bookId] || {}
         const cover =
           book.cover_image ||
           book.coverImage ||
@@ -1270,8 +1304,7 @@ async function reorderBook(order) {
     try {
       const res = await api.order(currentOrder.id)
       if (res?.data) currentOrder = mapOrder(res.data)
-    } catch {
-          }
+    } catch {}
   }
 
   if (!currentOrder || !Array.isArray(currentOrder.items)) return
@@ -1338,9 +1371,11 @@ export function useStore() {
     loadPopularBooks,
     loadBook,
     loadOrders,
+    loadOrderDetail,
     applyOrderPaymentUpdate,
     applyOrderShippingUpdate,
     loadAddresses,
+    enrichAddressDetails,
     loadWishlist,
     toggleWishlist,
     isWishlisted,

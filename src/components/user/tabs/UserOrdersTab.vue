@@ -10,7 +10,7 @@ import BookCover from '@/components/BookCover.vue'
 import { COMPANY_NAME, COMPANY_ADDRESS } from '@/lib/brand'
 
 const router = useRouter()
-const { state, showToast, reorderBook, loadOrders } = useStore()
+const { state, showToast, reorderBook, loadOrders, loadOrderDetail } = useStore()
 
 const busy = ref({})
 const isBusy = (key) => Boolean(busy.value[key])
@@ -248,6 +248,7 @@ async function openTracking(order) {
   if (!order?.id) return
 
   trackingLoading.value = true
+  const detailPromise = loadOrderDetail(order.id).catch(() => null)
   try {
     const response = await api.orderTracking(order.id)
     trackingData.value = response.data || null
@@ -257,6 +258,8 @@ async function openTracking(order) {
       ? 'Nomor resi belum diterbitkan. Coba lagi setelah pesanan dikirim.'
       : error?.message || 'Gagal memuat status pengiriman'
   } finally {
+    const detail = await detailPromise
+    if (detail) selectedOrder.value = detail
     trackingLoading.value = false
   }
 }

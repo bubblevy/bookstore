@@ -1,4 +1,4 @@
-import { session } from '@/lib/api'
+import { session, refreshSession } from '@/lib/api'
 
 /**
  * Subscribe to real-time order events via Server-Sent Events (SSE).
@@ -21,6 +21,7 @@ export function subscribeOrderSSE({
   let isClosed = false
   let abortController = null
   let reconnectTimer = null
+  let authRetried = false
 
   const baseUrl = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/+$/, '')
   const queryParam = invoice ? `?invoice=${encodeURIComponent(invoice)}` : ''
@@ -47,9 +48,17 @@ export function subscribeOrderSSE({
         signal: abortController.signal,
       })
 
+      if (response.status === 401 && !authRetried) {
+        authRetried = true
+        const refreshed = await refreshSession()
+        if (refreshed === true) return connect()
+      }
+
       if (!response.ok) {
         throw new Error(`SSE stream returned status ${response.status}`)
       }
+
+      authRetried = false
 
       const reader = response.body?.getReader()
       if (!reader) {
@@ -92,8 +101,7 @@ export function subscribeOrderSSE({
             let parsed = rawData
             try {
               parsed = JSON.parse(rawData)
-            } catch {
-                          }
+            } catch {}
 
             if (eventType === 'connected') {
               onConnected?.(parsed)
@@ -111,7 +119,10 @@ export function subscribeOrderSSE({
 
       // Automatically reconnect after connection drop.
       reconnectTimer = setTimeout(() => {
-        if (!isClosed) connect()
+        if (!isClosed) {
+          authRetried = false
+          connect()
+        }
       }, 4000)
     }
   }
@@ -125,8 +136,7 @@ export function subscribeOrderSSE({
       if (abortController) {
         try {
           abortController.abort()
-        } catch {
-                  }
+        } catch {}
       }
     },
   }

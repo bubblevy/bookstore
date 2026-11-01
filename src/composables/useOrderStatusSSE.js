@@ -1,5 +1,5 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue'
-import { session, BASE_URL } from '@/lib/api'
+import { session, BASE_URL, refreshSession } from '@/lib/api'
 
 export function mapOrderStatus(status) {
   switch (status) {
@@ -48,9 +48,14 @@ export function useOrderStatusSSE(options = {}) {
   let reconnectTimer = null
   let isClosedExplicitly = false
   let retryCount = 0
+  let authRetried = false
 
   function getInvoice() {
-    if (typeof options.invoice === 'object' && options.invoice !== null && 'value' in options.invoice) {
+    if (
+      typeof options.invoice === 'object' &&
+      options.invoice !== null &&
+      'value' in options.invoice
+    ) {
       return options.invoice.value ? String(options.invoice.value).trim() : ''
     }
     return options.invoice ? String(options.invoice).trim() : ''
@@ -58,7 +63,11 @@ export function useOrderStatusSSE(options = {}) {
 
   function isEnabled() {
     if (options.enabled === undefined) return true
-    if (typeof options.enabled === 'object' && options.enabled !== null && 'value' in options.enabled) {
+    if (
+      typeof options.enabled === 'object' &&
+      options.enabled !== null &&
+      'value' in options.enabled
+    ) {
       return Boolean(options.enabled.value)
     }
     return Boolean(options.enabled)
@@ -101,6 +110,12 @@ export function useOrderStatusSSE(options = {}) {
         signal: abortController.signal,
       })
 
+      if (response.status === 401 && !authRetried) {
+        authRetried = true
+        const refreshed = await refreshSession()
+        if (refreshed === true) return connect()
+      }
+
       if (!response.ok) {
         throw new Error(`SSE stream failed with status ${response.status}`)
       }
@@ -113,6 +128,7 @@ export function useOrderStatusSSE(options = {}) {
       isConnected.value = true
       connectionError.value = null
       retryCount = 0
+      authRetried = false
 
       const reader = response.body.getReader()
       const decoder = new TextDecoder('utf-8')
@@ -200,6 +216,7 @@ export function useOrderStatusSSE(options = {}) {
     const delay = Math.min(1000 * Math.pow(1.5, retryCount), 30000)
     reconnectTimer = setTimeout(() => {
       if (!isClosedExplicitly && isEnabled()) {
+        authRetried = false
         connect()
       }
     }, delay)
@@ -224,7 +241,11 @@ export function useOrderStatusSSE(options = {}) {
   })
 
   // Resubscribe when invoice parameter changes.
-  if (typeof options.invoice === 'object' && options.invoice !== null && 'value' in options.invoice) {
+  if (
+    typeof options.invoice === 'object' &&
+    options.invoice !== null &&
+    'value' in options.invoice
+  ) {
     watch(
       () => options.invoice.value,
       () => {
@@ -234,7 +255,11 @@ export function useOrderStatusSSE(options = {}) {
   }
 
   // Resubscribe when enabled parameter changes.
-  if (typeof options.enabled === 'object' && options.enabled !== null && 'value' in options.enabled) {
+  if (
+    typeof options.enabled === 'object' &&
+    options.enabled !== null &&
+    'value' in options.enabled
+  ) {
     watch(
       () => options.enabled.value,
       (newVal) => {

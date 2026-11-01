@@ -3,16 +3,13 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import BookCard from './BookCard.vue'
 import { useStore } from '@/composables/useStore'
 
-const { state, loadPopularBooks } = useStore()
+const { state } = useStore()
 
 const sectionRef = ref(null)
 const isSectionVisible = ref(false)
 let observer = null
 
 onMounted(() => {
-  if (!state.popularBooks.length) {
-    loadPopularBooks({ per_page: 100 }).catch(() => {})
-  }
   if ('IntersectionObserver' in window && sectionRef.value) {
     observer = new IntersectionObserver(
       (entries) => {
