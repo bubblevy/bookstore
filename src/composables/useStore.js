@@ -569,20 +569,17 @@ async function loadOrders(status, options = {}) {
         return mapped
       })
 
-      // Asynchronously hydrate orders that don't have detailed items, courier, or payment info yet
+      // Asynchronously hydrate orders that don't have detailed info yet (deduplicated)
       const needsDetail = state.orders.filter(
         (o) =>
-          !o.hasFullDetail ||
-          !o.courier ||
-          !o.paymentMethod ||
-          o.paymentMethod === '—' ||
-          !o.items ||
-          o.items.length === 0 ||
-          o.items[0]?.isEstimated,
+          o?.id &&
+          !o.hasFullDetail &&
+          !detailedOrderCache.has(o.id) &&
+          !detailedOrderPromises.has(o.id),
       )
       if (needsDetail.length > 0) {
         Promise.allSettled(
-          needsDetail.slice(0, 10).map((o) => loadOrderDetail(o.id)),
+          needsDetail.slice(0, 5).map((o) => loadOrderDetail(o.id)),
         ).catch(() => {})
       }
 
@@ -600,16 +597,43 @@ async function loadOrders(status, options = {}) {
   return ordersPromise
 }
 
-async function loadOrderDetail(invoice) {
+const detailedOrderCache = new Set()
+const detailedOrderPromises = new Map()
+
+async function loadOrderDetail(invoice, force = false) {
   if (!invoice) return null
-  const response = await api.order(invoice)
-  if (!response?.data) return null
-  const detailed = mapOrder({ ...response.data, hasFullDetail: true })
-  detailed.hasFullDetail = true
-  state.orders = state.orders.map((order) =>
-    order.id === detailed.id ? { ...order, ...detailed, hasFullDetail: true } : order,
-  )
-  return detailed
+  const inv = String(invoice).trim()
+
+  // Return existing in-flight promise to prevent concurrent duplicate HTTP requests
+  if (detailedOrderPromises.has(inv)) {
+    return detailedOrderPromises.get(inv)
+  }
+
+  // If already fetched and cached, do not re-request unless forced
+  if (!force && detailedOrderCache.has(inv)) {
+    return state.orders.find((o) => o.id === inv) || null
+  }
+
+  const promise = (async () => {
+    try {
+      const response = await api.order(inv)
+      if (!response?.data) return null
+      detailedOrderCache.add(inv)
+      const detailed = mapOrder({ ...response.data, hasFullDetail: true })
+      detailed.hasFullDetail = true
+      state.orders = state.orders.map((order) =>
+        order.id === detailed.id ? { ...order, ...detailed, hasFullDetail: true } : order,
+      )
+      return detailed
+    } catch {
+      return null
+    } finally {
+      detailedOrderPromises.delete(inv)
+    }
+  })()
+
+  detailedOrderPromises.set(inv, promise)
+  return promise
 }
 
 function applyOrderPaymentUpdate(event) {

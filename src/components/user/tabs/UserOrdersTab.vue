@@ -99,6 +99,13 @@ const visibleOrderPages = computed(() => {
 function changeOrderPage(newPage) {
   if (newPage < 1 || newPage > totalOrderPages.value) return
   orderPage.value = newPage
+  const start = (newPage - 1) * ordersPerPage.value
+  const currentOrders = filteredOrders.value.slice(start, start + ordersPerPage.value)
+  for (const o of currentOrders) {
+    if (o?.id && !o.hasFullDetail) {
+      loadOrderDetail(o.id).catch(() => {})
+    }
+  }
   if (typeof window !== 'undefined') {
     const el = document.getElementById('orders-list-anchor')
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -107,6 +114,12 @@ function changeOrderPage(newPage) {
 
 watch(orderFilter, () => {
   orderPage.value = 1
+  const firstPage = filteredOrders.value.slice(0, ordersPerPage.value)
+  for (const o of firstPage) {
+    if (o?.id && !o.hasFullDetail) {
+      loadOrderDetail(o.id).catch(() => {})
+    }
+  }
 })
 
 function orderItemCoverUrl(item) {
@@ -222,26 +235,6 @@ function orderCourierLabel(order) {
   return order?.courier || 'Reguler'
 }
 
-watch(
-  paginatedOrders,
-  (orders) => {
-    if (!Array.isArray(orders) || orders.length === 0) return
-    const toHydrate = orders.filter(
-      (o) =>
-        o?.id &&
-        (!o.hasFullDetail ||
-          !o.courier ||
-          o.courier === 'Reguler' ||
-          !o.paymentMethod ||
-          o.paymentMethod === '—' ||
-          o.items?.[0]?.isEstimated),
-    )
-    if (toHydrate.length > 0) {
-      Promise.allSettled(toHydrate.map((o) => loadOrderDetail(o.id))).catch(() => {})
-    }
-  },
-  { immediate: true },
-)
 
 function formatTrackingTime(value) {
   if (!value) return ''
