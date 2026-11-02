@@ -37,8 +37,7 @@ function writeStorage(key, value) {
     if (value) target.setItem(key, value)
     else target.removeItem(key)
     other.removeItem(key)
-  } catch {
-  }
+  } catch {}
 }
 
 export class ApiError extends Error {
@@ -77,8 +76,7 @@ export const session = {
     writeStorage(USER_ROLE_KEY, '')
     try {
       localStorage.removeItem(PERSIST_KEY)
-    } catch {
-          }
+    } catch {}
   },
 }
 
@@ -156,13 +154,17 @@ async function refreshAccessToken() {
       })
       return true
     } catch {
-      return false
+      return 'network'
     } finally {
       refreshPromise = null
     }
   })()
 
   return refreshPromise
+}
+
+export function refreshSession() {
+  return refreshAccessToken()
 }
 
 async function request(path, { method = 'GET', body, auth = true, retry = true } = {}) {
@@ -189,7 +191,10 @@ async function request(path, { method = 'GET', body, auth = true, retry = true }
 
   if (response.status === 401 && auth && retry && session.refreshToken) {
     const refreshed = await refreshAccessToken()
-    if (refreshed) return request(path, { method, body, auth, retry: false })
+    if (refreshed === true) return request(path, { method, body, auth, retry: false })
+    if (refreshed === 'network') {
+      throw new ApiError('Tidak dapat terhubung ke server. Periksa koneksi internet.', 0)
+    }
     session.clear()
     notifySessionExpired()
   } else if (response.status === 401 && auth && session.accessToken) {
@@ -234,7 +239,10 @@ async function requestBlob(path, { retry = true } = {}) {
 
   if (response.status === 401 && retry && session.refreshToken) {
     const refreshed = await refreshAccessToken()
-    if (refreshed) return requestBlob(path, { retry: false })
+    if (refreshed === true) return requestBlob(path, { retry: false })
+    if (refreshed === 'network') {
+      throw new ApiError('Tidak dapat terhubung ke server. Periksa koneksi internet.', 0)
+    }
     session.clear()
     notifySessionExpired()
   } else if (response.status === 401 && session.accessToken) {

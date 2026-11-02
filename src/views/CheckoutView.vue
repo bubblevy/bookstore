@@ -454,9 +454,13 @@ async function selectAddress(addr) {
   if (!addr.address_line && !addr.biteship_area_id) {
     try {
       const response = await api.address(addr.id)
-      if (response.data) address.value = response.data
-    } catch {
-    }
+      if (response.data) {
+        address.value = response.data
+        savedAddresses.value = savedAddresses.value.map((item) =>
+          String(item.id) === String(response.data.id) ? response.data : item,
+        )
+      }
+    } catch {}
   }
 
   await loadRates(addr.id)
@@ -623,10 +627,6 @@ async function placeOrder() {
       ...buildPayload(rate),
       address_id: addressId.value,
     }
-
-    const preview = await api.preview(payload)
-    adminFee.value = Number(preview.data?.admin_fee) || 0
-    discountAmount.value = Number(preview.data?.discount_amount) || 0
 
     const order = await api.createOrder(payload)
     orderStartedAt.value = Date.now()
