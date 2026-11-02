@@ -861,6 +861,13 @@ function bootstrap() {
     })().finally(() => {
       if (!state.books.length) bootstrapPromise = null
     })
+    return state.books
+  } catch (error) {
+    state.books = []
+    showToast(errorText(error, 'Gagal memuat katalog buku'), { type: 'error' })
+    return []
+  } finally {
+    state.catalogLoading = false
   }
   return bootstrapPromise
 }
