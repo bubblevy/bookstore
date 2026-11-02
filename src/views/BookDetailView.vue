@@ -369,13 +369,13 @@ const specItems = computed(() => {
             class="relative bg-white border-3 border-black rounded-[2px] p-6 sm:p-8 shadow-neo flex flex-col items-center justify-center overflow-hidden group transition-all"
           >
             <div
-              class="w-full max-w-[260px] sm:max-w-[280px] aspect-[3/3.9] transition-transform duration-300 group-hover:scale-[1.03] group-hover:-rotate-0.5 my-3"
+              class="w-full max-w-[260px] sm:max-w-[280px] aspect-[5/7] transition-transform duration-300 group-hover:scale-[1.02] flex items-center justify-center shrink-0"
             >
               <img
                 v-if="coverUrl && !coverError"
                 :src="coverUrl"
                 :alt="book.title"
-                class="w-full h-full object-cover border-2 border-black rounded-[2px] shadow-neo"
+                class="w-full h-full object-cover border-2 border-black rounded-[2px] shadow-neo block"
                 @error="coverError = true"
               />
               <BookCover
@@ -384,13 +384,8 @@ const specItems = computed(() => {
                 :title="book.title"
                 :author="book.author"
                 :accent="book.accentColor"
+                class="w-full h-full shadow-neo block"
               />
-            </div>
-
-            <div
-              class="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-background border border-black rounded-[2px] text-[11px] font-sans font-bold text-black/80"
-            >
-              <span>100% Buku Original & Segel Penerbit</span>
             </div>
           </div>
 

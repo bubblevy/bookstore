@@ -498,6 +498,7 @@ defineExpose({ closeMobile, openMobile })
           </a>
 
           <router-link
+            v-if="state.isLoggedIn"
             :to="isAdminMode ? '/admin' : '/dashboard'"
             class="py-2.5 border-b-2 border-black/10 hover:text-neo-violet flex items-center justify-between"
             @click="closeMobile"

@@ -74,13 +74,13 @@ function goToDetail() {
       class="relative w-full aspect-[4/3.8] sm:aspect-[4/3.4] bg-background border-b-2 sm:border-b-3 border-black p-2 sm:p-3 flex items-center justify-center overflow-hidden"
     >
       <div
-        class="w-full h-full max-w-[110px] sm:max-w-[145px] transition-transform duration-200 group-hover:scale-103 flex items-center justify-center"
+        class="h-full aspect-[5/7] max-w-[115px] sm:max-w-[150px] transition-transform duration-200 group-hover:scale-103 flex items-center justify-center shrink-0"
       >
         <img
           v-if="coverUrl && !imgError"
           :src="coverUrl"
           :alt="book.title"
-          class="w-full h-full object-cover border border-black sm:border-2 rounded-[2px] shadow-neo-xs sm:shadow-neo-sm"
+          class="w-full h-full object-cover border border-black sm:border-2 rounded-[2px] shadow-neo-xs sm:shadow-neo-sm block"
           loading="lazy"
           @load="imgLoaded = true"
           @error="imgError = true"
@@ -91,6 +91,7 @@ function goToDetail() {
           :title="book.title"
           :author="book.author"
           :accent="book.accentColor"
+          class="w-full h-full shadow-neo-xs sm:shadow-neo-sm block"
         />
       </div>
 

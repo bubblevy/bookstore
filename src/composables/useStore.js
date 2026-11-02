@@ -1,7 +1,14 @@
 import { reactive, readonly } from 'vue'
 import router from '@/router'
 import { api, session } from '@/lib/api'
-import { mapBook, mapBookDetail, mapCartItem, mapCategory, formatFullAddress } from '@/lib/mappers'
+import {
+  mapBook,
+  mapBookDetail,
+  mapCartItem,
+  mapCategory,
+  formatFullAddress,
+  formatPaymentMethodName,
+} from '@/lib/mappers'
 import { shippingLabel, ensureCourierCatalog } from '@/lib/shipping'
 import { localizeApiError } from '@/lib/errors'
 
@@ -275,15 +282,26 @@ function mapOrder(detail) {
   const pricing = detail.pricing || {}
   const paymentDeadlineAt = detail.payment_deadline || ''
 
-  const paymentMethod =
+  const rawPaymentMethod =
     payment.payment_method_name ||
+    payment.payment_method ||
+    payment.paymentMethod ||
+    payment.name ||
+    payment.method ||
     payment.store ||
-    (payment.bank ? String(payment.bank).toUpperCase() : '') ||
+    (payment.bank ? `${String(payment.bank).toUpperCase()} Virtual Account` : '') ||
     (payment.qr_url ? 'QRIS' : '') ||
     (payment.deeplink_url ? 'E-Wallet' : '') ||
     payment.payment_type ||
+    detail.payment_method_name ||
     detail.payment_method ||
-    '-'
+    detail.paymentMethod ||
+    detail.payment_type ||
+    detail.store ||
+    (detail.bank ? `${String(detail.bank).toUpperCase()} Virtual Account` : '') ||
+    ''
+
+  const paymentMethod = formatPaymentMethodName(rawPaymentMethod, { ...detail, payment })
 
   const hasItems = Array.isArray(detail.items) && detail.items.length > 0
   const items = hasItems
@@ -335,10 +353,28 @@ function mapOrder(detail) {
           (detail.first_item_cover && !detail.first_item_cover.includes('/static/covers/')
             ? detail.first_item_cover
             : detail.first_item_cover_image || '')
+        const qty = Number(detail.total_quantity) || 1
+        const bookPrice =
+          Number(detail.first_item_price) ||
+          Number(matchedBook?.price) ||
+          (detail.items_subtotal ? Math.round(Number(detail.items_subtotal) / qty) : null) ||
+          (detail.shipping_cost || detail.shipping?.cost
+            ? Math.max(
+                0,
+                Math.round(
+                  (Number(detail.total_amount || 0) -
+                    Number(detail.shipping_cost || detail.shipping?.cost || 0) -
+                    Number(detail.admin_fee || detail.payment?.admin_fee || 0)) /
+                    qty,
+                ),
+              )
+            : null) ||
+          Math.round((Number(detail.total_amount) || 0) / qty)
+
         return [
           {
             id: matchedBook?.id || detail.id || detail.invoice_number,
-            title: detail.first_item_title || 'Buku Pesanan',
+            title: detail.first_item_title || matchedBook?.title || 'Buku Pesanan',
             author:
               (matchedBook
                 ? typeof matchedBook.author === 'object'
@@ -346,13 +382,12 @@ function mapOrder(detail) {
                   : matchedBook.author
                 : '') ||
               (detail.extra_item_count > 0 ? `+${detail.extra_item_count} buku lainnya` : ''),
-            price: Math.round(
-              (Number(detail.total_amount) || 0) / (Number(detail.total_quantity) || 1),
-            ),
-            quantity: Number(detail.total_quantity) || 1,
+            price: bookPrice,
+            quantity: qty,
             coverImage: cover,
             cover: cover,
             theme: matchedBook?.theme || 'violet',
+            isEstimated: !detail.first_item_price && !matchedBook?.price,
           },
         ]
       })()
@@ -421,12 +456,48 @@ async function loadOrders(status, options = {}) {
   ordersPromise = (async () => {
     try {
       if (!state.books.length) {
-        loadBooks({ per_page: 100 }).catch(() => {})
+        await loadBooks().catch(() => {})
       }
       ensureCourierCatalog().catch(() => {})
       const response = await api.orders(status)
       const list = response.data || []
-      state.orders = list.map(mapOrder)
+
+      const existingMap = new Map(state.orders.map((o) => [o.id, o]))
+      state.orders = list.map((raw) => {
+        const mapped = mapOrder(raw)
+        const existing = existingMap.get(mapped.id)
+        if (
+          existing &&
+          Array.isArray(existing.items) &&
+          existing.items.length > 0 &&
+          (!raw.items || raw.items.length === 0)
+        ) {
+          return {
+            ...mapped,
+            items: existing.items,
+            subtotal: existing.subtotal,
+            discount: existing.discount,
+            shipping: existing.shipping,
+            adminFee: existing.adminFee,
+            total: existing.total || mapped.total,
+            paymentMethod:
+              mapped.paymentMethod && mapped.paymentMethod !== '—' && mapped.paymentMethod !== '-'
+                ? mapped.paymentMethod
+                : existing.paymentMethod,
+          }
+        }
+        return mapped
+      })
+
+      // Asynchronously hydrate orders that don't have detailed items yet
+      const needsDetail = state.orders.filter(
+        (o) => !o.items || o.items.length === 0 || o.items[0]?.isEstimated,
+      )
+      if (needsDetail.length > 0) {
+        Promise.allSettled(
+          needsDetail.slice(0, 5).map((o) => loadOrderDetail(o.id)),
+        ).catch(() => {})
+      }
 
       return state.orders
     } catch (error) {

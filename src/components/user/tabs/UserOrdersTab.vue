@@ -8,6 +8,7 @@ import StatusBadge from '@/components/StatusBadge.vue'
 import PaymentInstructions from '@/components/PaymentInstructions.vue'
 import BookCover from '@/components/BookCover.vue'
 import { COMPANY_NAME, COMPANY_ADDRESS } from '@/lib/brand'
+import { formatPaymentMethodName } from '@/lib/mappers'
 
 const router = useRouter()
 const { state, showToast, reorderBook, loadOrders, loadOrderDetail } = useStore()
@@ -208,13 +209,7 @@ function paymentStatusLabel(order) {
 }
 
 function paymentMethodLabel(order) {
-  const value = String(order?.paymentMethod || '').toLowerCase()
-  if (order?.qrUrl || value.includes('qris')) return 'QRIS'
-  if (order?.vaNumber) return (order.bank || 'Virtual Account').toUpperCase()
-  if (value.includes('gopay')) return 'GoPay'
-  if (value.includes('shopeepay')) return 'ShopeePay'
-  if (value.includes('bank') || value.includes('va')) return 'Transfer Bank'
-  return order?.paymentMethod && order.paymentMethod !== '—' ? order.paymentMethod : '—'
+  return formatPaymentMethodName(order?.paymentMethod, order)
 }
 
 function formatTrackingTime(value) {

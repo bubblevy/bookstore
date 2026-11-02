@@ -73,6 +73,7 @@ const accentColor = computed(() => props.accent || colors.value.accent)
 <template>
   <svg
     viewBox="0 0 200 250"
+    preserveAspectRatio="none"
     xmlns="http://www.w3.org/2000/svg"
     class="w-full h-full block select-none"
   >

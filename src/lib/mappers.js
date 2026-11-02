@@ -250,3 +250,59 @@ export function formatFullAddress(addr) {
 
   return full.replace(/^[\s,]+/, '').replace(/,\s*,/g, ', ').trim()
 }
+
+export function formatPaymentMethodName(rawMethod, order = {}) {
+  const payment = order?.payment || {}
+  const method = String(
+    rawMethod ||
+    payment?.payment_method_name ||
+    payment?.payment_method ||
+    payment?.paymentMethod ||
+    payment?.name ||
+    payment?.method ||
+    order?.payment_method_name ||
+    order?.payment_method ||
+    order?.paymentMethod ||
+    order?.paymentMethodCode ||
+    order?.payment_type ||
+    payment?.payment_type ||
+    ''
+  ).trim()
+
+  const lower = method.toLowerCase()
+  const bank = String(payment?.bank || order?.bank || '').toUpperCase()
+  const va = String(
+    payment?.va_number ||
+    payment?.vaNumber ||
+    order?.vaNumber ||
+    order?.va_number ||
+    ''
+  )
+  const qr = Boolean(
+    payment?.qr_url ||
+    payment?.qrUrl ||
+    order?.qrUrl ||
+    order?.qr_url ||
+    lower.includes('qris')
+  )
+
+  if (qr) return 'QRIS'
+  if (lower === 'gopay' || lower.includes('gopay')) return 'GoPay'
+  if (lower === 'shopeepay' || lower.includes('shopeepay')) return 'ShopeePay'
+  if (lower === 'bca_va' || (bank === 'BCA' && va)) return 'BCA Virtual Account'
+  if (lower === 'bni_va' || (bank === 'BNI' && va)) return 'BNI Virtual Account'
+  if (lower === 'bri_va' || (bank === 'BRI' && va)) return 'BRI Virtual Account'
+  if (lower === 'cimb_va' || (bank === 'CIMB' && va)) return 'CIMB Niaga Virtual Account'
+  if (lower === 'permata_va' || (bank === 'PERMATA' && va)) return 'Permata Virtual Account'
+  if (lower === 'mandiri_bill' || lower === 'echannel' || lower.includes('mandiri')) return 'Mandiri Bill Payment'
+  if (lower.includes('indomaret')) return 'Indomaret'
+  if (lower.includes('alfamart')) return 'Alfamart'
+  if (bank) return `${bank} Virtual Account`
+  if (lower.includes('bank') || lower.includes('va') || va) return 'Virtual Account'
+  if (lower === 'cstore') return payment?.store || order?.store || 'Gerai Retail'
+
+  if (method && method !== '-' && method !== '—' && method !== 'undefined' && method !== 'null') {
+    return method.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  }
+  return '—'
+}
