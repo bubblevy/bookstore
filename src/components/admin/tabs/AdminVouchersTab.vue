@@ -63,18 +63,27 @@ const currentVoucherId = ref(null)
 function mapVoucherTier(tier = {}) {
   return {
     id: tier.id || null,
-    minPurchase: Number(tier.min_purchase || 0),
-    rewardType: tier.reward_type === 'percent' ? 'percentage' : 'fixed',
+    minPurchase: Number(tier.min_spend ?? tier.min_purchase ?? 0),
+    rewardType:
+      tier.reward_type === 'PERCENTAGE' || tier.reward_type === 'percent'
+        ? 'percentage'
+        : 'fixed',
     rewardValue: Number(tier.reward_value || 0),
-    maxDiscount: tier.max_discount !== null ? Number(tier.max_discount) : null,
+    maxDiscount:
+      tier.max_reward !== null && tier.max_reward !== undefined
+        ? Number(tier.max_reward)
+        : tier.max_discount !== null && tier.max_discount !== undefined
+          ? Number(tier.max_discount)
+          : null,
   }
 }
 
 function mapVoucher(discount) {
+  const rawType = discount.discount_type || discount.type || ''
   const type =
-    discount.type === 'percent'
+    rawType.toUpperCase() === 'PERCENTAGE' || rawType.toLowerCase() === 'percent'
       ? 'percentage'
-      : discount.type === 'tiered'
+      : rawType.toUpperCase() === 'TIERED' || rawType.toLowerCase() === 'tiered'
         ? 'tiered'
         : 'fixed'
 
@@ -84,12 +93,18 @@ function mapVoucher(discount) {
     name: discount.name,
     desc: discount.description || '',
     type,
-    rawType: discount.type,
+    rawType: discount.discount_type || discount.type,
     value: Number(discount.discount_value || 0),
     minSpend: Number(discount.min_purchase || 0),
-    maxDiscount: discount.max_discount !== null ? Number(discount.max_discount) : null,
+    maxDiscount:
+      discount.max_discount_amount !== null && discount.max_discount_amount !== undefined
+        ? Number(discount.max_discount_amount)
+        : discount.max_discount !== null && discount.max_discount !== undefined
+          ? Number(discount.max_discount)
+          : null,
     quota: Number(discount.quota || 0),
     used: Number(discount.used_count || 0),
+    isAllBooks: discount.is_all_books !== false,
     startDate: discount.start_date ? discount.start_date.slice(0, 10) : '',
     validUntil: discount.end_date ? discount.end_date.slice(0, 10) : '',
     active: Boolean(discount.is_active),
@@ -139,11 +154,10 @@ function voucherValueLabel(voucher) {
 
 function voucherTierPayload(tiers = []) {
   return tiers.map((tier) => ({
-    id: tier.id || undefined,
-    min_purchase: Number(tier.minPurchase) || 0,
-    reward_type: tier.rewardType === 'percentage' ? 'percent' : 'nominal',
+    min_spend: Number(tier.minPurchase) || 0,
+    reward_type: tier.rewardType === 'percentage' ? 'PERCENTAGE' : 'FIXED',
     reward_value: Number(tier.rewardValue) || 0,
-    max_discount:
+    max_reward:
       tier.rewardType === 'percentage' && tier.maxDiscount !== null && tier.maxDiscount !== ''
         ? Number(tier.maxDiscount)
         : null,
@@ -151,9 +165,9 @@ function voucherTierPayload(tiers = []) {
 }
 
 function voucherTypeCode(type) {
-  if (type === 'percentage') return 'percent'
-  if (type === 'tiered') return 'tiered'
-  return 'nominal'
+  if (type === 'percentage') return 'PERCENTAGE'
+  if (type === 'tiered') return 'TIERED'
+  return 'FIXED'
 }
 
 const voucherForm = ref({
@@ -168,6 +182,7 @@ const voucherForm = ref({
   startDate: '',
   validUntil: '',
   active: true,
+  isAllBooks: true,
   tiers: [],
 })
 
@@ -186,6 +201,7 @@ function openAddVoucher() {
     startDate: new Date().toISOString().slice(0, 10),
     validUntil: '',
     active: true,
+    isAllBooks: true,
     tiers: [],
   }
   showVoucherModal.value = true
@@ -217,6 +233,7 @@ async function openEditVoucher(v) {
     startDate: detail.startDate || '',
     validUntil: detail.validUntil,
     active: detail.active,
+    isAllBooks: detail.isAllBooks !== false,
     tiers: (detail.tiers || []).map((tier) => ({ ...tier })),
   }
   showVoucherModal.value = true
@@ -245,7 +262,6 @@ async function handleSaveVoucher() {
     return
   }
 
-  const type = voucherTypeCode(voucherForm.value.type)
   const value = Number(voucherForm.value.value) || 0
   if (voucherForm.value.type === 'percentage' && (value <= 0 || value > 100)) {
     showToast('Diskon persentase harus berada di antara 1% - 100%.', { type: 'error' })
@@ -265,8 +281,13 @@ async function handleSaveVoucher() {
 
   const code = voucherForm.value.code
     .toUpperCase()
-    .replace(/[^A-Z0-9_-]/g, '')
+    .replace(/[^A-Z0-9]/g, '')
     .trim()
+  if (code.length < 3) {
+    showToast('Kode voucher minimal 3 karakter huruf dan angka.', { type: 'error' })
+    return
+  }
+
   const startDate = voucherForm.value.startDate
     ? new Date(`${voucherForm.value.startDate}T00:00:00`).toISOString()
     : new Date().toISOString()
@@ -275,17 +296,18 @@ async function handleSaveVoucher() {
   const payload = {
     code,
     name: voucherForm.value.name.trim() || `Voucher ${code}`,
-    description: voucherForm.value.desc || null,
-    type,
+    description: voucherForm.value.desc ? voucherForm.value.desc.trim() : null,
+    discount_type: voucherTypeCode(voucherForm.value.type),
     discount_value: value,
     min_purchase: Number(voucherForm.value.minSpend) || 0,
     quota: Number(voucherForm.value.quota) || 0,
-    max_discount:
+    max_discount_amount:
       voucherForm.value.type === 'percentage' &&
       voucherForm.value.maxDiscount !== null &&
       voucherForm.value.maxDiscount !== ''
         ? Number(voucherForm.value.maxDiscount)
         : null,
+    is_all_books: voucherForm.value.isAllBooks !== false,
     is_active: Boolean(voucherForm.value.active),
     start_date: startDate,
     end_date: endDate,
@@ -343,23 +365,24 @@ async function toggleVoucher(voucher) {
 
   try {
     setBusy(key, true)
-    const type = voucher.rawType || voucherTypeCode(voucher.type)
+    const discountType = voucherTypeCode(voucher.type)
     const payload = {
       code: voucher.code,
       name: voucher.name,
       description: voucher.desc || null,
-      type,
+      discount_type: discountType,
       discount_value: Number(voucher.value) || 0,
       min_purchase: Number(voucher.minSpend) || 0,
       quota: Number(voucher.quota) || 0,
-      max_discount: voucher.maxDiscount,
+      max_discount_amount: voucher.maxDiscount,
+      is_all_books: voucher.isAllBooks !== false,
       is_active: !voucher.active,
       start_date: voucher.startDate
         ? new Date(`${voucher.startDate}T00:00:00`).toISOString()
         : new Date().toISOString(),
       end_date: new Date(`${voucher.validUntil}T23:59:59`).toISOString(),
     }
-    if (type === 'tiered') {
+    if (voucher.type === 'tiered') {
       payload.tiers = voucherTierPayload(voucher.tiers)
     }
     await api.updateDiscount(voucher.id, payload)
@@ -823,16 +846,30 @@ async function toggleVoucher(voucher) {
             ></textarea>
           </div>
 
-          <div class="flex items-center gap-2">
-            <input
-              id="voucherActive"
-              v-model="voucherForm.active"
-              type="checkbox"
-              class="w-4 h-4 rounded-[2px] border-2 border-black text-black focus:ring-0 cursor-pointer accent-black"
-            />
-            <label for="voucherActive" class="font-outfit font-bold text-xs cursor-pointer">
-              Aktifkan voucher ini segera setelah disimpan
-            </label>
+          <div class="space-y-2">
+            <div class="flex items-center gap-2">
+              <input
+                id="voucherAllBooks"
+                v-model="voucherForm.isAllBooks"
+                type="checkbox"
+                class="w-4 h-4 rounded-[2px] border-2 border-black text-black focus:ring-0 cursor-pointer accent-black"
+              />
+              <label for="voucherAllBooks" class="font-outfit font-bold text-xs cursor-pointer">
+                Berlaku untuk semua buku katalog
+              </label>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <input
+                id="voucherActive"
+                v-model="voucherForm.active"
+                type="checkbox"
+                class="w-4 h-4 rounded-[2px] border-2 border-black text-black focus:ring-0 cursor-pointer accent-black"
+              />
+              <label for="voucherActive" class="font-outfit font-bold text-xs cursor-pointer">
+                Aktifkan voucher ini segera setelah disimpan
+              </label>
+            </div>
           </div>
 
           <div class="border-t-2 border-black pt-4 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2">

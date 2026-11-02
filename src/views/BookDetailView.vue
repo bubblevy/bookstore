@@ -181,13 +181,32 @@ const formattedOriginal = computed(() => {
 const specItems = computed(() => {
   if (!book.value?.details) return []
   const d = book.value.details
+  const rawL = d.length ? d.length.replace(/\s*cm/i, '').trim() : ''
+  const rawW = d.width ? d.width.replace(/\s*cm/i, '').trim() : ''
+  const rawH = d.height ? String(d.height).replace(/\s*cm/i, '').trim() : ''
+
+  let dimStr = '-'
+  if (rawL && rawW && rawH) {
+    dimStr = `${rawL} × ${rawW} × ${rawH} cm`
+  } else if (rawL && rawW) {
+    dimStr = `${rawL} × ${rawW} cm`
+  }
+
+  let formattedDate = d.publishDate || '-'
+  if (d.publishDate && typeof d.publishDate === 'string' && d.publishDate.includes('-')) {
+    const parsed = new Date(d.publishDate)
+    if (!Number.isNaN(parsed.getTime())) {
+      formattedDate = new Intl.DateTimeFormat('id-ID', { dateStyle: 'long' }).format(parsed)
+    }
+  }
+
   return [
     { label: 'Penerbit', value: d.publisher || '-' },
-    { label: 'Tahun Terbit', value: d.publishDate || '-' },
+    { label: 'Tanggal Terbit', value: formattedDate },
     { label: 'Nomor ISBN', value: d.isbn || '-' },
     { label: 'Jumlah Halaman', value: `${d.pages || 0} Halaman` },
     { label: 'Bahasa', value: d.language || 'Indonesia' },
-    { label: 'Dimensi Buku', value: `${d.length || '-'} × ${d.width || '-'}` },
+    { label: 'Dimensi (P × L × T)', value: dimStr },
     { label: 'Berat Bersih', value: d.weight || '-' },
     { label: 'Kondisi Fisik', value: d.condition || '100% Baru & Segel Penerbit' },
   ]

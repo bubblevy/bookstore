@@ -73,6 +73,7 @@ export function mapBook(raw = {}) {
 
 export function mapBookDetail(raw = {}) {
   const book = mapBook(raw)
+  const pubDate = raw.publication_date ? raw.publication_date.slice(0, 10) : ''
 
   return {
     ...book,
@@ -80,13 +81,14 @@ export function mapBookDetail(raw = {}) {
     description: raw.synopsis || '',
     details: {
       publisher: raw.publisher?.name || '-',
-      publishDate: raw.publication_year ? String(raw.publication_year) : '',
+      publishDate: pubDate,
+      publicationDate: pubDate || null,
       isbn: raw.isbn || '',
       pages: raw.pages || 0,
       language: raw.language || 'Indonesia',
       length: raw.length ? `${raw.length} cm` : '',
       width: raw.width ? `${raw.width} cm` : '',
-      height: raw.height || '',
+      height: raw.height ? `${raw.height} cm` : '',
       weight: raw.weight_grams ? `${(Number(raw.weight_grams) / 1000).toFixed(2)} kg` : '',
       condition: raw.condition || '100% Baru & Segel Penerbit',
     },

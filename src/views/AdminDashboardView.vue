@@ -59,7 +59,7 @@ function mapAdminBook(raw = {}) {
     isbn: raw.isbn || '',
     description: raw.synopsis || '',
     pages: raw.pages || 0,
-    publicationYear: raw.publication_year || new Date().getFullYear(),
+    publicationDate: raw.publication_date ? raw.publication_date.slice(0, 10) : '',
     language: raw.language || 'Indonesia',
     length: raw.length || 0,
     width: raw.width || 0,
@@ -474,7 +474,9 @@ async function updateBookStock(bookId, amount) {
       discount_percentage: Number(source.discount) || 0,
       weight_grams: Number(source.weightGrams) || 300,
       pages: Number(source.pages) || 1,
-      publication_year: Number(source.publicationYear) || new Date().getFullYear(),
+      publication_date: source.publicationDate
+        ? source.publicationDate.slice(0, 10)
+        : new Date().toISOString().slice(0, 10),
       language: source.language || 'Indonesia',
       length: Number(source.length) || 1,
       width: Number(source.width) || 1,

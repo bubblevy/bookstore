@@ -74,7 +74,7 @@ function mapAdminBook(raw = {}) {
     isbn: raw.isbn || '',
     description: raw.synopsis || '',
     pages: raw.pages || 0,
-    publicationYear: raw.publication_year || new Date().getFullYear(),
+    publicationDate: raw.publication_date ? raw.publication_date.slice(0, 10) : '',
     language: raw.language || 'Indonesia',
     length: raw.length || 0,
     width: raw.width || 0,
@@ -156,7 +156,7 @@ const bookForm = ref({
   isbn: '',
   description: '',
   pages: '',
-  publicationYear: '',
+  publicationDate: '',
   language: 'Indonesia',
   length: '',
   width: '',
@@ -270,7 +270,7 @@ function openAddBook() {
     isbn: '',
     description: '',
     pages: '',
-    publicationYear: '',
+    publicationDate: new Date().toISOString().slice(0, 10),
     language: 'Indonesia',
     length: '',
     width: '',
@@ -313,7 +313,7 @@ async function openEditBook(book) {
     isbn: detail.isbn || '',
     description: detail.description || '',
     pages: detail.pages ?? '',
-    publicationYear: detail.publicationYear ?? '',
+    publicationDate: detail.publicationDate ? detail.publicationDate.slice(0, 10) : '',
     language: detail.language || 'Indonesia',
     length: detail.length ?? '',
     width: detail.width ?? '',
@@ -340,10 +340,7 @@ async function handleSaveBook() {
     bookForm.value.stock === null ||
     bookForm.value.weightGrams === '' ||
     bookForm.value.weightGrams === null ||
-    bookForm.value.pages === '' ||
-    bookForm.value.pages === null ||
-    bookForm.value.publicationYear === '' ||
-    bookForm.value.publicationYear === null ||
+    !bookForm.value.publicationDate ||
     bookForm.value.length === '' ||
     bookForm.value.length === null ||
     bookForm.value.width === '' ||
@@ -351,7 +348,7 @@ async function handleSaveBook() {
     bookForm.value.height === '' ||
     bookForm.value.height === null
   ) {
-    showToast('Lengkapi seluruh data wajib: Judul, ISBN, Kategori, Penulis, Penerbit, Harga, Stok, Berat, Halaman, Tahun, Dimensi (P×L×T), Sinopsis, dan Sampul.', {
+    showToast('Lengkapi seluruh data wajib: Judul, ISBN, Kategori, Penulis, Penerbit, Harga, Stok, Berat, Halaman, Tanggal Terbit, Dimensi (P×L×T), Sinopsis, dan Sampul.', {
       type: 'error',
     })
     return
@@ -364,9 +361,11 @@ async function handleSaveBook() {
     return
   }
 
-  const pubYear = Number(bookForm.value.publicationYear)
+  const pubDateStr = bookForm.value.publicationDate.slice(0, 10)
+  const pubYear = new Date(bookForm.value.publicationDate).getFullYear()
+
   if (pubYear < 1000 || pubYear > 2100) {
-    showToast('Tahun terbit harus antara tahun 1000 dan 2100.', {
+    showToast('Tahun pada tanggal terbit harus antara tahun 1000 dan 2100.', {
       type: 'error',
     })
     return
@@ -399,7 +398,7 @@ async function handleSaveBook() {
     ),
     weight_grams: Number(bookForm.value.weightGrams) || 1,
     pages: Math.max(1, Number(bookForm.value.pages) || 1),
-    publication_year: pubYear,
+    publication_date: pubDateStr,
     language: bookForm.value.language || 'Indonesia',
     length: Math.max(0.1, Number(bookForm.value.length) || 1),
     width: Math.max(0.1, Number(bookForm.value.width) || 1),
@@ -481,7 +480,9 @@ async function updateBookStock(bookId, amount) {
       discount_percentage: Number(source.discount) || 0,
       weight_grams: Number(source.weightGrams) || 300,
       pages: Number(source.pages) || 1,
-      publication_year: Number(source.publicationYear) || new Date().getFullYear(),
+      publication_date: source.publicationDate
+        ? source.publicationDate.slice(0, 10)
+        : new Date().toISOString().slice(0, 10),
       language: source.language || 'Indonesia',
       length: Number(source.length) || 1,
       width: Number(source.width) || 1,
@@ -1099,7 +1100,7 @@ async function updateBookStock(bookId, amount) {
             </div>
           </div>
 
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label class="block font-outfit font-black text-xs uppercase mb-1">Halaman *</label>
               <input
@@ -1112,55 +1113,88 @@ async function updateBookStock(bookId, amount) {
               />
             </div>
             <div>
-              <label class="block font-outfit font-black text-xs uppercase mb-1">Tahun Terbit *</label>
+              <label class="block font-outfit font-black text-xs uppercase mb-1">Tanggal Terbit *</label>
               <input
-                v-model="bookForm.publicationYear"
-                type="number"
-                min="1000"
-                max="2100"
+                v-model="bookForm.publicationDate"
+                type="date"
                 required
-                placeholder="Contoh: 2024"
-                class="w-full bg-background border-2 border-black p-2 font-outfit font-bold text-sm outline-none shadow-neo-sm"
+                class="w-full bg-background border-2 border-black p-2 font-mono text-sm outline-none shadow-neo-sm"
               />
             </div>
             <div>
-              <label class="block font-outfit font-black text-xs uppercase mb-1"
-                >Panjang (cm) *</label
-              >
+              <label class="block font-outfit font-black text-xs uppercase mb-1">Bahasa *</label>
               <input
-                v-model="bookForm.length"
-                type="number"
-                step="0.1"
-                min="0.1"
+                v-model="bookForm.language"
+                type="text"
                 required
-                placeholder="Contoh: 20"
-                class="w-full bg-background border-2 border-black p-2 font-outfit font-bold text-sm outline-none shadow-neo-sm"
-              />
-            </div>
-            <div>
-              <label class="block font-outfit font-black text-xs uppercase mb-1">Lebar (cm) *</label>
-              <input
-                v-model="bookForm.width"
-                type="number"
-                step="0.1"
-                min="0.1"
-                required
-                placeholder="Contoh: 13.5"
+                placeholder="Contoh: Indonesia"
                 class="w-full bg-background border-2 border-black p-2 font-outfit font-bold text-sm outline-none shadow-neo-sm"
               />
             </div>
           </div>
 
+          <div class="space-y-1">
+            <label class="block font-outfit font-black text-xs uppercase text-neutral-800">
+              Dimensi Fisik Buku (Panjang × Lebar × Tebal)
+            </label>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="block font-outfit font-bold text-[11px] uppercase mb-1 text-neutral-700">
+                  Panjang (cm) *
+                </label>
+                <input
+                  v-model="bookForm.length"
+                  type="number"
+                  step="0.1"
+                  min="0.1"
+                  required
+                  placeholder="Contoh: 20"
+                  class="w-full bg-background border-2 border-black p-2 font-outfit font-bold text-sm outline-none shadow-neo-sm"
+                />
+              </div>
+              <div>
+                <label class="block font-outfit font-bold text-[11px] uppercase mb-1 text-neutral-700">
+                  Lebar (cm) *
+                </label>
+                <input
+                  v-model="bookForm.width"
+                  type="number"
+                  step="0.1"
+                  min="0.1"
+                  required
+                  placeholder="Contoh: 13.5"
+                  class="w-full bg-background border-2 border-black p-2 font-outfit font-bold text-sm outline-none shadow-neo-sm"
+                />
+              </div>
+              <div>
+                <label class="block font-outfit font-bold text-[11px] uppercase mb-1 text-neutral-700">
+                  Tebal Buku / Tinggi (cm) *
+                </label>
+                <input
+                  v-model="bookForm.height"
+                  type="number"
+                  step="0.1"
+                  min="0.1"
+                  required
+                  placeholder="Contoh: 2 (tebal punggung)"
+                  class="w-full bg-background border-2 border-black p-2 font-outfit font-bold text-sm outline-none shadow-neo-sm"
+                />
+              </div>
+            </div>
+            <p class="text-[11px] font-sans text-neutral-500 italic mt-0.5">
+              *Tinggi dihitung sebagai ketebalan punggung buku (spine) saat buku diletakkan mendatar untuk keperluan logistik paket pengiriman.
+            </p>
+          </div>
+
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="block font-outfit font-black text-xs uppercase mb-1">Tinggi (cm) *</label>
+              <label class="block font-outfit font-black text-xs uppercase mb-1">
+                Kondisi Buku
+              </label>
               <input
-                v-model="bookForm.height"
-                type="number"
-                step="0.1"
-                min="0.1"
-                required
-                placeholder="Contoh: 2"
+                v-model="bookForm.condition"
+                type="text"
+                placeholder="100% Baru & Segel Penerbit"
                 class="w-full bg-background border-2 border-black p-2 font-outfit font-bold text-sm outline-none shadow-neo-sm"
               />
             </div>

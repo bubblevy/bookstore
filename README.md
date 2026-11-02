@@ -4,7 +4,7 @@
   </kbd>
 </p>
 
-<h1 align="center">BookStore Indonesia — Modern Bookstore Web Application</h1>
+<h1 align="center">BookStore Indonesia - Modern Bookstore Web Application</h1>
 
 <p align="center">
   A modern, responsive, and interactive online bookstore platform built with <strong>Vue 3</strong> and <strong>Vite</strong>. Features complete catalog browsing, shopping cart, multi-courier checkout, automated payment instructions, real-time order tracking via Server-Sent Events (SSE), and comprehensive dashboards for both customers and administrators.
