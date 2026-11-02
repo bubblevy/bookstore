@@ -209,8 +209,39 @@ function paymentStatusLabel(order) {
 }
 
 function paymentMethodLabel(order) {
-  return formatPaymentMethodName(order?.paymentMethod, order)
+  const label = formatPaymentMethodName(order?.paymentMethod, order)
+  if (label && label !== '—' && label !== '-') return label
+  if (order && !order.hasFullDetail) return 'Memuat...'
+  return '—'
 }
+
+function orderCourierLabel(order) {
+  if (order?.courier && order.courier !== 'Reguler') return order.courier
+  if (order?.courier && order.hasFullDetail) return order.courier
+  if (order && !order.hasFullDetail) return 'Memuat...'
+  return order?.courier || 'Reguler'
+}
+
+watch(
+  paginatedOrders,
+  (orders) => {
+    if (!Array.isArray(orders) || orders.length === 0) return
+    const toHydrate = orders.filter(
+      (o) =>
+        o?.id &&
+        (!o.hasFullDetail ||
+          !o.courier ||
+          o.courier === 'Reguler' ||
+          !o.paymentMethod ||
+          o.paymentMethod === '—' ||
+          o.items?.[0]?.isEstimated),
+    )
+    if (toHydrate.length > 0) {
+      Promise.allSettled(toHydrate.map((o) => loadOrderDetail(o.id))).catch(() => {})
+    }
+  },
+  { immediate: true },
+)
 
 function formatTrackingTime(value) {
   if (!value) return ''
@@ -398,7 +429,7 @@ async function checkSelectedPayment() {
               type="button"
               title="Klik untuk salin invoice"
               class="font-mono font-black text-xs sm:text-sm text-black tracking-tight flex items-center gap-1.5 hover:text-neo-violet cursor-pointer text-left"
-              @click="copyText(order.id, `copy-ord-${order.id}`, 'Nomor invoice disalin!')"
+              @click="copyText(order.id, `copy-ord-${order.id}`)"
             >
               <span class="break-all sm:break-normal">#{{ order.id }}</span>
               <svg
@@ -493,7 +524,13 @@ async function checkSelectedPayment() {
                 <span class="font-outfit font-black text-muted-foreground uppercase text-[10px]">
                   Kurir:
                 </span>
-                <span class="font-bold text-black">{{ order.courier }}</span>
+                <span class="font-bold text-black flex items-center gap-1.5">
+                  <span>{{ orderCourierLabel(order) }}</span>
+                  <span
+                    v-if="!order.hasFullDetail && orderCourierLabel(order) === 'Memuat...'"
+                    class="inline-block w-1.5 h-1.5 rounded-full bg-neo-violet animate-pulse"
+                  ></span>
+                </span>
               </div>
               <div class="flex items-center gap-1.5 text-muted-foreground">
                 <span class="font-outfit font-black uppercase text-[10px]">Resi:</span>
@@ -529,7 +566,13 @@ async function checkSelectedPayment() {
                 <span class="font-outfit font-black text-muted-foreground uppercase text-[10px]">
                   Metode:
                 </span>
-                <span class="font-bold text-black">{{ paymentMethodLabel(order) }}</span>
+                <span class="font-bold text-black flex items-center gap-1.5 sm:justify-end">
+                  <span>{{ paymentMethodLabel(order) }}</span>
+                  <span
+                    v-if="!order.hasFullDetail && paymentMethodLabel(order) === 'Memuat...'"
+                    class="inline-block w-1.5 h-1.5 rounded-full bg-neo-violet animate-pulse"
+                  ></span>
+                </span>
               </div>
               <div class="flex items-center gap-1.5 sm:justify-end text-[11px]">
                 <span class="font-outfit font-black text-muted-foreground uppercase text-[10px]">Status:</span>

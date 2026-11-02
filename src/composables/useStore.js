@@ -289,6 +289,7 @@ function mapOrder(detail) {
     payment.name ||
     payment.method ||
     payment.store ||
+    payment.channel ||
     (payment.bank ? `${String(payment.bank).toUpperCase()} Virtual Account` : '') ||
     (payment.qr_url ? 'QRIS' : '') ||
     (payment.deeplink_url ? 'E-Wallet' : '') ||
@@ -297,6 +298,11 @@ function mapOrder(detail) {
     detail.payment_method ||
     detail.paymentMethod ||
     detail.payment_type ||
+    detail.payment_channel ||
+    detail.payment_name ||
+    detail.payment_gateway ||
+    detail.payment_code ||
+    detail.method ||
     detail.store ||
     (detail.bank ? `${String(detail.bank).toUpperCase()} Virtual Account` : '') ||
     ''
@@ -392,11 +398,53 @@ function mapOrder(detail) {
         ]
       })()
 
-  const courierLabel = shipping.courier
-    ? shippingLabel(shipping.courier, shipping.courier_service)
-    : detail.courier
-      ? shippingLabel(detail.courier)
-      : 'Reguler'
+  const rawCourier =
+    shipping.courier ||
+    shipping.courier_code ||
+    shipping.courier_name ||
+    shipping.shipping_courier ||
+    detail.courier ||
+    detail.courier_code ||
+    detail.courier_name ||
+    detail.shipping_courier ||
+    detail.shipping_courier_code ||
+    detail.shipping_courier_name ||
+    ''
+
+  const rawService =
+    shipping.courier_service ||
+    shipping.courier_service_code ||
+    shipping.courier_service_name ||
+    shipping.service ||
+    shipping.shipping_service ||
+    detail.courier_service ||
+    detail.courier_service_code ||
+    detail.courier_service_name ||
+    detail.shipping_service ||
+    detail.shipping_service_code ||
+    detail.shipping_service_name ||
+    detail.service ||
+    ''
+
+  let courierLabel = ''
+  if (rawCourier && rawService) {
+    courierLabel = shippingLabel(rawCourier, rawService)
+  } else if (rawCourier) {
+    courierLabel = shippingLabel(rawCourier)
+  } else if (rawService) {
+    courierLabel = shippingLabel('', rawService)
+  }
+
+  const hasFullDetail = Boolean(
+    detail.hasFullDetail ||
+    (detail.shipping && (detail.shipping.courier || detail.shipping.tracking_number || detail.shipping.courier_service)) ||
+    (detail.payment && (detail.payment.payment_method || detail.payment.payment_type || detail.payment.status)) ||
+    (Array.isArray(detail.items) && detail.items.length > 0 && !detail.items[0]?.isEstimated)
+  )
+
+  if (!courierLabel && hasFullDetail) {
+    courierLabel = 'Reguler'
+  }
 
   return {
     id: detail.invoice_number,
@@ -412,6 +460,7 @@ function mapOrder(detail) {
     trackingNumber: shipping.tracking_number || detail.tracking_number || '',
     paymentMethod,
     methodName: paymentMethod,
+    hasFullDetail,
     instructions: Array.isArray(payment.instructions) ? payment.instructions : [],
     paymentMethodCode: payment.payment_method || '',
     paymentStatus:
@@ -466,7 +515,32 @@ async function loadOrders(status, options = {}) {
       state.orders = list.map((raw) => {
         const mapped = mapOrder(raw)
         const existing = existingMap.get(mapped.id)
-        if (
+        if (existing && existing.hasFullDetail && !mapped.hasFullDetail) {
+          return {
+            ...mapped,
+            items: existing.items,
+            subtotal: existing.subtotal,
+            discount: existing.discount,
+            shipping: existing.shipping,
+            adminFee: existing.adminFee,
+            total: existing.total || mapped.total,
+            courier: existing.courier || mapped.courier,
+            trackingNumber: existing.trackingNumber || mapped.trackingNumber,
+            paymentMethod:
+              existing.paymentMethod && existing.paymentMethod !== '—'
+                ? existing.paymentMethod
+                : mapped.paymentMethod,
+            methodName:
+              existing.methodName && existing.methodName !== '—'
+                ? existing.methodName
+                : mapped.methodName,
+            paymentStatus: existing.paymentStatus || mapped.paymentStatus,
+            instructions: existing.instructions?.length ? existing.instructions : mapped.instructions,
+            paymentDeadline: existing.paymentDeadline || mapped.paymentDeadline,
+            paymentDeadlineAt: existing.paymentDeadlineAt || mapped.paymentDeadlineAt,
+            hasFullDetail: true,
+          }
+        } else if (
           existing &&
           Array.isArray(existing.items) &&
           existing.items.length > 0 &&
@@ -480,22 +554,35 @@ async function loadOrders(status, options = {}) {
             shipping: existing.shipping,
             adminFee: existing.adminFee,
             total: existing.total || mapped.total,
+            courier: existing.courier || mapped.courier,
+            trackingNumber: existing.trackingNumber || mapped.trackingNumber,
             paymentMethod:
               mapped.paymentMethod && mapped.paymentMethod !== '—' && mapped.paymentMethod !== '-'
                 ? mapped.paymentMethod
                 : existing.paymentMethod,
+            methodName:
+              mapped.methodName && mapped.methodName !== '—' && mapped.methodName !== '-'
+                ? mapped.methodName
+                : existing.methodName,
           }
         }
         return mapped
       })
 
-      // Asynchronously hydrate orders that don't have detailed items yet
+      // Asynchronously hydrate orders that don't have detailed items, courier, or payment info yet
       const needsDetail = state.orders.filter(
-        (o) => !o.items || o.items.length === 0 || o.items[0]?.isEstimated,
+        (o) =>
+          !o.hasFullDetail ||
+          !o.courier ||
+          !o.paymentMethod ||
+          o.paymentMethod === '—' ||
+          !o.items ||
+          o.items.length === 0 ||
+          o.items[0]?.isEstimated,
       )
       if (needsDetail.length > 0) {
         Promise.allSettled(
-          needsDetail.slice(0, 5).map((o) => loadOrderDetail(o.id)),
+          needsDetail.slice(0, 10).map((o) => loadOrderDetail(o.id)),
         ).catch(() => {})
       }
 
@@ -517,9 +604,10 @@ async function loadOrderDetail(invoice) {
   if (!invoice) return null
   const response = await api.order(invoice)
   if (!response?.data) return null
-  const detailed = mapOrder(response.data)
+  const detailed = mapOrder({ ...response.data, hasFullDetail: true })
+  detailed.hasFullDetail = true
   state.orders = state.orders.map((order) =>
-    order.id === detailed.id ? { ...order, ...detailed } : order,
+    order.id === detailed.id ? { ...order, ...detailed, hasFullDetail: true } : order,
   )
   return detailed
 }
