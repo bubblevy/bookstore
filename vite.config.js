@@ -15,12 +15,31 @@ export default defineConfig(({ mode }) => {
     })
   }
 
+  const handleApiProxy = (proxy) => {
+    proxy.on('proxyRes', (proxyRes) => {
+      proxyRes.headers['cross-origin-resource-policy'] = 'cross-origin'
+      const setCookie = proxyRes.headers['set-cookie']
+      if (setCookie) {
+        proxyRes.headers['set-cookie'] = (
+          Array.isArray(setCookie) ? setCookie : [setCookie]
+        ).map((cookie) =>
+          cookie
+            .replace(/;\s*Secure/gi, '')
+            .replace(/;\s*SameSite=None/gi, '; SameSite=Lax')
+        )
+      }
+    })
+  }
+
   const proxy = apiTarget
     ? {
         '/api': {
           target: apiTarget,
           changeOrigin: true,
           secure: true,
+          cookieDomainRewrite: 'localhost',
+          cookiePathRewrite: '/',
+          configure: handleApiProxy,
         },
         '/payments': {
           target: apiTarget,

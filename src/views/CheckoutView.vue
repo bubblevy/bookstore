@@ -8,6 +8,7 @@ import { assetUrl } from '@/lib/assets'
 import BookCover from '@/components/BookCover.vue'
 import PaymentInstructions from '@/components/PaymentInstructions.vue'
 import FullScreenLoader from '@/components/FullScreenLoader.vue'
+import TurnstileWidget from '@/components/TurnstileWidget.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -28,6 +29,8 @@ const form = ref({
   courierService: '',
   payment: '',
 })
+const turnstileToken = ref('')
+const turnstileRef = ref(null)
 
 const items = computed(() => state.cart.filter((item) => item.selected))
 const failedCovers = ref({})
@@ -626,6 +629,7 @@ async function placeOrder() {
     const payload = {
       ...buildPayload(rate),
       address_id: addressId.value,
+      ...(turnstileToken.value ? { turnstile_token: turnstileToken.value } : {}),
     }
 
     const order = await api.createOrder(payload)
@@ -648,6 +652,8 @@ async function placeOrder() {
       isSubmitting.value = false
     }
   } catch (error) {
+    turnstileRef.value?.reset()
+    turnstileToken.value = ''
     isSubmitting.value = false
     showToast(error?.message || 'Gagal membuat pesanan', { type: 'error' })
   }
@@ -1535,6 +1541,8 @@ watch(
               </div>
             </div>
 
+            <TurnstileWidget ref="turnstileRef" v-model="turnstileToken" />
+
             <button
               :disabled="isSubmitting"
               class="w-full neubrutal-btn bg-neo-yellow text-black border-3 border-black py-3.5 font-outfit font-black text-base shadow-neo hover:bg-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
@@ -1566,15 +1574,15 @@ watch(
         <div
           class="w-full max-w-md bg-white border-4 border-black shadow-neo-xl max-h-[90vh] overflow-y-auto"
         >
-          <div class="bg-neo-yellow border-b-3 border-black p-4 flex items-center justify-between">
-            <h3 class="font-outfit font-black text-base uppercase">Tambah Alamat Pengiriman</h3>
+          <div class="bg-neo-yellow border-b-3 border-black p-4 flex items-center justify-between gap-3 shrink-0">
+            <h3 class="font-outfit font-black text-base uppercase min-w-0 flex-1">Tambah Alamat Pengiriman</h3>
             <button
               type="button"
-              class="w-8 h-8 bg-white border-2 border-black font-outfit font-black text-sm hover:bg-black hover:text-white"
+              class="w-8 h-8 shrink-0 aspect-square bg-white border-2 border-black font-outfit font-black text-sm hover:bg-black hover:text-white transition-colors cursor-pointer"
               aria-label="Tutup"
               @click="showAddressModal = false"
             >
-              X
+              ✕
             </button>
           </div>
           <form class="p-5 space-y-3" @submit.prevent="saveNewAddress">

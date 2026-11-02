@@ -141,6 +141,7 @@ async function refreshAccessToken() {
         headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
         body: JSON.stringify({ refresh_token: refreshToken }),
         signal: timeoutSignal(),
+        credentials: 'include',
       })
       if (!response.ok) return false
 
@@ -167,7 +168,7 @@ export function refreshSession() {
   return refreshAccessToken()
 }
 
-async function request(path, { method = 'GET', body, auth = true, retry = true } = {}) {
+async function request(path, { method = 'GET', body, auth = true, retry = true, credentials = 'include' } = {}) {
   const headers = { Accept: 'application/json' }
   if (body !== undefined) headers['Content-Type'] = 'application/json'
 
@@ -181,6 +182,7 @@ async function request(path, { method = 'GET', body, auth = true, retry = true }
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: timeoutSignal(),
+      credentials,
     })
   } catch (error) {
     if (error?.name === 'TimeoutError' || error?.name === 'AbortError') {
@@ -219,7 +221,7 @@ async function request(path, { method = 'GET', body, auth = true, retry = true }
   return payload ?? {}
 }
 
-async function requestBlob(path, { retry = true } = {}) {
+async function requestBlob(path, { retry = true, credentials = 'include' } = {}) {
   const headers = { Accept: 'application/pdf' }
   const token = session.accessToken
   if (token) headers.Authorization = `Bearer ${token}`
@@ -229,6 +231,7 @@ async function requestBlob(path, { retry = true } = {}) {
     response = await fetch(`${BASE_URL}${path}`, {
       headers,
       signal: timeoutSignal(),
+      credentials,
     })
   } catch (error) {
     if (error?.name === 'TimeoutError' || error?.name === 'AbortError') {
@@ -310,14 +313,38 @@ async function uploadImage(file, folder = 'covers') {
 }
 
 export const api = {
-  login: (email, password) =>
-    request('/v1/auth/login', { method: 'POST', body: { email, password }, auth: false }),
-  register: (name, email, password) =>
-    request('/v1/auth/register', { method: 'POST', body: { name, email, password }, auth: false }),
+  login: (email, password, turnstileToken = '') =>
+    request('/v1/auth/login', {
+      method: 'POST',
+      body: {
+        email,
+        password,
+        ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
+      },
+      auth: false,
+    }),
+  register: (name, email, password, turnstileToken = '') =>
+    request('/v1/auth/register', {
+      method: 'POST',
+      body: {
+        name,
+        email,
+        password,
+        ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
+      },
+      auth: false,
+    }),
   activateAccount: (token) =>
     request('/v1/auth/activate-account', { method: 'POST', body: { token }, auth: false }),
-  forgotPassword: (email) =>
-    request('/v1/auth/forgot-password', { method: 'POST', body: { email }, auth: false }),
+  forgotPassword: (email, turnstileToken = '') =>
+    request('/v1/auth/forgot-password', {
+      method: 'POST',
+      body: {
+        email,
+        ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
+      },
+      auth: false,
+    }),
   resetPassword: (token, newPassword, confirmPassword) =>
     request('/v1/auth/reset-password', {
       method: 'POST',
@@ -328,8 +355,15 @@ export const api = {
       },
       auth: false,
     }),
-  resendActivation: (email) =>
-    request('/v1/auth/resend-activation', { method: 'POST', body: { email }, auth: false }),
+  resendActivation: (email, turnstileToken = '') =>
+    request('/v1/auth/resend-activation', {
+      method: 'POST',
+      body: {
+        email,
+        ...(turnstileToken ? { turnstile_token: turnstileToken } : {}),
+      },
+      auth: false,
+    }),
   refreshWithCookie: () =>
     request('/v1/auth/refresh-token', {
       method: 'POST',

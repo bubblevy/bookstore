@@ -70,14 +70,41 @@ const router = createRouter({
       path: '/dashboard',
       name: 'user-dashboard',
       component: () => import('@/views/UserDashboardView.vue'),
-      beforeEnter: async () => {
+      beforeEnter: async (to) => {
+        // 1. Direct tokens in query parameter (from Google OAuth callback redirect)
+        const qAccessToken = to.query.access_token ? String(to.query.access_token) : null
+        const qRefreshToken = to.query.refresh_token ? String(to.query.refresh_token) : null
+
+        if (qAccessToken) {
+          session.set({
+            access_token: qAccessToken,
+            refresh_token: qRefreshToken || '',
+          })
+          try {
+            sessionStorage.removeItem('bookstore.google_oauth_pending')
+          } catch {}
+
+          const me = await api.me().catch(() => null)
+          if (me?.data?.role === 'admin') {
+            session.setRole('admin')
+            return { name: 'admin-dashboard', replace: true }
+          }
+          session.setRole('user')
+          return { name: 'user-dashboard', replace: true }
+        }
+
         if (session.isAuthenticated) {
-          sessionStorage.removeItem('bookstore.google_oauth_pending')
+          try {
+            sessionStorage.removeItem('bookstore.google_oauth_pending')
+          } catch {}
           if (session.role === 'admin') return { name: 'admin-dashboard' }
           return true
         }
 
-        const pending = sessionStorage.getItem('bookstore.google_oauth_pending')
+        let pending = false
+        try {
+          pending = Boolean(sessionStorage.getItem('bookstore.google_oauth_pending'))
+        } catch {}
 
         try {
           const response = await api.refreshWithCookie()
@@ -87,7 +114,9 @@ const router = createRouter({
             access_token: tokens.access_token,
             refresh_token: tokens.refresh_token,
           })
-          sessionStorage.removeItem('bookstore.google_oauth_pending')
+          try {
+            sessionStorage.removeItem('bookstore.google_oauth_pending')
+          } catch {}
           const me = await api.me().catch(() => null)
           if (me?.data?.role === 'admin') {
             session.setRole('admin')
@@ -96,7 +125,9 @@ const router = createRouter({
           session.setRole('user')
           return true
         } catch {
-          sessionStorage.removeItem('bookstore.google_oauth_pending')
+          try {
+            sessionStorage.removeItem('bookstore.google_oauth_pending')
+          } catch {}
           return pending
             ? { name: 'login', query: { error: 'oauth_failed' } }
             : { name: 'login', query: { redirect: '/dashboard' } }

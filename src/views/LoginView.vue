@@ -4,6 +4,7 @@ import { useRouter, useRoute, RouterLink } from 'vue-router'
 import { useStore } from '@/composables/useStore'
 import { api, session } from '@/lib/api'
 import AuthLayout from './AuthLayout.vue'
+import TurnstileWidget from '@/components/TurnstileWidget.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -13,6 +14,12 @@ const email = ref('')
 const password = ref('')
 const rememberMe = ref(true)
 const showPassword = ref(false)
+const turnstileToken = ref('')
+const turnstileRef = ref(null)
+const forgotTurnstileToken = ref('')
+const forgotTurnstileRef = ref(null)
+const resendTurnstileToken = ref('')
+const resendTurnstileRef = ref(null)
 const errorMessage = ref('')
 const isLoading = ref(false)
 const showForgotModal = ref(false)
@@ -70,15 +77,20 @@ async function handleLogin() {
   showResendActivation.value = resendFromQuery.value
   const result = await login(email.value.trim(), password.value, {
     remember: rememberMe.value,
+    turnstileToken: turnstileToken.value,
   })
 
   if (result !== true) {
     isLoading.value = false
+    turnstileRef.value?.reset()
+    turnstileToken.value = ''
     if (result === 'inactive') {
       errorMessage.value = 'Akun belum aktif. Cek email aktivasi Anda.'
       showResendActivation.value = true
     } else if (result === 'credentials') {
       errorMessage.value = 'Email atau password salah.'
+    } else if (typeof result === 'string' && /turnstile/i.test(result)) {
+      errorMessage.value = 'Verifikasi Cloudflare Turnstile gagal atau kedaluwarsa. Silakan centang kembali.'
     } else {
       errorMessage.value = 'Gagal masuk. Periksa email, password, atau koneksi Anda.'
     }
@@ -90,6 +102,9 @@ async function handleLogin() {
 }
 
 function handleGoogleLogin() {
+  try {
+    sessionStorage.setItem('bookstore.google_oauth_pending', '1')
+  } catch {}
   window.location.assign(api.googleLoginUrl())
 }
 
@@ -109,10 +124,13 @@ async function submitForgot() {
   forgotLoading.value = true
   forgotError.value = ''
   try {
-    await api.forgotPassword(target)
+    await api.forgotPassword(target, forgotTurnstileToken.value)
     showForgotModal.value = false
+    forgotTurnstileToken.value = ''
     showToast('Jika email terdaftar, link reset password telah dikirim.', { type: 'success' })
   } catch (error) {
+    forgotTurnstileRef.value?.reset()
+    forgotTurnstileToken.value = ''
     forgotError.value = error?.message || 'Gagal mengirim link reset password.'
   } finally {
     forgotLoading.value = false
@@ -122,6 +140,7 @@ async function submitForgot() {
 function openResendModal() {
   resendEmail.value = email.value.trim()
   resendError.value = ''
+  resendTurnstileToken.value = ''
   showResendModal.value = true
 }
 
@@ -135,12 +154,15 @@ async function submitResend() {
   resendLoading.value = true
   resendError.value = ''
   try {
-    await api.resendActivation(target)
+    await api.resendActivation(target, resendTurnstileToken.value)
     showResendModal.value = false
+    resendTurnstileToken.value = ''
     showToast('Jika email terdaftar dan belum aktif, link aktivasi telah dikirim.', {
       type: 'success',
     })
   } catch (error) {
+    resendTurnstileRef.value?.reset()
+    resendTurnstileToken.value = ''
     resendError.value = error?.message || 'Gagal mengirim ulang email aktivasi.'
   } finally {
     resendLoading.value = false
@@ -374,6 +396,8 @@ onMounted(() => {
             </label>
           </div>
 
+          <TurnstileWidget ref="turnstileRef" v-model="turnstileToken" />
+
           <button
             type="submit"
             :disabled="isLoading"
@@ -432,6 +456,7 @@ onMounted(() => {
               placeholder="nama@email.com"
               class="w-full bg-white border-3 border-black rounded-[2px] px-3.5 py-2.5 font-outfit font-bold text-sm outline-none shadow-neo-sm"
             />
+            <TurnstileWidget ref="forgotTurnstileRef" v-model="forgotTurnstileToken" />
             <p v-if="forgotError" class="font-sans text-xs font-bold text-red-600">
               {{ forgotError }}
             </p>
@@ -479,6 +504,7 @@ onMounted(() => {
               placeholder="nama@email.com"
               class="w-full bg-white border-3 border-black rounded-[2px] px-3.5 py-2.5 font-outfit font-bold text-sm outline-none shadow-neo-sm"
             />
+            <TurnstileWidget ref="resendTurnstileRef" v-model="resendTurnstileToken" />
             <p v-if="resendError" class="font-sans text-xs font-bold text-red-600">
               {{ resendError }}
             </p>

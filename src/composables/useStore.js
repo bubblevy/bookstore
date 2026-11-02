@@ -861,20 +861,13 @@ function bootstrap() {
     })().finally(() => {
       if (!state.books.length) bootstrapPromise = null
     })
-    return state.books
-  } catch (error) {
-    state.books = []
-    showToast(errorText(error, 'Gagal memuat katalog buku'), { type: 'error' })
-    return []
-  } finally {
-    state.catalogLoading = false
   }
   return bootstrapPromise
 }
 
 async function login(email, password, options = {}) {
   try {
-    const response = await api.login(email.trim(), password)
+    const response = await api.login(email.trim(), password, options.turnstileToken || '')
     const tokens = response.data || {}
     session.set(
       { access_token: tokens.access_token, refresh_token: tokens.refresh_token },
@@ -893,13 +886,14 @@ async function login(email, password, options = {}) {
     const inactive = /inactive|not active|not activated|verify|activation/i.test(message)
     if (inactive) return 'inactive'
     if (error?.status === 401) return 'credentials'
+    if (/turnstile/i.test(message)) return message
     return 'error'
   }
 }
 
-async function register(name, email, password) {
+async function register(name, email, password, turnstileToken = '') {
   try {
-    await api.register(name.trim(), email.trim(), password)
+    await api.register(name.trim(), email.trim(), password, turnstileToken)
     showToast('Akun berhasil dibuat. Cek email untuk aktivasi sebelum masuk.', { type: 'success' })
     return true
   } catch (error) {

@@ -262,8 +262,8 @@ async function executeDeletePeople() {
       <div
         class="bg-white border-2 sm:border-3 border-black max-w-2xl w-full rounded-[2px] shadow-neo-sm overflow-hidden animate-hero-entrance flex flex-col"
       >
-        <div class="bg-neo-yellow border-b-2 sm:border-b-3 border-black p-3.5 sm:p-4 flex items-center justify-between shrink-0">
-          <div>
+        <div class="bg-neo-yellow border-b-2 sm:border-b-3 border-black p-3.5 sm:p-4 flex items-center justify-between gap-3 shrink-0">
+          <div class="min-w-0 flex-1">
             <h3 class="font-outfit font-black text-sm sm:text-base text-black uppercase tracking-wide">
               {{ isEditPeople ? 'EDIT' : 'TAMBAH' }}
               {{ peopleType === 'author' ? 'PENULIS' : 'PENERBIT' }}
@@ -274,7 +274,8 @@ async function executeDeletePeople() {
           </div>
           <button
             type="button"
-            class="w-8 h-8 rounded-[2px] bg-white border-2 border-black flex items-center justify-center font-outfit font-black text-sm hover:bg-black hover:text-white transition-colors cursor-pointer"
+            class="w-8 h-8 shrink-0 aspect-square rounded-[2px] bg-white border-2 border-black flex items-center justify-center font-outfit font-black text-sm hover:bg-black hover:text-white transition-colors cursor-pointer"
+            aria-label="Tutup modal orang"
             @click="showPeopleModal = false"
           >
             ✕

@@ -2,9 +2,11 @@
 import { computed, ref } from 'vue'
 import { useRouter, useRoute, RouterLink } from 'vue-router'
 import { useStore } from '@/composables/useStore'
+import { api } from '@/lib/api'
 import { getPasswordStrength } from '@/lib/password'
 import PasswordValidation from '@/components/PasswordValidation.vue'
 import AuthLayout from './AuthLayout.vue'
+import TurnstileWidget from '@/components/TurnstileWidget.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -19,6 +21,8 @@ const showPassword = ref(false)
 const showConfirmPassword = ref(false)
 const errorMessage = ref('')
 const isLoading = ref(false)
+const turnstileToken = ref('')
+const turnstileRef = ref(null)
 
 const passwordStrength = computed(() => getPasswordStrength(password.value))
 const isSubmitDisabled = computed(() => {
@@ -59,10 +63,12 @@ async function handleRegister() {
   }
 
   isLoading.value = true
-  const success = await register(name.value.trim(), email.value.trim(), password.value)
+  const success = await register(name.value.trim(), email.value.trim(), password.value, turnstileToken.value)
   isLoading.value = false
 
   if (!success) {
+    turnstileRef.value?.reset()
+    turnstileToken.value = ''
     return
   }
 
@@ -76,7 +82,10 @@ async function handleRegister() {
 }
 
 function handleGoogleRegister() {
-  window.location.assign('/api/v1/auth/google/login')
+  try {
+    sessionStorage.setItem('bookstore.google_oauth_pending', '1')
+  } catch {}
+  window.location.assign(api.googleLoginUrl())
 }
 </script>
 
@@ -315,6 +324,8 @@ function handleGoogleRegister() {
               BookStore Indonesia.
             </span>
           </label>
+
+          <TurnstileWidget ref="turnstileRef" v-model="turnstileToken" />
 
           <div :class="isSubmitDisabled ? 'cursor-not-allowed' : ''" class="mt-2">
             <button
