@@ -342,7 +342,6 @@ async function loadTabData(tabName) {
       await Promise.allSettled([
         loadAdminReport(),
         loadAdminBooks(),
-        loadAdminOrders(),
         loadCustomers(),
       ])
       break
@@ -361,7 +360,10 @@ async function loadTabData(tabName) {
       await loadAdminPeople()
       break
     case 'vouchers':
-      await loadAdminDiscounts()
+      await Promise.allSettled([
+        loadAdminDiscounts(),
+        loadAdminBooks(),
+      ])
       break
     case 'orders':
       await Promise.allSettled([
@@ -400,7 +402,7 @@ function handleSSEPaymentStatus(data) {
     const row = adminOrderRows.value[rowIndex]
     if (data.order_status) row.rawStatus = data.order_status
     if (data.gross_amount) row.total = Number(data.gross_amount) || row.total
-  } else {
+  } else if (loadedTabs.value.has('orders')) {
     loadAdminOrders().catch(() => {})
   }
 
@@ -415,6 +417,8 @@ function handleSSEShippingStatus(data) {
   if (rowIndex !== -1) {
     const row = adminOrderRows.value[rowIndex]
     if (data.order_status) row.rawStatus = data.order_status
+  } else if (loadedTabs.value.has('orders')) {
+    loadAdminOrders().catch(() => {})
   }
 
   loadAdminReport().catch(() => {})
@@ -842,6 +846,7 @@ onMounted(async () => {
       <AdminVouchersTab
         v-if="activeTab === 'vouchers'"
         :discounts="adminDiscounts"
+        :books="adminBooks"
         :loading="vouchersLoading"
         @refresh="onVouchersRefresh"
       />

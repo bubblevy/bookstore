@@ -28,3 +28,24 @@ router.afterEach(() => {
     AOS.refreshHard()
   }, 150)
 })
+
+// Prevent mousewheel / touchpad scroll from accidentally changing values on number inputs
+if (typeof window !== 'undefined') {
+  window.addEventListener(
+    'wheel',
+    (e) => {
+      const target = e.target
+      if (target && target.tagName === 'INPUT' && target.type === 'number') {
+        e.preventDefault()
+        target.blur()
+      } else if (
+        document.activeElement &&
+        document.activeElement.tagName === 'INPUT' &&
+        document.activeElement.type === 'number'
+      ) {
+        document.activeElement.blur()
+      }
+    },
+    { passive: false },
+  )
+}

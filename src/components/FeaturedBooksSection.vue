@@ -30,8 +30,6 @@ onUnmounted(() => {
   if (observer) observer.disconnect()
 })
 
-const visibleCount = ref(8)
-
 const popularBooks = computed(() => {
   if (state.popularBooks && state.popularBooks.length > 0) {
     return state.popularBooks
@@ -48,16 +46,8 @@ const isPopularLoading = computed(() => {
 })
 
 const visibleBooks = computed(() => {
-  return popularBooks.value.slice(0, visibleCount.value)
+  return popularBooks.value.slice(0, 4)
 })
-
-const hasMore = computed(() => {
-  return visibleCount.value < popularBooks.value.length
-})
-
-function loadMore() {
-  visibleCount.value += 4
-}
 </script>
 
 <template>
@@ -146,7 +136,7 @@ function loadMore() {
         class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6"
       >
         <div
-          v-for="n in 8"
+          v-for="n in 4"
           :key="`book-skeleton-${n}`"
           class="bg-white border-3 border-black rounded-[2px] shadow-neo overflow-hidden animate-pulse"
         >
@@ -169,28 +159,18 @@ function loadMore() {
           :key="book.id"
           :book="book"
           :animate="isSectionVisible"
-          :delay="(idx % 8) * 90"
+          :delay="(idx % 4) * 90"
         />
       </div>
 
-      <div v-if="!isPopularLoading && hasMore" class="mt-10 sm:mt-12 text-center">
-        <button
+      <div v-if="!isPopularLoading && visibleBooks.length > 0" class="mt-10 sm:mt-12 text-center">
+        <router-link
+          :to="{ path: '/catalog', query: { sort: 'popular' } }"
           class="neubrutal-btn bg-neo-yellow text-black border-3 border-black py-3 px-8 rounded-[2px] font-outfit font-black text-xs sm:text-sm shadow-neo hover:bg-yellow-300 active:translate-x-0.5 active:translate-y-0.5 inline-flex items-center gap-2 cursor-pointer"
-          @click="loadMore"
         >
-          <span>Muat Lebih Banyak Buku</span>
-          <span class="text-base font-bold">↓</span>
-        </button>
-        <p class="font-sans text-[11px] font-bold text-muted-foreground mt-2.5">
-          Menampilkan {{ visibleBooks.length }} dari {{ popularBooks.length }} judul buku
-        </p>
-      </div>
-
-      <div
-        v-else-if="!isPopularLoading && popularBooks.length > 8"
-        class="mt-10 text-center text-xs font-outfit font-bold text-muted-foreground uppercase tracking-wider"
-      >
-        ✦ Seluruh {{ popularBooks.length }} buku populer telah ditampilkan ✦
+          <span>Lihat Semua Buku Populer</span>
+          <span class="text-base font-bold">→</span>
+        </router-link>
       </div>
     </div>
   </section>

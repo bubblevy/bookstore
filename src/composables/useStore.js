@@ -134,6 +134,8 @@ function clearSession() {
   state.ordersLoading = false
   state.wishlistLoading = false
   state.addressesLoading = false
+  bootstrapPromise = null
+  hasFullBootstrapRun = false
 }
 
 let authExpiryHandled = false
@@ -731,13 +733,14 @@ async function loadBooks(params = {}) {
 }
 
 async function loadPopularBooks(params = {}) {
-  const key = JSON.stringify({ sort_by: 'popular', per_page: 100, ...params })
+  const queryParams = { sort_by: 'popular', per_page: 8, ...params }
+  const key = JSON.stringify(queryParams)
   if (popularBooksPromise && popularBooksPromiseKey === key) return popularBooksPromise
 
   state.popularBooksLoading = true
   const promise = (async () => {
     try {
-      const response = await api.books({ sort_by: 'popular', per_page: 100, ...params })
+      const response = await api.books(queryParams)
       const fetchedBooks = (response.data || []).map(mapBook)
       state.popularBooks = fetchedBooks
 
@@ -841,27 +844,50 @@ async function loadBook(slugOrId) {
 }
 
 let bootstrapPromise = null
+let hasFullBootstrapRun = false
 
 function bootstrap() {
-  if (!bootstrapPromise) {
-    bootstrapPromise = (async () => {
-      await Promise.allSettled([loadCategories(), loadBooks(), loadPopularBooks()])
+  const isAdminRoute =
+    typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')
 
-      if (!session.isAuthenticated) return
+  if (bootstrapPromise && (hasFullBootstrapRun || isAdminRoute)) {
+    return bootstrapPromise
+  }
 
-      try {
-        const response = await api.me()
-        applyUser(response.data)
-        await Promise.allSettled([refreshCart(), loadWishlist()])
-      } catch (error) {
-        if (!handleAuthFailure(error)) {
-          showToast(errorText(error, 'Gagal memuat sesi pengguna'), { type: 'error' })
+  bootstrapPromise = (async () => {
+    if (isAdminRoute) {
+      // On admin routes, avoid fetching storefront catalog, popular books, cart, and wishlist.
+      // AdminDashboardView handles its own data fetching. Only hydrate session profile if authenticated.
+      if (session.isAuthenticated && !state.userProfile?.email) {
+        try {
+          const response = await api.me()
+          applyUser(response.data)
+        } catch (error) {
+          handleAuthFailure(error)
         }
       }
-    })().finally(() => {
-      if (!state.books.length) bootstrapPromise = null
-    })
-  }
+      return
+    }
+
+    hasFullBootstrapRun = true
+    await Promise.allSettled([loadCategories(), loadBooks(), loadPopularBooks()])
+
+    if (!session.isAuthenticated) return
+
+    try {
+      const response = await api.me()
+      applyUser(response.data)
+      await Promise.allSettled([refreshCart(), loadWishlist()])
+    } catch (error) {
+      if (!handleAuthFailure(error)) {
+        showToast(errorText(error, 'Gagal memuat sesi pengguna'), { type: 'error' })
+      }
+    }
+  })().finally(() => {
+    if (!hasFullBootstrapRun && !isAdminRoute && !state.books.length) {
+      bootstrapPromise = null
+    }
+  })
   return bootstrapPromise
 }
 

@@ -3,9 +3,15 @@ import { ref, computed, watch } from 'vue'
 import { api } from '@/lib/api'
 import { localizeApiError } from '@/lib/errors'
 import { useStore } from '@/composables/useStore'
+import { assetUrl } from '@/lib/assets'
+import { mapBook } from '@/lib/mappers'
 
 const props = defineProps({
   discounts: {
+    type: Array,
+    default: () => [],
+  },
+  books: {
     type: Array,
     default: () => [],
   },
@@ -87,6 +93,12 @@ function mapVoucher(discount) {
         ? 'tiered'
         : 'fixed'
 
+  const bookIds = Array.isArray(discount.book_ids)
+    ? discount.book_ids.map(Number)
+    : Array.isArray(discount.books)
+      ? discount.books.map((b) => Number(typeof b === 'object' ? b.id : b))
+      : []
+
   return {
     id: discount.id,
     code: discount.code,
@@ -105,6 +117,7 @@ function mapVoucher(discount) {
     quota: Number(discount.quota || 0),
     used: Number(discount.used_count || 0),
     isAllBooks: discount.is_all_books !== false,
+    bookIds,
     startDate: discount.start_date ? discount.start_date.slice(0, 10) : '',
     validUntil: discount.end_date ? discount.end_date.slice(0, 10) : '',
     active: Boolean(discount.is_active),
@@ -183,12 +196,76 @@ const voucherForm = ref({
   validUntil: '',
   active: true,
   isAllBooks: true,
+  bookIds: [],
   tiers: [],
 })
+
+const localBooks = ref([])
+const booksLoading = ref(false)
+const bookSearchQuery = ref('')
+
+const availableBooks = computed(() => {
+  if (props.books && props.books.length > 0) return props.books
+  return localBooks.value
+})
+
+async function ensureBooksLoaded() {
+  if (availableBooks.value.length > 0) return
+  booksLoading.value = true
+  try {
+    const res = await api.books({ per_page: 100, is_active: 'all' })
+    localBooks.value = (res.data || []).map(mapBook)
+  } catch {
+  } finally {
+    booksLoading.value = false
+  }
+}
+
+const filteredBookList = computed(() => {
+  const q = bookSearchQuery.value.trim().toLowerCase()
+  if (!q) return availableBooks.value
+  return availableBooks.value.filter((b) => {
+    const title = String(b.title || '').toLowerCase()
+    const author = String(b.author || '').toLowerCase()
+    const isbn = String(b.isbn || '').toLowerCase()
+    return title.includes(q) || author.includes(q) || isbn.includes(q)
+  })
+})
+
+function toggleBookSelection(id) {
+  const numId = Number(id)
+  const index = voucherForm.value.bookIds.indexOf(numId)
+  if (index >= 0) {
+    voucherForm.value.bookIds.splice(index, 1)
+  } else {
+    voucherForm.value.bookIds.push(numId)
+  }
+}
+
+function selectAllFilteredBooks() {
+  const currentSet = new Set(voucherForm.value.bookIds)
+  filteredBookList.value.forEach((b) => currentSet.add(Number(b.id)))
+  voucherForm.value.bookIds = Array.from(currentSet)
+}
+
+function getBookTitle(id) {
+  const b = availableBooks.value.find((item) => Number(item.id) === Number(id))
+  return b ? b.title : `Buku #${id}`
+}
+
+watch(
+  () => voucherForm.value.isAllBooks,
+  (val) => {
+    if (!val) {
+      ensureBooksLoaded()
+    }
+  },
+)
 
 function openAddVoucher() {
   isEditVoucher.value = false
   currentVoucherId.value = null
+  bookSearchQuery.value = ''
   voucherForm.value = {
     code: '',
     name: '',
@@ -202,6 +279,7 @@ function openAddVoucher() {
     validUntil: '',
     active: true,
     isAllBooks: true,
+    bookIds: [],
     tiers: [],
   }
   showVoucherModal.value = true
@@ -210,15 +288,16 @@ function openAddVoucher() {
 async function openEditVoucher(v) {
   isEditVoucher.value = true
   currentVoucherId.value = v.id
+  bookSearchQuery.value = ''
   let detail = v
 
-  if (v.type === 'tiered' && (!v.tiers || !v.tiers.length)) {
-    try {
-      const response = await api.discount(v.id)
+  try {
+    const response = await api.discount(v.id)
+    if (response?.data) {
       detail = mapVoucher(response.data)
-    } catch {
-      showToast('Detail voucher bertingkat gagal dimuat. Coba lagi.', { type: 'error' })
     }
+  } catch {
+    // Keep detail from prop if detail call fails
   }
 
   voucherForm.value = {
@@ -234,8 +313,14 @@ async function openEditVoucher(v) {
     validUntil: detail.validUntil,
     active: detail.active,
     isAllBooks: detail.isAllBooks !== false,
+    bookIds: Array.isArray(detail.bookIds) ? [...detail.bookIds] : [],
     tiers: (detail.tiers || []).map((tier) => ({ ...tier })),
   }
+
+  if (!voucherForm.value.isAllBooks) {
+    ensureBooksLoaded()
+  }
+
   showVoucherModal.value = true
 }
 
@@ -279,6 +364,11 @@ async function handleSaveVoucher() {
     }
   }
 
+  if (!voucherForm.value.isAllBooks && (!voucherForm.value.bookIds || !voucherForm.value.bookIds.length)) {
+    showToast('Pilih minimal satu buku jika voucher dibatasi untuk buku tertentu.', { type: 'error' })
+    return
+  }
+
   const code = voucherForm.value.code
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, '')
@@ -302,7 +392,7 @@ async function handleSaveVoucher() {
     min_purchase: Number(voucherForm.value.minSpend) || 0,
     quota: Number(voucherForm.value.quota) || 0,
     max_discount_amount:
-      voucherForm.value.type === 'percentage' &&
+      (voucherForm.value.type === 'percentage' || voucherForm.value.type === 'tiered') &&
       voucherForm.value.maxDiscount !== null &&
       voucherForm.value.maxDiscount !== ''
         ? Number(voucherForm.value.maxDiscount)
@@ -313,8 +403,14 @@ async function handleSaveVoucher() {
     end_date: endDate,
   }
 
+  if (!voucherForm.value.isAllBooks) {
+    payload.book_ids = voucherForm.value.bookIds.map(Number)
+  }
+
   if (voucherForm.value.type === 'tiered') {
-    payload.tiers = voucherTierPayload(voucherForm.value.tiers)
+    payload.tiers = voucherTierPayload(voucherForm.value.tiers).sort(
+      (a, b) => a.min_spend - b.min_spend,
+    )
   }
 
   try {
@@ -382,8 +478,11 @@ async function toggleVoucher(voucher) {
         : new Date().toISOString(),
       end_date: new Date(`${voucher.validUntil}T23:59:59`).toISOString(),
     }
+    if (!voucher.isAllBooks && voucher.bookIds?.length) {
+      payload.book_ids = voucher.bookIds.map(Number)
+    }
     if (voucher.type === 'tiered') {
-      payload.tiers = voucherTierPayload(voucher.tiers)
+      payload.tiers = voucherTierPayload(voucher.tiers).sort((a, b) => a.min_spend - b.min_spend)
     }
     await api.updateDiscount(voucher.id, payload)
     emit('refresh')
@@ -471,6 +570,20 @@ async function toggleVoucher(voucher) {
                 <td class="p-3 min-w-[200px]">
                   <h5 class="font-outfit font-black text-sm text-black">{{ v.name }}</h5>
                   <p class="font-sans text-xs text-muted-foreground mt-0.5">{{ v.desc }}</p>
+                  <div class="mt-1 flex items-center gap-1.5 flex-wrap">
+                    <span
+                      v-if="v.isAllBooks"
+                      class="inline-block px-1.5 py-0.5 bg-blue-100 text-blue-800 border border-black font-outfit font-bold text-[10px] rounded-[2px]"
+                    >
+                      Semua Buku
+                    </span>
+                    <span
+                      v-else
+                      class="inline-block px-1.5 py-0.5 bg-purple-100 text-purple-800 border border-black font-outfit font-bold text-[10px] rounded-[2px]"
+                    >
+                      {{ v.bookIds?.length ? `${v.bookIds.length} Buku Tertentu` : 'Buku Tertentu' }}
+                    </span>
+                  </div>
                 </td>
                 <td class="p-3 whitespace-nowrap">
                   <span class="font-outfit font-black text-sm text-green-700">
@@ -699,6 +812,7 @@ async function toggleVoucher(voucher) {
                 min="0"
                 :max="voucherForm.type === 'fixed' ? undefined : 100"
                 required
+                @wheel.prevent
                 class="w-full bg-background border-2 border-black p-2.5 font-mono font-bold text-xs outline-none focus:border-black shadow-neo-sm rounded-[2px]"
               />
             </div>
@@ -735,6 +849,7 @@ async function toggleVoucher(voucher) {
                   v-model.number="tier.minPurchase"
                   type="number"
                   min="0"
+                  @wheel.prevent
                   class="w-full bg-background border border-black p-1.5 font-mono text-xs rounded-[2px]"
                 />
               </div>
@@ -754,6 +869,7 @@ async function toggleVoucher(voucher) {
                   v-model.number="tier.rewardValue"
                   type="number"
                   min="0"
+                  @wheel.prevent
                   class="w-full bg-background border border-black p-1.5 font-mono text-xs rounded-[2px]"
                 />
               </div>
@@ -764,6 +880,7 @@ async function toggleVoucher(voucher) {
                   type="number"
                   min="0"
                   :disabled="tier.rewardType !== 'percentage'"
+                  @wheel.prevent
                   class="w-full bg-background border border-black p-1.5 font-mono text-xs rounded-[2px] disabled:bg-neutral-100"
                 />
               </div>
@@ -788,6 +905,7 @@ async function toggleVoucher(voucher) {
                 v-model.number="voucherForm.minSpend"
                 type="number"
                 min="0"
+                @wheel.prevent
                 class="w-full bg-background border-2 border-black p-2.5 font-mono font-bold text-xs outline-none focus:border-black shadow-neo-sm rounded-[2px]"
               />
             </div>
@@ -799,8 +917,9 @@ async function toggleVoucher(voucher) {
                 v-model.number="voucherForm.maxDiscount"
                 type="number"
                 min="0"
-                :disabled="voucherForm.type !== 'percentage'"
+                :disabled="voucherForm.type === 'fixed'"
                 placeholder="Kosongkan jika tidak dibatasi"
+                @wheel.prevent
                 class="w-full bg-background border-2 border-black p-2.5 font-mono font-bold text-xs outline-none focus:border-black shadow-neo-sm rounded-[2px] disabled:bg-neutral-100 disabled:text-neutral-400"
               />
             </div>
@@ -814,6 +933,7 @@ async function toggleVoucher(voucher) {
                 type="number"
                 min="1"
                 required
+                @wheel.prevent
                 class="w-full bg-background border-2 border-black p-2.5 font-mono font-bold text-xs outline-none focus:border-black shadow-neo-sm rounded-[2px]"
               />
             </div>
@@ -846,30 +966,168 @@ async function toggleVoucher(voucher) {
             ></textarea>
           </div>
 
-          <div class="space-y-2">
-            <div class="flex items-center gap-2">
-              <input
-                id="voucherAllBooks"
-                v-model="voucherForm.isAllBooks"
-                type="checkbox"
-                class="w-4 h-4 rounded-[2px] border-2 border-black text-black focus:ring-0 cursor-pointer accent-black"
-              />
-              <label for="voucherAllBooks" class="font-outfit font-bold text-xs cursor-pointer">
-                Berlaku untuk semua buku katalog
-              </label>
+          <!-- Cakupan Buku (Semua Buku vs Buku Tertentu) -->
+          <div class="space-y-3 border-2 border-black p-3.5 bg-neutral-50 rounded-[2px]">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <input
+                  id="voucherAllBooks"
+                  v-model="voucherForm.isAllBooks"
+                  type="checkbox"
+                  class="w-4 h-4 rounded-[2px] border-2 border-black text-black focus:ring-0 cursor-pointer accent-black"
+                />
+                <label for="voucherAllBooks" class="font-outfit font-black text-xs uppercase cursor-pointer text-black">
+                  Berlaku untuk semua buku di katalog
+                </label>
+              </div>
+              <span
+                v-if="!voucherForm.isAllBooks"
+                class="text-[11px] font-outfit font-black px-2 py-0.5 rounded-[2px] border border-black shadow-neo-xs"
+                :class="voucherForm.bookIds.length ? 'bg-neo-lime text-black' : 'bg-red-100 text-red-700'"
+              >
+                {{ voucherForm.bookIds.length ? `${voucherForm.bookIds.length} buku dipilih` : 'Belum ada buku dipilih' }}
+              </span>
             </div>
 
-            <div class="flex items-center gap-2">
-              <input
-                id="voucherActive"
-                v-model="voucherForm.active"
-                type="checkbox"
-                class="w-4 h-4 rounded-[2px] border-2 border-black text-black focus:ring-0 cursor-pointer accent-black"
-              />
-              <label for="voucherActive" class="font-outfit font-bold text-xs cursor-pointer">
-                Aktifkan voucher ini segera setelah disimpan
-              </label>
+            <!-- Jika Hanya Berlaku untuk Buku Tertentu: Tampilkan Book Picker -->
+            <div v-if="!voucherForm.isAllBooks" class="space-y-3 pt-2.5 border-t-2 border-black/10">
+              <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-1.5">
+                <p class="font-sans text-[11px] text-neutral-600">
+                  Pilih buku tertentu yang memenuhi syarat voucher ini:
+                </p>
+                <div class="flex items-center gap-2 text-[11px]">
+                  <button
+                    v-if="filteredBookList.length"
+                    type="button"
+                    class="font-outfit font-bold text-blue-700 hover:text-blue-900 underline cursor-pointer"
+                    @click="selectAllFilteredBooks"
+                  >
+                    Pilih Semua Hasil ({{ filteredBookList.length }})
+                  </button>
+                  <span v-if="filteredBookList.length && voucherForm.bookIds.length">·</span>
+                  <button
+                    v-if="voucherForm.bookIds.length"
+                    type="button"
+                    class="font-outfit font-bold text-red-600 hover:text-red-800 underline cursor-pointer"
+                    @click="voucherForm.bookIds = []"
+                  >
+                    Hapus Pilihan ({{ voucherForm.bookIds.length }})
+                  </button>
+                </div>
+              </div>
+
+              <!-- Input Pencarian Buku -->
+              <div class="relative">
+                <input
+                  v-model="bookSearchQuery"
+                  type="text"
+                  placeholder="Cari buku berdasarkan judul, penulis, atau ISBN..."
+                  class="w-full bg-white border-2 border-black p-2 pl-8 font-sans text-xs outline-none focus:border-black shadow-neo-xs rounded-[2px]"
+                />
+                <svg
+                  class="w-3.5 h-3.5 text-neutral-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  viewBox="0 0 24 24"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                </svg>
+                <button
+                  v-if="bookSearchQuery"
+                  type="button"
+                  class="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-black text-xs font-bold p-1 cursor-pointer"
+                  @click="bookSearchQuery = ''"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <!-- Selected Books Chips -->
+              <div
+                v-if="voucherForm.bookIds.length"
+                class="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto p-1.5 border border-black rounded-[2px] bg-white shadow-neo-xs"
+              >
+                <span
+                  v-for="bId in voucherForm.bookIds"
+                  :key="`selected-chip-${bId}`"
+                  class="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-100 text-black border border-black rounded-[2px] font-sans text-[11px] font-medium"
+                >
+                  <span class="max-w-[160px] truncate">{{ getBookTitle(bId) }}</span>
+                  <button
+                    type="button"
+                    class="hover:text-red-700 font-black ml-0.5 cursor-pointer text-xs leading-none"
+                    title="Hapus buku ini"
+                    @click="toggleBookSelection(bId)"
+                  >
+                    ✕
+                  </button>
+                </span>
+              </div>
+
+              <!-- Daftar Buku Scrollable dengan Thumbnail & Info -->
+              <div class="border-2 border-black rounded-[2px] max-h-60 overflow-y-auto divide-y divide-black/10 bg-white">
+                <div v-if="booksLoading" class="p-4 text-center font-outfit text-xs text-neutral-500">
+                  <span class="inline-block w-3.5 h-3.5 border-2 border-black border-t-transparent animate-spin mr-1.5 align-middle"></span>
+                  Memuat daftar buku...
+                </div>
+                <div v-else-if="!filteredBookList.length" class="p-4 text-center font-sans text-xs text-neutral-500">
+                  Tidak ada buku yang sesuai dengan pencarian.
+                </div>
+                <div
+                  v-for="book in filteredBookList"
+                  :key="`book-item-${book.id}`"
+                  class="flex items-center gap-3 p-2 hover:bg-neutral-50 cursor-pointer transition-colors"
+                  :class="{ 'bg-neo-yellow/20': voucherForm.bookIds.includes(book.id) }"
+                  @click="toggleBookSelection(book.id)"
+                >
+                  <input
+                    type="checkbox"
+                    :checked="voucherForm.bookIds.includes(book.id)"
+                    class="w-4 h-4 rounded-[2px] border-2 border-black text-black focus:ring-0 cursor-pointer accent-black shrink-0"
+                    @click.stop="toggleBookSelection(book.id)"
+                  />
+                  <img
+                    v-if="book.coverImage || book.cover"
+                    :src="assetUrl(book.coverImage || book.cover)"
+                    :alt="book.title"
+                    class="w-8 h-11 object-cover border border-black rounded-[1px] shrink-0 bg-neutral-200"
+                    @error="(e) => (e.target.style.display = 'none')"
+                  />
+                  <div
+                    v-else
+                    class="w-8 h-11 bg-neutral-200 border border-black rounded-[1px] shrink-0 flex items-center justify-center text-[9px] font-bold text-neutral-400"
+                  >
+                    N/A
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="font-outfit font-black text-xs text-black truncate leading-tight">
+                      {{ book.title }}
+                    </p>
+                    <p class="font-sans text-[11px] text-neutral-500 truncate mt-0.5">
+                      {{ book.author || 'Tanpa Penulis' }} · {{ book.category || 'Umum' }}
+                    </p>
+                  </div>
+                  <div class="text-right shrink-0">
+                    <p class="font-mono font-bold text-xs text-black">
+                      {{ formatRupiah(book.price) }}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <input
+              id="voucherActive"
+              v-model="voucherForm.active"
+              type="checkbox"
+              class="w-4 h-4 rounded-[2px] border-2 border-black text-black focus:ring-0 cursor-pointer accent-black"
+            />
+            <label for="voucherActive" class="font-outfit font-bold text-xs cursor-pointer">
+              Aktifkan voucher ini segera setelah disimpan
+            </label>
           </div>
 
           <div class="border-t-2 border-black pt-4 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2">

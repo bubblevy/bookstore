@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api, session } from '@/lib/api'
 import { subscribeOrderSSE } from '@/lib/sse'
@@ -273,7 +273,11 @@ function initSSE() {
       if (order.value) {
         if (!order.value.shipping) order.value.shipping = {}
         if (payload.shipping_status) order.value.shipping.status = payload.shipping_status
-        if (payload.tracking_number) order.value.shipping.tracking_number = payload.tracking_number
+        const waybill = payload.waybill_number || payload.tracking_number
+        if (waybill) {
+          order.value.shipping.tracking_number = waybill
+          order.value.shipping.waybill_number = waybill
+        }
         if (payload.order_status) order.value.status = payload.order_status
       }
       fetchOrderDetail(true)
@@ -283,6 +287,13 @@ function initSSE() {
     },
   })
 }
+
+watch(invoiceNumber, (newInv) => {
+  if (newInv) {
+    fetchOrderDetail()
+    initSSE()
+  }
+})
 
 onMounted(async () => {
   await bootstrap()

@@ -132,14 +132,13 @@ async function refreshAccessToken() {
   if (refreshPromise) return refreshPromise
 
   const refreshToken = session.refreshToken
-  if (!refreshToken) return false
 
   refreshPromise = (async () => {
     try {
       const response = await fetch(`${BASE_URL}/v1/auth/refresh-token`, {
         method: 'POST',
         headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: refreshToken }),
+        body: JSON.stringify(refreshToken ? { refresh_token: refreshToken } : {}),
         signal: timeoutSignal(),
         credentials: 'include',
       })
@@ -151,7 +150,7 @@ async function refreshAccessToken() {
 
       session.set({
         access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token || refreshToken,
+        refresh_token: tokens.refresh_token || refreshToken || '',
       })
       return true
     } catch {

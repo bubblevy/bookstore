@@ -641,6 +641,7 @@ async function togglePayment(method) {
                 type="number"
                 min="0"
                 placeholder="Contoh: 2500 (0 jika gratis)"
+                @wheel.prevent
                 class="w-full bg-background border-2 border-black p-2.5 font-outfit font-bold text-xs outline-none focus:border-black shadow-neo-sm rounded-[2px]"
               />
             </div>
@@ -654,6 +655,7 @@ async function togglePayment(method) {
                 min="0"
                 step="0.0001"
                 placeholder="Contoh: 0.007 untuk 0,7%"
+                @wheel.prevent
                 class="w-full bg-background border-2 border-black p-2.5 font-outfit font-bold text-xs outline-none focus:border-black shadow-neo-sm rounded-[2px]"
               />
               <p class="font-sans text-[10px] text-muted-foreground mt-1">

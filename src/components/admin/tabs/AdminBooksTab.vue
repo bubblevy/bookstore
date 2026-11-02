@@ -891,6 +891,7 @@ async function updateBookStock(bookId, amount) {
                 type="number"
                 required
                 placeholder="Contoh: 89000"
+                @wheel.prevent
                 class="w-full bg-background border-2 border-black p-2 font-outfit font-bold text-sm outline-none shadow-neo-sm"
               />
             </div>
@@ -902,6 +903,7 @@ async function updateBookStock(bookId, amount) {
                 v-model="bookForm.originalPrice"
                 type="number"
                 placeholder="Contoh: 120000"
+                @wheel.prevent
                 class="w-full bg-background border-2 border-black p-2 font-outfit font-bold text-sm outline-none shadow-neo-sm"
               />
             </div>
@@ -914,6 +916,7 @@ async function updateBookStock(bookId, amount) {
                 type="number"
                 required
                 placeholder="Contoh: 15"
+                @wheel.prevent
                 class="w-full bg-background border-2 border-black p-2 font-outfit font-bold text-sm outline-none shadow-neo-sm"
               />
             </div>
@@ -1095,6 +1098,7 @@ async function updateBookStock(bookId, amount) {
                 min="1"
                 required
                 placeholder="Contoh: 250"
+                @wheel.prevent
                 class="w-full bg-background border-2 border-black p-2 font-outfit font-bold text-sm outline-none focus:border-black shadow-neo-sm"
               />
             </div>
@@ -1109,6 +1113,7 @@ async function updateBookStock(bookId, amount) {
                 min="1"
                 required
                 placeholder="Contoh: 150"
+                @wheel.prevent
                 class="w-full bg-background border-2 border-black p-2 font-outfit font-bold text-sm outline-none shadow-neo-sm"
               />
             </div>
@@ -1135,7 +1140,7 @@ async function updateBookStock(bookId, amount) {
 
           <div class="space-y-1">
             <label class="block font-outfit font-black text-xs uppercase text-neutral-800">
-              Dimensi Fisik Buku (Panjang × Lebar × Tebal)
+              Dimensi Buku
             </label>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
@@ -1149,6 +1154,7 @@ async function updateBookStock(bookId, amount) {
                   min="0.1"
                   required
                   placeholder="Contoh: 20"
+                  @wheel.prevent
                   class="w-full bg-background border-2 border-black p-2 font-outfit font-bold text-sm outline-none shadow-neo-sm"
                 />
               </div>
@@ -1163,6 +1169,7 @@ async function updateBookStock(bookId, amount) {
                   min="0.1"
                   required
                   placeholder="Contoh: 13.5"
+                  @wheel.prevent
                   class="w-full bg-background border-2 border-black p-2 font-outfit font-bold text-sm outline-none shadow-neo-sm"
                 />
               </div>
@@ -1176,14 +1183,12 @@ async function updateBookStock(bookId, amount) {
                   step="0.1"
                   min="0.1"
                   required
-                  placeholder="Contoh: 2 (tebal punggung)"
+                  placeholder="Contoh: 2"
+                  @wheel.prevent
                   class="w-full bg-background border-2 border-black p-2 font-outfit font-bold text-sm outline-none shadow-neo-sm"
                 />
               </div>
             </div>
-            <p class="text-[11px] font-sans text-neutral-500 italic mt-0.5">
-              *Tinggi dihitung sebagai ketebalan punggung buku (spine) saat buku diletakkan mendatar untuk keperluan logistik paket pengiriman.
-            </p>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
