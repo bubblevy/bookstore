@@ -19,8 +19,10 @@ export function themeFor(value = '') {
 
 export function mapCategory(raw = {}, index = 0) {
   const style = CATEGORY_STYLES[index % CATEGORY_STYLES.length]
+  const numericId = Number(raw.id) || 0
   return {
-    id: raw.slug || raw.id,
+    id: raw.id ?? raw.slug,
+    numericId,
     slug: raw.slug || '',
     name: raw.name || 'Kategori',
     count: `${raw.total_books ?? 0} Buku`,
@@ -31,6 +33,8 @@ export function mapCategory(raw = {}, index = 0) {
     bg: style.bg,
     text: style.text,
     image: raw.image_url || raw.image || raw.icon_url || raw.thumbnail || '',
+    createdAt: raw.created_at || raw.createdAt || '',
+    raw,
   }
 }
 

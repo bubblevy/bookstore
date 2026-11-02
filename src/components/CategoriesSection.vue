@@ -4,7 +4,18 @@ import { useStore } from '@/composables/useStore'
 import { assetUrl } from '@/lib/assets'
 
 const { state } = useStore()
-const categories = computed(() => state.categories)
+const categories = computed(() => {
+  return [...state.categories].sort((a, b) => {
+    if (a.createdAt && b.createdAt) {
+      const timeDiff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      if (timeDiff !== 0) return timeDiff
+    }
+    const idA = Number(a.numericId ?? a.id) || 0
+    const idB = Number(b.numericId ?? b.id) || 0
+    if (idA && idB && idA !== idB) return idA - idB
+    return 0
+  })
+})
 const failedImages = reactive({})
 const loadedImages = reactive({})
 

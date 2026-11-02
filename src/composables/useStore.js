@@ -664,7 +664,14 @@ async function loadCategories() {
   state.categoriesLoading = true
   try {
     const response = await api.categories()
-    state.categories = (response.data || []).map((category, index) => mapCategory(category, index))
+    const rawList = [...(response.data || [])].sort((a, b) => {
+      if (a.created_at && b.created_at) {
+        const timeDiff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        if (timeDiff !== 0) return timeDiff
+      }
+      return (Number(a.id) || 0) - (Number(b.id) || 0)
+    })
+    state.categories = rawList.map((category, index) => mapCategory(category, index))
   } catch (error) {
     showToast(errorText(error, 'Gagal memuat kategori'), { type: 'error' })
   } finally {
