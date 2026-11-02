@@ -162,16 +162,6 @@ const visibleBooks = computed(() => {
           :delay="(idx % 4) * 90"
         />
       </div>
-
-      <div v-if="!isPopularLoading && visibleBooks.length > 0" class="mt-10 sm:mt-12 text-center">
-        <router-link
-          :to="{ path: '/catalog', query: { sort: 'popular' } }"
-          class="neubrutal-btn bg-neo-yellow text-black border-3 border-black py-3 px-8 rounded-[2px] font-outfit font-black text-xs sm:text-sm shadow-neo hover:bg-yellow-300 active:translate-x-0.5 active:translate-y-0.5 inline-flex items-center gap-2 cursor-pointer"
-        >
-          <span>Lihat Semua Buku Populer</span>
-          <span class="text-base font-bold">→</span>
-        </router-link>
-      </div>
     </div>
   </section>
 </template>
