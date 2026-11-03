@@ -708,7 +708,7 @@ async function checkSelectedPayment() {
     @click.self="showTrackingModal = false"
   >
     <div
-      class="bg-white border-2 sm:border-3 border-black max-w-lg w-full rounded-[2px] shadow-neo-sm overflow-hidden animate-hero-entrance flex flex-col max-h-[88vh]"
+      class="bg-white border-2 sm:border-3 border-black max-w-lg w-full rounded-[2px] shadow-neo-sm sm:shadow-neo overflow-hidden animate-hero-entrance flex flex-col max-h-[88vh]"
     >
       <div class="bg-neo-yellow border-b-2 sm:border-b-3 border-black p-3.5 sm:p-4 flex items-center justify-between shrink-0">
         <div class="flex items-center gap-2">
@@ -861,16 +861,6 @@ async function checkSelectedPayment() {
           </p>
         </div>
       </div>
-
-      <div class="bg-background border-t-2 sm:border-t-3 border-black p-3 text-right shrink-0">
-        <button
-          type="button"
-          class="neubrutal-btn bg-black text-white border-2 border-black px-5 py-2 font-outfit font-black text-xs shadow-neo-sm hover:bg-neutral-800 cursor-pointer"
-          @click="showTrackingModal = false"
-        >
-          Tutup
-        </button>
-      </div>
     </div>
   </div>
 
@@ -880,7 +870,7 @@ async function checkSelectedPayment() {
     @click.self="showInvoiceModal = false"
   >
     <div
-      class="bg-white border-2 sm:border-3 border-black max-w-xl w-full rounded-[2px] shadow-neo-sm overflow-hidden max-h-[90vh] flex flex-col animate-hero-entrance"
+      class="bg-white border-2 sm:border-3 border-black max-w-xl w-full rounded-[2px] shadow-neo-sm sm:shadow-neo overflow-hidden max-h-[90vh] flex flex-col animate-hero-entrance"
     >
       <div class="bg-white border-b-2 sm:border-b-3 border-black p-4 sm:p-5 flex items-center justify-between shrink-0">
         <div>
