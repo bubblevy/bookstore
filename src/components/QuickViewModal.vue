@@ -57,7 +57,7 @@ function handleGoToDetail() {
     >
       <transition name="modal-pop" appear>
         <div
-          class="w-full max-w-[680px] max-h-[90vh] overflow-y-auto bg-background border-4 border-black rounded-[2px] p-6 md:p-8 shadow-[10px_10px_0px_0px_var(--color-black)]"
+          class="w-full max-w-[680px] max-h-[90vh] overflow-y-auto bg-background border-2 sm:border-3 border-black rounded-[2px] p-5 md:p-8 shadow-neo-sm sm:shadow-neo"
         >
           <div class="flex items-center justify-between mb-5">
             <span

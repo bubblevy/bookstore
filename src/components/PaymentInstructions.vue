@@ -119,15 +119,33 @@ function titleCase(value) {
   return text.replace(/\b\w/g, (char) => char.toUpperCase())
 }
 
-function instructionSteps(html) {
-  if (!html) return []
-  const doc = new DOMParser().parseFromString(String(html), 'text/html')
+function instructionSteps(source) {
+  if (!source) return []
+  if (Array.isArray(source)) {
+    return source
+      .map((item) => (typeof item === 'string' ? item : item?.step || item?.text || '')?.trim())
+      .filter(Boolean)
+  }
+  const str = String(source).trim()
+  if (!str) return []
+  if (!/<[a-z][\s\S]*>/i.test(str)) {
+    return str
+      .split('\n')
+      .map((line) => line.trim().replace(/^\d+[\.\)]\s*/, ''))
+      .filter(Boolean)
+  }
+  const doc = new DOMParser().parseFromString(str, 'text/html')
   const items = Array.from(doc.querySelectorAll('li'))
     .map((node) => node.textContent.replace(/\s+/g, ' ').trim())
     .filter(Boolean)
   if (items.length) return items
-  return Array.from(doc.querySelectorAll('p'))
+  const pItems = Array.from(doc.querySelectorAll('p'))
     .map((node) => node.textContent.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+  if (pItems.length) return pItems
+  return doc.body.textContent
+    .split('\n')
+    .map((line) => line.trim())
     .filter(Boolean)
 }
 
@@ -136,7 +154,7 @@ const guideSections = computed(() => {
   const parsed = source
     .map((section) => ({
       title: String(section?.title || '').trim(),
-      steps: instructionSteps(section?.content),
+      steps: instructionSteps(section?.content ?? section?.steps ?? section?.instruction),
     }))
     .filter((section) => section.steps.length)
 
@@ -250,7 +268,7 @@ async function copyValue(value, key = 'default') {
 </script>
 
 <template>
-  <div class="bg-white border-2 border-black shadow-neo-sm overflow-hidden">
+  <div class="bg-white border-2 sm:border-3 border-black rounded-[2px] shadow-neo-sm sm:shadow-neo overflow-hidden">
     <div
       v-if="isPaid"
       class="payment-pop bg-neo-lime border-b-3 border-black p-4 sm:p-5 flex items-start gap-3"

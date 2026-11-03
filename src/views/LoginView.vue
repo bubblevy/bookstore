@@ -438,7 +438,7 @@ onMounted(() => {
         @click.self="showForgotModal = false"
       >
         <div
-          class="w-full max-w-sm bg-white border-3 sm:border-4 border-black p-5 sm:p-6 shadow-neo-sm"
+          class="w-full max-w-sm bg-white border-2 sm:border-3 border-black rounded-[2px] p-5 sm:p-6 shadow-neo-sm sm:shadow-neo"
           role="dialog"
           aria-modal="true"
         >
@@ -486,7 +486,7 @@ onMounted(() => {
         @click.self="showResendModal = false"
       >
         <div
-          class="w-full max-w-sm bg-white border-3 sm:border-4 border-black p-5 sm:p-6 shadow-neo-sm"
+          class="w-full max-w-sm bg-white border-2 sm:border-3 border-black rounded-[2px] p-5 sm:p-6 shadow-neo-sm sm:shadow-neo"
           role="dialog"
           aria-modal="true"
         >

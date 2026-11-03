@@ -52,7 +52,7 @@ onUnmounted(() => {
     >
       <transition name="modal-pop" appear>
         <div
-          class="w-full max-w-lg bg-background border-3 sm:border-4 border-black p-4 sm:p-5 shadow-neo sm:shadow-[8px_8px_0px_0px_var(--color-black)] flex flex-col gap-3"
+          class="w-full max-w-lg bg-background border-2 sm:border-3 border-black rounded-[2px] p-4 sm:p-5 shadow-neo-sm sm:shadow-neo flex flex-col gap-3"
         >
                     <div class="flex items-center justify-between">
             <span

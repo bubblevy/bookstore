@@ -754,7 +754,7 @@ function goToDetail(book) {
                 >
                   <div
                     v-if="isMobileSortDropdownOpen"
-                    class="absolute left-0 right-0 top-full mt-1.5 w-full bg-white border-2 border-black rounded-[2px] shadow-neo-md z-50 py-1 overflow-hidden select-none"
+                    class="absolute left-0 right-0 top-full mt-1.5 w-full bg-white border-2 border-black rounded-[2px] shadow-neo-sm sm:shadow-neo z-50 py-1 overflow-hidden select-none"
                     role="listbox"
                   >
                     <div
@@ -872,7 +872,7 @@ function goToDetail(book) {
                   >
                     <div
                       v-if="isSortDropdownOpen"
-                      class="absolute right-0 top-full mt-1.5 w-60 bg-white border-2 border-black rounded-[2px] shadow-neo-md z-50 py-1 overflow-hidden select-none"
+                      class="absolute right-0 top-full mt-1.5 w-60 bg-white border-2 border-black rounded-[2px] shadow-neo-sm sm:shadow-neo z-50 py-1 overflow-hidden select-none"
                       role="listbox"
                     >
                       <div

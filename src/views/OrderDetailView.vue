@@ -327,6 +327,7 @@ onUnmounted(() => {
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <nav
+        v-if="order"
         class="flex items-center gap-2 text-xs font-sans font-bold text-neutral-500 mb-5 overflow-x-auto whitespace-nowrap scrollbar-hide select-none"
         aria-label="Breadcrumb"
       >
@@ -359,33 +360,28 @@ onUnmounted(() => {
       </nav>
 
             <div
-        v-if="error && !loading"
-        class="bg-white border-3 border-black p-6 sm:p-8 shadow-neo text-center space-y-4 max-w-lg mx-auto"
+        v-if="!loading && !order"
+        class="py-16 sm:py-24 text-center max-w-lg mx-auto px-4 space-y-3"
       >
-        <div class="w-12 h-12 bg-red-100 border-2 border-black mx-auto flex items-center justify-center shadow-neo-sm">
-          <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-          </svg>
-        </div>
-        <h2 class="font-outfit font-black text-xl text-black">Gagal Menampilkan Invoice</h2>
-        <p class="font-sans text-xs sm:text-sm text-neutral-600">
-          {{ error }}
+        <h1 class="font-outfit font-black text-2xl sm:text-3xl text-black tracking-tight">
+          Invoice Tidak Ditemukan
+        </h1>
+        <p class="font-sans text-sm sm:text-base text-neutral-600 font-medium leading-relaxed">
+          Invoice atau pesanan yang Anda cari mungkin sedang tidak tersedia dalam sistem kami.
         </p>
-        <div class="flex justify-center gap-3 pt-2">
-          <button
-            type="button"
-            class="neubrutal-btn bg-black text-white border-2 border-black px-4 py-2 font-outfit font-black text-xs shadow-neo-sm hover:shadow-neo cursor-pointer"
-            @click="fetchOrderDetail(false)"
+        <div class="pt-3 flex flex-wrap justify-center gap-3">
+          <router-link
+            to="/dashboard"
+            class="inline-block neubrutal-btn bg-neo-yellow text-black border-2 border-black py-2.5 px-6 rounded-[2px] font-outfit font-black text-sm shadow-neo-sm hover:bg-yellow-300 cursor-pointer transition-all"
           >
-            Coba Lagi
-          </button>
-          <button
-            type="button"
-            class="neubrutal-btn bg-white text-black border-2 border-black px-4 py-2 font-outfit font-black text-xs shadow-neo-sm hover:shadow-neo cursor-pointer"
-            @click="router.push('/dashboard')"
+            Ke Dashboard Pesanan
+          </router-link>
+          <router-link
+            to="/"
+            class="inline-block neubrutal-btn bg-white text-black border-2 border-black py-2.5 px-6 rounded-[2px] font-outfit font-black text-sm shadow-neo-sm hover:bg-gray-100 cursor-pointer transition-all"
           >
-            Ke Dashboard
-          </button>
+            Kembali ke Beranda
+          </router-link>
         </div>
       </div>
 
@@ -393,7 +389,7 @@ onUnmounted(() => {
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
           
                     <div class="lg:col-span-7 space-y-5">
-                        <div class="bg-white border-3 border-black p-5 sm:p-6 shadow-neo space-y-4">
+                        <div class="bg-white border-2 sm:border-3 border-black rounded-[2px] p-5 sm:p-6 shadow-neo-sm sm:shadow-neo space-y-4">
               <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b-2 border-black pb-4">
                 <div>
                   <div class="flex items-center gap-2">
@@ -454,7 +450,7 @@ onUnmounted(() => {
               />
             </div>
 
-                        <div class="bg-white border-3 border-black p-5 sm:p-6 shadow-neo space-y-4">
+                        <div class="bg-white border-2 sm:border-3 border-black rounded-[2px] p-5 sm:p-6 shadow-neo-sm sm:shadow-neo space-y-4">
               <div class="flex items-center justify-between border-b-2 border-black pb-3">
                 <h2 class="font-outfit font-black text-base text-black uppercase tracking-wider">
                   Daftar Buku ({{ items.length }})
@@ -464,7 +460,7 @@ onUnmounted(() => {
                 </span>
               </div>
 
-                            <div class="border-2 border-black overflow-x-auto table-scrollbar shadow-neo-sm bg-white">
+                            <div class="border-2 border-black overflow-x-auto table-scrollbar bg-white">
                 <table class="w-full text-left border-collapse min-w-[460px]">
                   <thead>
                     <tr class="bg-neutral-100 border-b-2 border-black font-outfit font-black text-[11px] uppercase tracking-wider text-black">
@@ -482,7 +478,7 @@ onUnmounted(() => {
                     >
                       <td class="py-3 px-3">
                         <div class="flex items-center gap-3">
-                          <div class="w-10 h-14 shrink-0 border-2 border-black bg-white overflow-hidden flex items-center justify-center shadow-neo-sm">
+                          <div class="w-10 h-14 shrink-0 border border-black rounded-[2px] bg-white overflow-hidden flex items-center justify-center shadow-neo-xs sm:shadow-neo-sm">
                             <img
                               v-if="fullCoverUrl(item)"
                               :src="fullCoverUrl(item)"
@@ -518,7 +514,7 @@ onUnmounted(() => {
                 </table>
               </div>
 
-                            <div class="p-3 bg-neutral-50 border-2 border-black text-[11px] text-neutral-600 space-y-1 shadow-neo-sm">
+                            <div class="p-3 bg-neutral-50 border border-black text-[11px] text-neutral-600 space-y-1">
                 <p class="font-outfit font-black uppercase text-black tracking-wide">Jaminan Toko:</p>
                 <p>• Seluruh buku diproses langsung dari distributor resmi dan dijamin 100% orisinal.</p>
                 <p>• Simpan nomor invoice ini sebagai bukti pembayaran dan klaim garansi pengiriman.</p>
@@ -527,7 +523,7 @@ onUnmounted(() => {
           </div>
 
                     <div class="lg:col-span-5 space-y-5">
-                        <div class="bg-white border-3 border-black p-5 sm:p-6 shadow-neo space-y-4">
+                        <div class="bg-white border-2 sm:border-3 border-black rounded-[2px] p-5 sm:p-6 shadow-neo-sm sm:shadow-neo space-y-4">
               <div class="border-b-2 border-black pb-3">
                 <p class="font-outfit font-black text-sm uppercase tracking-wider text-black">
                   Ringkasan Pembayaran
@@ -566,12 +562,12 @@ onUnmounted(() => {
               </div>
             </div>
 
-                        <div class="bg-white border-3 border-black p-5 sm:p-6 shadow-neo space-y-3.5">
+                        <div class="bg-white border-2 sm:border-3 border-black rounded-[2px] p-5 sm:p-6 shadow-neo-sm sm:shadow-neo space-y-3.5">
               <div class="flex items-center justify-between border-b-2 border-black pb-3">
                 <p class="font-outfit font-black text-sm uppercase tracking-wider text-black">
                   Tujuan Pengiriman
                 </p>
-                <span class="font-mono font-bold text-xs uppercase px-2 py-0.5 border-2 border-black bg-neutral-100 shadow-neo-sm">
+                <span class="font-mono font-bold text-xs uppercase px-2 py-0.5 border border-black bg-neutral-100">
                   {{ (shipping.courier_name || shipping.courier || 'JNE').toUpperCase() }}
                 </span>
               </div>
@@ -596,7 +592,7 @@ onUnmounted(() => {
                   </span>
                 </div>
 
-                                <div v-if="shipping.tracking_number" class="flex justify-between items-center bg-neutral-100 border-2 border-black px-2.5 py-1.5 shadow-neo-sm">
+                                <div v-if="shipping.tracking_number" class="flex justify-between items-center bg-neutral-100 border border-black px-2.5 py-1.5">
                   <div class="flex items-center gap-1.5">
                     <span class="font-sans text-[10px] font-bold text-neutral-500 uppercase">Resi:</span>
                     <span class="font-mono font-black text-xs text-black select-all">{{ shipping.tracking_number }}</span>

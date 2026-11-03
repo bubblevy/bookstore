@@ -500,7 +500,7 @@ onUnmounted(() => {
         @click.self="cancelDelete"
       >
         <div
-          class="w-full max-w-sm bg-white border-2 sm:border-3 border-black rounded-[2px] p-5 sm:p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] animate-hero-entrance"
+          class="w-full max-w-sm bg-white border-2 sm:border-3 border-black rounded-[2px] p-5 sm:p-6 shadow-neo-sm sm:shadow-neo animate-hero-entrance"
           role="dialog"
           aria-modal="true"
         >
@@ -581,7 +581,7 @@ onUnmounted(() => {
         @click.self="isClearConfirmOpen = false"
       >
         <div
-          class="w-full max-w-sm bg-white border-2 sm:border-3 border-black rounded-[2px] p-5 sm:p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] animate-hero-entrance"
+          class="w-full max-w-sm bg-white border-2 sm:border-3 border-black rounded-[2px] p-5 sm:p-6 shadow-neo-sm sm:shadow-neo animate-hero-entrance"
           role="dialog"
           aria-modal="true"
         >

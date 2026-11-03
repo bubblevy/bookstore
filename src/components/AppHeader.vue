@@ -391,7 +391,7 @@ defineExpose({ closeMobile, openMobile })
         @click.self="cancelLogout"
       >
         <div
-          class="w-full max-w-sm bg-white border-3 sm:border-4 border-black p-5 sm:p-6 shadow-[6px_6px_0px_0px_var(--color-black)] sm:shadow-[8px_8px_0px_0px_var(--color-black)]"
+          class="w-full max-w-sm bg-white border-2 sm:border-3 border-black rounded-[2px] p-5 sm:p-6 shadow-neo-sm sm:shadow-neo"
           role="dialog"
           aria-modal="true"
           aria-labelledby="logout-confirm-title"
@@ -490,21 +490,19 @@ defineExpose({ closeMobile, openMobile })
             v-for="item in STORE_NAV"
             :key="item.label"
             :href="item.to || item.hash"
-            class="py-2.5 border-b-2 border-black/10 hover:text-neo-violet flex items-center justify-between"
+            class="py-2.5 border-b-2 border-black/10 hover:text-neo-violet block"
             @click.prevent="navigateToSection(item)"
           >
             <span>{{ item.label }}</span>
-            <span class="text-xs font-mono text-muted-foreground">→</span>
           </a>
 
           <router-link
             v-if="state.isLoggedIn"
             :to="isAdminMode ? '/admin' : '/dashboard'"
-            class="py-2.5 border-b-2 border-black/10 hover:text-neo-violet flex items-center justify-between"
+            class="py-2.5 border-b-2 border-black/10 hover:text-neo-violet block"
             @click="closeMobile"
           >
             <span>Dashboard</span>
-            <span class="text-xs font-mono text-muted-foreground">→</span>
           </router-link>
         </nav>
 

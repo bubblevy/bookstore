@@ -77,19 +77,83 @@ function instructionTextToHtml(value) {
   return items ? `<ol>${items}</ol>` : ''
 }
 
-function instructionHtmlToText(html) {
-  if (!html) return ''
-  const doc = new DOMParser().parseFromString(String(html), 'text/html')
-  const items = Array.from(doc.querySelectorAll('li')).map((node) =>
-    node.textContent.replace(/\s+/g, ' ').trim(),
-  )
-  const fallback = Array.from(doc.querySelectorAll('p')).map((node) =>
-    node.textContent.replace(/\s+/g, ' ').trim(),
-  )
-  return (items.length ? items : fallback).filter(Boolean).join('\n')
+function instructionHtmlToText(value) {
+  if (!value) return ''
+  if (Array.isArray(value)) {
+    return value
+      .map((item) =>
+        typeof item === 'string'
+          ? item.trim()
+          : String(item?.step || item?.text || item?.content || '').trim(),
+      )
+      .filter(Boolean)
+      .join('\n')
+  }
+
+  const str = String(value).trim()
+  if (!str) return ''
+
+  // Jika berupa teks biasa tanpa tag HTML
+  if (!/<[a-z][\s\S]*>/i.test(str)) {
+    return str
+  }
+
+  const doc = new DOMParser().parseFromString(str, 'text/html')
+  const items = Array.from(doc.querySelectorAll('li'))
+    .map((node) => node.textContent.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+  if (items.length) {
+    return items.join('\n')
+  }
+
+  const fallback = Array.from(doc.querySelectorAll('p'))
+    .map((node) => node.textContent.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+  if (fallback.length) {
+    return fallback.join('\n')
+  }
+
+  return (doc.body?.textContent || '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join('\n')
+}
+
+function extractInstructionList(source) {
+  if (!source) return []
+  let guides = source
+  if (typeof guides === 'string') {
+    try {
+      guides = JSON.parse(guides)
+    } catch {
+      return []
+    }
+  }
+  if (!Array.isArray(guides) && typeof guides === 'object' && guides !== null) {
+    guides = Object.values(guides)
+  }
+  if (!Array.isArray(guides)) return []
+
+  return guides
+    .map((g) => {
+      if (!g) return null
+      const title = String(g.title || g.name || '').trim()
+      const rawSteps =
+        g.content !== undefined
+          ? g.content
+          : g.steps !== undefined
+            ? g.steps
+            : g.instruction || g.instructions || g.body || ''
+      const steps = instructionHtmlToText(rawSteps)
+      return { title, steps }
+    })
+    .filter(Boolean)
+    .filter((g) => g.title || g.steps)
 }
 
 const showInstructionPreview = ref(false)
+const loadingPaymentDetail = ref(false)
 
 const instructionTemplates = [
   {
@@ -269,6 +333,8 @@ async function openEditPayment(method) {
   currentPaymentId.value = method.id
   currentPaymentImage.value = method.image || ''
   paymentDraftLogo.value = null
+
+  const initialGuides = extractInstructionList(method.instructions || method.instruction)
   paymentForm.value = {
     code: method.code || '',
     name: method.name || '',
@@ -279,18 +345,21 @@ async function openEditPayment(method) {
     feeAmount: Number(method.fee_amount) || 0,
     feePercent: Number(method.fee_percent) || 0,
     isActive: method.is_active !== false,
-    instructions: [],
+    instructions: initialGuides,
   }
   showPaymentModal.value = true
+  loadingPaymentDetail.value = true
 
   try {
     const response = await api.paymentMethod(method.id)
-    const detail = response.data || {}
-    const rawGuides = Array.isArray(detail.instructions)
-      ? detail.instructions
-      : typeof detail.instructions === 'object' && detail.instructions !== null
-        ? Object.values(detail.instructions)
-        : []
+    const detail = response?.data || response || {}
+    const detailGuides = extractInstructionList(
+      detail.instructions !== undefined
+        ? detail.instructions
+        : detail.instruction !== undefined
+          ? detail.instruction
+          : method.instructions || method.instruction,
+    )
 
     currentPaymentImage.value = detail.image || currentPaymentImage.value
     paymentForm.value = {
@@ -303,13 +372,13 @@ async function openEditPayment(method) {
       feeAmount: Number(detail.fee_amount) || 0,
       feePercent: Number(detail.fee_percent) || 0,
       isActive: detail.is_active !== false,
-      instructions: rawGuides.map((g) => ({
-        title: g.title || '',
-        steps: instructionHtmlToText(g.steps),
-      })),
+      instructions: detailGuides.length ? detailGuides : paymentForm.value.instructions,
     }
-  } catch {
-      }
+  } catch (error) {
+    console.error('Failed to load payment method detail:', error)
+  } finally {
+    loadingPaymentDetail.value = false
+  }
 }
 
 function addInstructionSection() {
@@ -335,11 +404,15 @@ async function handleSavePayment() {
   try {
     savingPayment.value = true
     const instructions = paymentForm.value.instructions
-      .map((item) => ({
-        title: item.title.trim(),
-        steps: instructionTextToHtml(item.steps),
-      }))
-      .filter((item) => item.title && item.steps)
+      .map((item) => {
+        const html = instructionTextToHtml(item.steps)
+        return {
+          title: item.title.trim(),
+          content: html,
+          steps: html,
+        }
+      })
+      .filter((item) => item.title && (item.content || item.steps))
 
     const payload = {
       name: paymentForm.value.name.trim(),
@@ -347,6 +420,7 @@ async function handleSavePayment() {
       fee_type: paymentForm.value.feeType,
       fee_amount: Number(paymentForm.value.feeAmount) || 0,
       fee_percent: Number(paymentForm.value.feePercent) || 0,
+      feePercent: Number(paymentForm.value.feePercent) || 0,
       description: paymentForm.value.description.trim(),
       instructions,
       is_active: Boolean(paymentForm.value.isActive),
@@ -744,7 +818,15 @@ async function togglePayment(method) {
 
                         <div v-else class="space-y-4">
               <div
-                v-if="!paymentForm.instructions.length"
+                v-if="loadingPaymentDetail"
+                class="p-8 text-center bg-white border-2 border-dashed border-black rounded-[2px] flex items-center justify-center gap-2"
+              >
+                <div class="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                <span class="font-outfit font-bold text-xs text-black">Memuat panduan instruksi...</span>
+              </div>
+
+              <div
+                v-else-if="!paymentForm.instructions.length"
                 class="p-6 text-center bg-surface border-2 border-dashed border-black rounded-[2px] space-y-2"
               >
                 <p class="font-outfit font-bold text-sm text-black">Belum Ada Panduan Pembayaran</p>

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useStore } from '@/composables/useStore'
 import { assetUrl } from '@/lib/assets'
@@ -22,7 +22,7 @@ const book = ref(null)
 const loading = ref(true)
 const coverError = ref(false)
 const activeTab = ref('sinopsis')
-const isSynopsisExpanded = ref(false)
+const showSynopsisModal = ref(false)
 const SYNOPSIS_LIMIT = 260
 const isSynopsisLong = computed(() => (book.value?.description?.length || 0) > SYNOPSIS_LIMIT)
 const truncatedSynopsis = computed(() => {
@@ -32,6 +32,29 @@ const truncatedSynopsis = computed(() => {
   const lastSpace = cut.lastIndexOf(' ')
   const cleanCut = lastSpace > SYNOPSIS_LIMIT * 0.7 ? cut.slice(0, lastSpace) : cut
   return cleanCut.trim() + '....'
+})
+
+function openSynopsisModal() {
+  showSynopsisModal.value = true
+}
+
+function closeSynopsisModal() {
+  showSynopsisModal.value = false
+}
+
+function handleGlobalKeydown(e) {
+  if (e.key === 'Escape') {
+    if (showSynopsisModal.value) closeSynopsisModal()
+    if (isQtyModalOpen.value) closeQtyModal()
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleGlobalKeydown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleGlobalKeydown)
 })
 
 async function fetchBook() {
@@ -50,7 +73,7 @@ async function fetchBook() {
   }
 
   coverError.value = false
-  isSynopsisExpanded.value = false
+  showSynopsisModal.value = false
   const detailed = await loadBook(slugOrId)
   if (detailed) {
     book.value = detailed
@@ -206,7 +229,7 @@ const specItems = computed(() => {
     { label: 'Nomor ISBN', value: d.isbn || '-' },
     { label: 'Jumlah Halaman', value: `${d.pages || 0} Halaman` },
     { label: 'Bahasa', value: d.language || 'Indonesia' },
-    { label: 'Dimensi (P × L × T)', value: dimStr },
+    { label: 'Dimensi Buku', value: dimStr },
     { label: 'Berat Bersih', value: d.weight || '-' },
     { label: 'Kondisi Fisik', value: d.condition || '100% Baru & Segel Penerbit' },
   ]
@@ -249,7 +272,7 @@ const specItems = computed(() => {
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12 mb-12 sm:mb-16 items-start">
                 <div class="lg:col-span-5 space-y-4">
           <div
-            class="bg-white border-3 border-black rounded-[2px] p-6 sm:p-8 shadow-neo flex flex-col items-center justify-center"
+            class="bg-white border-2 sm:border-3 border-black rounded-[2px] p-6 sm:p-8 shadow-neo-sm sm:shadow-neo flex flex-col items-center justify-center"
           >
             <div
               class="w-full max-w-[260px] sm:max-w-[280px] aspect-[3/3.9] bg-neutral-100 border-2 border-black/20 rounded-[2px] my-3 flex items-center justify-center"
@@ -269,7 +292,7 @@ const specItems = computed(() => {
             <div class="h-6 w-48 bg-neutral-100 border border-black/15 rounded-[2px] mt-2"></div>
           </div>
 
-                    <div class="bg-white border-3 border-black rounded-[2px] p-4 shadow-neo space-y-3">
+                    <div class="bg-white border-2 sm:border-3 border-black rounded-[2px] p-4 shadow-neo-sm sm:shadow-neo space-y-3">
             <div class="h-4 w-3/4 bg-neutral-200 rounded-[2px]"></div>
             <div class="h-4 w-5/6 bg-neutral-200 rounded-[2px]"></div>
             <div class="h-4 w-2/3 bg-neutral-200 rounded-[2px]"></div>
@@ -366,7 +389,7 @@ const specItems = computed(() => {
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12 mb-12 sm:mb-16 items-start">
         <div class="lg:col-span-5 lg:sticky lg:top-24 self-start space-y-4">
           <div
-            class="relative bg-white border-3 border-black rounded-[2px] p-6 sm:p-8 shadow-neo flex flex-col items-center justify-center overflow-hidden group transition-all"
+            class="relative bg-white border-2 sm:border-3 border-black rounded-[2px] p-6 sm:p-8 shadow-neo-sm sm:shadow-neo flex flex-col items-center justify-center overflow-hidden group transition-all"
           >
             <div
               class="w-full max-w-[260px] sm:max-w-[280px] aspect-[5/7] transition-transform duration-300 group-hover:scale-[1.02] flex items-center justify-center shrink-0"
@@ -375,7 +398,7 @@ const specItems = computed(() => {
                 v-if="coverUrl && !coverError"
                 :src="coverUrl"
                 :alt="book.title"
-                class="w-full h-full object-cover border-2 border-black rounded-[2px] shadow-neo block"
+                class="w-full h-full object-cover border border-black sm:border-2 rounded-[2px] shadow-neo-xs sm:shadow-neo-sm block"
                 @error="coverError = true"
               />
               <BookCover
@@ -384,12 +407,12 @@ const specItems = computed(() => {
                 :title="book.title"
                 :author="book.author"
                 :accent="book.accentColor"
-                class="w-full h-full shadow-neo block"
+                class="w-full h-full shadow-neo-xs sm:shadow-neo-sm block"
               />
             </div>
           </div>
 
-          <div class="bg-white border-3 border-black rounded-[2px] p-4 shadow-neo space-y-2.5">
+          <div class="bg-white border-2 sm:border-3 border-black rounded-[2px] p-4 shadow-neo-sm sm:shadow-neo space-y-2.5">
             <div class="flex items-center gap-2.5 text-xs font-sans font-bold text-black">
               <svg
                 class="w-4 h-4 text-black shrink-0"
@@ -660,33 +683,32 @@ const specItems = computed(() => {
             </div>
 
             <div
-              class="bg-white border-3 border-black rounded-[2px] p-5 sm:p-6 shadow-neo min-h-auto"
+              class="bg-white border-2 sm:border-3 border-black rounded-[2px] p-5 sm:p-6 shadow-neo-sm sm:shadow-neo min-h-auto"
             >
               <div v-if="activeTab === 'sinopsis'" class="space-y-3.5">
                 <div
                   class="font-sans text-sm sm:text-base leading-relaxed text-black/90 font-medium whitespace-pre-line"
                 >
-                  {{ isSynopsisExpanded || !isSynopsisLong ? book.description : truncatedSynopsis }}
+                  {{ isSynopsisLong ? truncatedSynopsis : book.description }}
                 </div>
 
                 <button
                   v-if="isSynopsisLong"
                   type="button"
                   class="inline-flex items-center gap-1.5 font-outfit font-black text-xs sm:text-sm text-black hover:text-neo-violet transition-colors cursor-pointer select-none group"
-                  @click="isSynopsisExpanded = !isSynopsisExpanded"
+                  @click="openSynopsisModal"
                 >
                   <span class="underline underline-offset-4 decoration-2">
-                    {{ isSynopsisExpanded ? 'Tampilkan Lebih Sedikit' : 'Lihat Lebih Lengkap' }}
+                    Lihat Lebih Lengkap
                   </span>
                   <svg
-                    class="w-4 h-4 transition-transform duration-200 group-hover:translate-y-0.5"
-                    :class="{ 'rotate-180': isSynopsisExpanded }"
+                    class="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5"
                     fill="none"
                     stroke="currentColor"
                     stroke-width="2.5"
                     viewBox="0 0 24 24"
                   >
-                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                   </svg>
                 </button>
               </div>
@@ -823,6 +845,68 @@ const specItems = computed(() => {
     </template>
 
     <Teleport to="body">
+      <!-- Modal Sinopsis Lengkap -->
+      <transition name="modal-fade">
+        <div
+          v-if="showSynopsisModal && book"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-[2px] select-none"
+          @click.self="closeSynopsisModal"
+        >
+          <transition name="modal-pop" appear>
+            <div
+              class="relative w-full max-w-2xl bg-white border-2 sm:border-3 border-black rounded-[2px] shadow-neo-sm sm:shadow-neo flex flex-col max-h-[85vh] overflow-hidden"
+            >
+              <!-- Modal Header -->
+              <div
+                class="p-4 sm:p-5 border-b-2 border-black flex items-start justify-between gap-4 bg-white shrink-0"
+              >
+                <div class="pr-6 min-w-0">
+                  <span
+                    class="text-[10px] font-outfit font-black uppercase tracking-wider text-neo-violet block"
+                  >
+                    SINOPSIS BUKU
+                  </span>
+                  <h3 class="font-outfit font-black text-lg sm:text-xl text-black line-clamp-1 mt-0.5">
+                    {{ book.title }}
+                  </h3>
+                  <p v-if="book.author" class="text-xs font-sans font-bold text-muted-foreground mt-0.5 truncate">
+                    Karya {{ book.author }}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  class="w-8 h-8 rounded-[2px] border-2 border-black bg-white hover:bg-gray-100 flex items-center justify-center font-black text-sm shadow-neo-sm transition-colors cursor-pointer shrink-0"
+                  aria-label="Tutup sinopsis"
+                  @click="closeSynopsisModal"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <!-- Modal Body (Scrollable) -->
+              <div class="p-5 sm:p-6 overflow-y-auto overscroll-contain select-text">
+                <div
+                  class="font-sans text-sm sm:text-base leading-relaxed text-black/90 font-medium whitespace-pre-line"
+                >
+                  {{ book.description }}
+                </div>
+              </div>
+
+              <!-- Modal Footer -->
+              <div class="p-3.5 sm:p-4 border-t-2 border-black bg-neutral-50 flex justify-end shrink-0">
+                <button
+                  type="button"
+                  class="neubrutal-btn bg-neo-yellow text-black border-2 border-black py-2 px-5 rounded-[2px] font-outfit font-black text-xs sm:text-sm shadow-neo-sm hover:bg-yellow-300 active:translate-x-0.5 active:translate-y-0.5 transition-all text-center cursor-pointer"
+                  @click="closeSynopsisModal"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </transition>
+        </div>
+      </transition>
+
       <transition name="modal-fade">
         <div
           v-if="isQtyModalOpen && book"
@@ -831,7 +915,7 @@ const specItems = computed(() => {
         >
           <transition name="modal-pop" appear>
             <div
-              class="relative w-full max-w-md bg-white border-3 border-black rounded-[2px] shadow-neo-lg p-5 sm:p-6"
+              class="relative w-full max-w-md bg-white border-2 sm:border-3 border-black rounded-[2px] shadow-neo-sm sm:shadow-neo p-5 sm:p-6"
             >
               <button
                 class="absolute top-3.5 right-3.5 w-8 h-8 rounded-[2px] border-2 border-black bg-white hover:bg-gray-100 flex items-center justify-center font-black text-sm shadow-neo-sm transition-colors cursor-pointer"

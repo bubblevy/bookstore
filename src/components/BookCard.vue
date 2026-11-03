@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useStore } from '@/composables/useStore'
 import { assetUrl } from '@/lib/assets'
@@ -14,24 +14,11 @@ const props = defineProps({
 const router = useRouter()
 const { state, toggleWishlist, isWishlisted, isWishlistPending } = useStore()
 const imgError = ref(false)
-const imgLoaded = ref(false)
-let imgTimer = null
-
-onMounted(() => {
-  imgTimer = setTimeout(() => {
-    if (!imgLoaded.value) imgError.value = true
-  }, 2500)
-})
-
-onUnmounted(() => {
-  if (imgTimer) clearTimeout(imgTimer)
-})
 
 watch(
-  () => props.book.coverImage,
+  () => [props.book?.id, props.book?.coverImage],
   () => {
     imgError.value = false
-    imgLoaded.value = false
   },
 )
 
@@ -82,7 +69,6 @@ function goToDetail() {
           :alt="book.title"
           class="w-full h-full object-cover border border-black sm:border-2 rounded-[2px] shadow-neo-xs sm:shadow-neo-sm block"
           loading="lazy"
-          @load="imgLoaded = true"
           @error="imgError = true"
         />
         <BookCover

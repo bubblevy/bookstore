@@ -825,7 +825,7 @@ watch(
     </div>
 
     <div v-if="orderSuccess" class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
-      <div class="bg-white border-3 sm:border-4 border-black p-5 sm:p-8 shadow-neo">
+      <div class="bg-white border-2 sm:border-3 border-black rounded-[2px] p-5 sm:p-8 shadow-neo-sm sm:shadow-neo">
         <div class="flex items-start gap-3 sm:gap-4 border-b-2 border-black pb-4">
           <div
             class="w-11 h-11 sm:w-12 sm:h-12 shrink-0 bg-neo-lime border-2 border-black flex items-center justify-center"
@@ -948,9 +948,9 @@ watch(
     </div>
 
     <div v-else class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-12 sm:pb-16">
-            <div v-if="!state.cartLoading && items.length === 0" class="text-center py-20">
+      <div v-if="!state.cartLoading && items.length === 0" class="text-center py-20">
         <div
-          class="w-14 h-14 mx-auto mb-3 bg-white border-3 border-black flex items-center justify-center shadow-neo"
+          class="w-14 h-14 mx-auto mb-3 bg-white border-2 sm:border-3 border-black rounded-[2px] flex items-center justify-center shadow-neo-sm sm:shadow-neo"
         >
           <div class="w-6 h-6 border-3 border-black border-t-transparent rounded-full animate-spin"></div>
         </div>
@@ -960,9 +960,9 @@ watch(
         </p>
       </div>
 
-            <div v-else class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+      <div v-else class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
         <div class="lg:col-span-7 space-y-6">
-          <div class="bg-white border-3 border-black shadow-neo p-6 space-y-4">
+          <div class="bg-white border-2 sm:border-3 border-black rounded-[2px] shadow-neo-sm sm:shadow-neo p-5 sm:p-6 space-y-4">
             <div class="flex items-center gap-2 border-b-2 border-black pb-2">
               <svg
                 class="w-5 h-5"
@@ -1049,7 +1049,7 @@ watch(
             </div>
           </div>
 
-          <div class="bg-white border-3 border-black shadow-neo p-6 space-y-4">
+          <div class="bg-white border-2 sm:border-3 border-black rounded-[2px] shadow-neo-sm sm:shadow-neo p-5 sm:p-6 space-y-4">
             <div class="flex items-center gap-2 border-b-2 border-black pb-2">
               <svg
                 class="w-5 h-5"
@@ -1165,7 +1165,7 @@ watch(
             </template>
           </div>
 
-          <div class="bg-white border-3 border-black shadow-neo p-6 space-y-4">
+          <div class="bg-white border-2 sm:border-3 border-black rounded-[2px] shadow-neo-sm sm:shadow-neo p-5 sm:p-6 space-y-4">
             <div class="flex items-center gap-2 border-b-2 border-black pb-2">
               <svg
                 class="w-5 h-5"
@@ -1297,7 +1297,7 @@ watch(
         </div>
 
         <div class="lg:col-span-5">
-          <div class="bg-white border-3 border-black shadow-neo p-6 space-y-5 sticky top-24">
+          <div class="bg-white border-2 sm:border-3 border-black rounded-[2px] shadow-neo-sm sm:shadow-neo p-5 sm:p-6 space-y-5 sticky top-24">
             <div class="flex items-center gap-2 border-b-2 border-black pb-2">
               <svg
                 class="w-5 h-5"
@@ -1333,7 +1333,7 @@ watch(
                   class="flex gap-3 pb-3 border-b border-black/10 last:border-b-0 last:pb-0"
                 >
                   <div
-                    class="w-20 h-28 shrink-0 border-2 border-black overflow-hidden shadow-neo-sm bg-background relative flex items-center justify-center"
+                    class="w-20 h-28 shrink-0 border-2 border-black rounded-[2px] overflow-hidden shadow-neo-xs sm:shadow-neo-sm bg-background relative flex items-center justify-center"
                   >
                     <img
                       v-if="coverUrl(item) && !failedCovers[item.id]"
@@ -1572,13 +1572,13 @@ watch(
         @click.self="showAddressModal = false"
       >
         <div
-          class="w-full max-w-md bg-white border-4 border-black shadow-neo-xl max-h-[90vh] overflow-y-auto"
+          class="w-full max-w-md bg-white border-2 sm:border-3 border-black rounded-[2px] shadow-neo-sm sm:shadow-neo max-h-[90vh] overflow-y-auto"
         >
           <div class="bg-neo-yellow border-b-3 border-black p-4 flex items-center justify-between gap-3 shrink-0">
             <h3 class="font-outfit font-black text-base uppercase min-w-0 flex-1">Tambah Alamat Pengiriman</h3>
             <button
               type="button"
-              class="w-8 h-8 shrink-0 aspect-square bg-white border-2 border-black font-outfit font-black text-sm hover:bg-black hover:text-white transition-colors cursor-pointer"
+              class="w-8 h-8 shrink-0 aspect-square bg-white border-2 border-black rounded-[2px] font-outfit font-black text-sm hover:bg-black hover:text-white transition-colors cursor-pointer shadow-neo-sm"
               aria-label="Tutup"
               @click="showAddressModal = false"
             >
