@@ -2,7 +2,7 @@
 
 <template>
   <section
-    class="w-full bg-neo-violet text-white border-b-4 border-black pt-25 md:pt-20 sm:pt-0 py-14 sm:py-20 lg:py-24 select-none relative overflow-hidden"
+    class="w-full bg-neo-violet text-white border-b-4 border-black pt-28 md:pt-20 sm:pt-0 py-14 sm:py-20 lg:py-24 select-none relative overflow-hidden"
     aria-labelledby="hero-title"
   >
     <div class="absolute inset-0 pointer-events-none select-none overflow-hidden">
