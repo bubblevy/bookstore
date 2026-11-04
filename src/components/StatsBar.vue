@@ -4,9 +4,25 @@ import { useStore } from '@/composables/useStore'
 
 const { state } = useStore()
 
+const totalTitles = computed(() => {
+  if (state.totalBooksCount && state.totalBooksCount > 0) {
+    return state.totalBooksCount
+  }
+  const fromCategories = (state.categories || []).reduce(
+    (sum, cat) => sum + (Number(cat.totalBooks ?? cat.total_books) || 0),
+    0,
+  )
+  if (fromCategories > 0) return fromCategories
+  return state.books.length
+})
+
+const totalSold = computed(() => {
+  return state.books.reduce((sum, book) => sum + (Number(book.sold) || 0), 0)
+})
+
 const stats = computed(() => {
-  const sold = state.books.reduce((sum, book) => sum + (Number(book.sold) || 0), 0)
-  const titles = state.books.length
+  const sold = totalSold.value
+  const titles = totalTitles.value
   return [
     {
       value: `${sold.toLocaleString('id-ID')}+`,
@@ -50,7 +66,7 @@ const displayedValues = ref(stats.value.map((s) => s.value))
 let hasAnimated = false
 
 watch(stats, (next) => {
-  if (!hasAnimated) displayedValues.value = next.map((s) => s.value)
+  displayedValues.value = next.map((s) => s.value)
 })
 
 function startAnimation() {

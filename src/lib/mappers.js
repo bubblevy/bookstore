@@ -43,14 +43,37 @@ export function mapBook(raw = {}) {
   const originalPrice = Number(raw.original_price) || 0
   const discount = Number(raw.discount_percentage)
 
+  const authorName =
+    (typeof raw.author === 'object' && raw.author !== null ? raw.author.name : null) ??
+    (typeof raw.author === 'string' ? raw.author : null) ??
+    raw.author_name ??
+    'Tanpa Penulis'
+
+  const categoryName =
+    (typeof raw.category === 'object' && raw.category !== null ? raw.category.name : null) ??
+    (typeof raw.category === 'string' ? raw.category : null) ??
+    raw.category_name ??
+    'Umum'
+
+  const categorySlug =
+    (typeof raw.category === 'object' && raw.category !== null ? raw.category.slug : null) ??
+    raw.category_slug ??
+    ''
+
+  const publisherName =
+    (typeof raw.publisher === 'object' && raw.publisher !== null ? raw.publisher.name : null) ??
+    (typeof raw.publisher === 'string' ? raw.publisher : null) ??
+    raw.publisher_name ??
+    ''
+
   return {
     id: raw.id,
     slug: raw.slug || String(raw.id ?? ''),
     title: raw.title || 'Tanpa Judul',
-    author: raw.author?.name || 'Tanpa Penulis',
-    category: raw.category?.name || 'Umum',
-    categorySlug: raw.category?.slug || '',
-    publisher: raw.publisher?.name || '',
+    author: authorName,
+    category: categoryName,
+    categorySlug,
+    publisher: publisherName,
     price,
     originalPrice,
     discount:
@@ -61,17 +84,97 @@ export function mapBook(raw = {}) {
           : 0,
     sold:
       Number(
-        raw.sold ?? 0,
+        raw.sold ?? raw.total_sold ?? 0,
       ) || 0,
     stock: Number(raw.stock ?? raw.total_stock ?? 0) || 0,
     weightGrams: Number(raw.weight_grams) || 0,
     coverImage: raw.cover_image || '',
     cover: raw.cover_image || '',
-    theme: themeFor(raw.category?.slug || raw.slug || raw.id),
+    theme: themeFor(categorySlug || raw.slug || raw.id),
     accentColor: '',
     subtitle: '',
     synopsis: raw.synopsis || raw.description || '',
     format: raw.format || 'Paperback',
+  }
+}
+
+export function mapAdminBook(raw = {}) {
+  const base = mapBook(raw)
+
+  const rawCat = raw.category
+  const categoryId =
+    (typeof rawCat === 'object' && rawCat !== null ? rawCat.id : null) ??
+    raw.category_id ??
+    raw.categoryId ??
+    (typeof rawCat === 'number' ? rawCat : null) ??
+    ''
+  const categoryName =
+    (typeof rawCat === 'object' && rawCat !== null ? rawCat.name : null) ??
+    (typeof rawCat === 'string' ? rawCat : null) ??
+    raw.category_name ??
+    base.category ??
+    ''
+
+  const rawAuth = raw.author
+  const authorId =
+    (typeof rawAuth === 'object' && rawAuth !== null ? rawAuth.id : null) ??
+    raw.author_id ??
+    raw.authorId ??
+    (typeof rawAuth === 'number' ? rawAuth : null) ??
+    ''
+  const authorName =
+    (typeof rawAuth === 'object' && rawAuth !== null ? rawAuth.name : null) ??
+    (typeof rawAuth === 'string' ? rawAuth : null) ??
+    raw.author_name ??
+    base.author ??
+    ''
+
+  const rawPub = raw.publisher
+  const publisherId =
+    (typeof rawPub === 'object' && rawPub !== null ? rawPub.id : null) ??
+    raw.publisher_id ??
+    raw.publisherId ??
+    (typeof rawPub === 'number' ? rawPub : null) ??
+    ''
+  const publisherName =
+    (typeof rawPub === 'object' && rawPub !== null ? rawPub.name : null) ??
+    (typeof rawPub === 'string' ? rawPub : null) ??
+    raw.publisher_name ??
+    base.publisher ??
+    ''
+
+  const rawActive = raw.is_active ?? raw.isActive
+  const isActive =
+    rawActive !== false &&
+    rawActive !== 0 &&
+    rawActive !== 'false' &&
+    rawActive !== '0'
+
+  const pubDate = raw.publication_date
+    ? String(raw.publication_date).slice(0, 10)
+    : ''
+
+  return {
+    ...base,
+    rawId: raw.id,
+    categoryId: categoryId !== '' && categoryId !== null ? Number(categoryId) : '',
+    authorId: authorId !== '' && authorId !== null ? Number(authorId) : '',
+    publisherId: publisherId !== '' && publisherId !== null ? Number(publisherId) : '',
+    category: categoryName,
+    author: authorName,
+    publisher: publisherName,
+    isbn: raw.isbn || base.isbn || '',
+    description: raw.synopsis || raw.description || base.synopsis || '',
+    pages: Number(raw.pages ?? base.pages) || 0,
+    publicationDate: pubDate,
+    language: raw.language || 'Indonesia',
+    length: Number(raw.length) || 0,
+    width: Number(raw.width) || 0,
+    height: Number(raw.height) || 0,
+    condition: raw.condition || '100% Baru & Segel Penerbit',
+    isActive,
+    coverImage: raw.cover_image || base.coverImage || '',
+    sold: Number(raw.sold ?? raw.total_sold ?? base.sold ?? 0) || 0,
   }
 }
 

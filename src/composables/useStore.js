@@ -74,6 +74,7 @@ const state = reactive({
   modalPayload: null,
 
   books: [],
+  totalBooksCount: 0,
   popularBooks: [],
   popularBooksLoading: false,
   categories: [],
@@ -867,14 +868,16 @@ async function loadCategories() {
 const MAX_CATALOG_PAGES = 10
 
 async function loadBooks(params = {}) {
-  const key = JSON.stringify({ per_page: 10, ...params })
+  const perPage = params.per_page || 100
+  const key = JSON.stringify({ per_page: perPage, ...params })
   if (booksPromise && booksPromiseKey === key) return booksPromise
 
   state.catalogLoading = true
   const promise = (async () => {
     try {
-      const first = await api.books({ per_page: 10, ...params })
+      const first = await api.books({ per_page: perPage, ...params })
       const items = [...(first.data || [])]
+      state.totalBooksCount = Number(first.meta?.total_items ?? first.meta?.total) || items.length
       const totalPages = Math.min(
         Math.max(1, Number(first.meta?.total_pages) || 1),
         MAX_CATALOG_PAGES,
@@ -883,7 +886,7 @@ async function loadBooks(params = {}) {
       if (!params.page && totalPages > 1) {
         const pageResults = await Promise.allSettled(
           Array.from({ length: totalPages - 1 }, (_, index) =>
-            api.books({ per_page: 10, ...params, page: index + 2 }),
+            api.books({ per_page: perPage, ...params, page: index + 2 }),
           ),
         )
         pageResults.forEach((result) => {

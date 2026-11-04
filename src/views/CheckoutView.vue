@@ -228,7 +228,8 @@ const activePaymentGroups = computed(() => {
 
 function paymentFeeLabel(method) {
   if (method.fee_type === 'percentage') {
-    const percent = Number(method.fee_percent) * 100
+    const val = Number(method.fee_percent) || 0
+    const percent = val > 0 && val < 1 ? Number((val * 100).toFixed(2)) : val
     return `Biaya admin ${new Intl.NumberFormat('id-ID', {
       maximumFractionDigits: 2,
     }).format(percent)}%`

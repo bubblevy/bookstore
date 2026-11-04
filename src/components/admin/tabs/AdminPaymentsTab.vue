@@ -268,9 +268,18 @@ const previewGuideSections = computed(() => {
     .filter((section) => section.title || section.steps.length)
 })
 
+function formatFeePercentForInput(raw) {
+  const num = Number(raw) || 0
+  if (num > 0 && num < 1) {
+    return Number((num * 100).toFixed(4))
+  }
+  return num
+}
+
 function paymentFeeText(method) {
   if (method.fee_type === 'percentage') {
-    const percent = Number((Number(method.fee_percent) * 100).toFixed(2))
+    const val = Number(method.fee_percent) || 0
+    const percent = val > 0 && val < 1 ? Number((val * 100).toFixed(2)) : val
     return `${percent}%`
   }
   return formatRupiah(Number(method.fee_amount) || 0)
@@ -343,7 +352,7 @@ async function openEditPayment(method) {
     image: method.image || '',
     feeType: method.fee_type || 'fixed',
     feeAmount: Number(method.fee_amount) || 0,
-    feePercent: Number(method.fee_percent) || 0,
+    feePercent: formatFeePercentForInput(method.fee_percent),
     isActive: method.is_active !== false,
     instructions: initialGuides,
   }
@@ -370,7 +379,7 @@ async function openEditPayment(method) {
       image: detail.image || paymentForm.value.image,
       feeType: detail.fee_type || paymentForm.value.feeType,
       feeAmount: Number(detail.fee_amount) || 0,
-      feePercent: Number(detail.fee_percent) || 0,
+      feePercent: formatFeePercentForInput(detail.fee_percent ?? paymentForm.value.feePercent),
       isActive: detail.is_active !== false,
       instructions: detailGuides.length ? detailGuides : paymentForm.value.instructions,
     }
@@ -418,9 +427,15 @@ async function handleSavePayment() {
       name: paymentForm.value.name.trim(),
       category: paymentForm.value.category,
       fee_type: paymentForm.value.feeType,
-      fee_amount: Number(paymentForm.value.feeAmount) || 0,
-      fee_percent: Number(paymentForm.value.feePercent) || 0,
-      feePercent: Number(paymentForm.value.feePercent) || 0,
+      fee_amount: paymentForm.value.feeType === 'fixed' ? (Number(paymentForm.value.feeAmount) || 0) : 0,
+      fee_percent: (() => {
+        if (paymentForm.value.feeType !== 'percentage') return 0
+        let val = Number(paymentForm.value.feePercent) || 0
+        if (val > 0 && val >= 0.05) {
+          return Number((val / 100).toFixed(4))
+        }
+        return val
+      })(),
       description: paymentForm.value.description.trim(),
       instructions,
       is_active: Boolean(paymentForm.value.isActive),
@@ -721,19 +736,27 @@ async function togglePayment(method) {
             </div>
             <div v-else>
               <label class="block font-outfit font-black text-xs uppercase mb-1">
-                Persentase Biaya (Desimal)
+                Persentase Biaya (%)
               </label>
-              <input
-                v-model="paymentForm.feePercent"
-                type="number"
-                min="0"
-                step="0.0001"
-                placeholder="Contoh: 0.007 untuk 0,7%"
-                @wheel.prevent
-                class="w-full bg-background border-2 border-black p-2.5 font-outfit font-bold text-xs outline-none focus:border-black shadow-neo-sm rounded-[2px]"
-              />
+              <div class="relative">
+                <input
+                  v-model.number="paymentForm.feePercent"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  placeholder="Contoh: 1 untuk 1% atau 0.7 untuk 0,7%"
+                  @wheel.prevent
+                  class="w-full bg-background border-2 border-black p-2.5 pr-8 font-outfit font-bold text-xs outline-none focus:border-black shadow-neo-sm rounded-[2px]"
+                />
+                <div
+                  class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 font-outfit font-black text-xs text-neutral-500"
+                >
+                  %
+                </div>
+              </div>
               <p class="font-sans text-[10px] text-muted-foreground mt-1">
-                Gunakan format desimal, contoh: 0.007 untuk 0,7% atau 0.015 untuk 1,5%.
+                Masukkan nilai persentase biaya (contoh: 1 untuk 1% atau 0.7 untuk 0,7%).
               </p>
             </div>
           </div>

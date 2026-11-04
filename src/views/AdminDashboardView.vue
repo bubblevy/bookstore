@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useStore } from '@/composables/useStore'
 import { api } from '@/lib/api'
-import { mapBook } from '@/lib/mappers'
+import { mapBook, mapAdminBook } from '@/lib/mappers'
 import { localizeApiError } from '@/lib/errors'
 import { ensureCourierCatalog } from '@/lib/shipping'
 import { useOrderStatusSSE } from '@/composables/useOrderStatusSSE'
@@ -49,30 +49,7 @@ function formatDateTime(value) {
   }).format(date)
 }
 
-function mapAdminBook(raw = {}) {
-  return {
-    ...mapBook(raw),
-    rawId: raw.id,
-    categoryId: raw.category?.id || '',
-    authorId: raw.author?.id || '',
-    publisherId: raw.publisher?.id || '',
-    isbn: raw.isbn || '',
-    description: raw.synopsis || '',
-    pages: raw.pages || 0,
-    publicationDate: raw.publication_date ? raw.publication_date.slice(0, 10) : '',
-    language: raw.language || 'Indonesia',
-    length: raw.length || 0,
-    width: raw.width || 0,
-    height: raw.height || 0,
-    condition: raw.condition || '100% Baru & Segel Penerbit',
-    isActive: raw.is_active !== false,
-    coverImage: raw.cover_image || '',
-    publisher: raw.publisher?.name || '',
-    author: raw.author?.name || '',
-    category: raw.category?.name || '',
-    sold: Number(raw.sold ?? raw.total_sold ?? 0) || 0,
-  }
-}
+// mapAdminBook imported from @/lib/mappers
 
 function mapAdminOrderRow(raw = {}) {
   const inv = raw.invoice_number || raw.invoice || raw.id || ''
@@ -127,6 +104,7 @@ function sortOrdersNewestFirst(a, b) {
 const activeTab = ref('overview') // 'overview' | 'books' | 'categories' | 'people' | 'vouchers' | 'orders' | 'customers' | 'payments' | 'profile'
 
 const adminBooks = ref([])
+const totalBooksCount = ref(0)
 const adminCategories = ref([])
 const adminAuthors = ref([])
 const adminPublishers = ref([])
@@ -248,6 +226,7 @@ async function loadAdminBooks() {
   try {
     const response = await api.books({ per_page: 10, is_active: 'all' })
     adminBooks.value = (response.data || []).map(mapAdminBook)
+    totalBooksCount.value = Number(response.meta?.total_items ?? response.meta?.total ?? adminBooks.value.length) || 0
   } catch (error) {
     showToast(apiErrorText(error, 'Gagal memuat data buku'), { type: 'error' })
   } finally {
@@ -269,7 +248,7 @@ async function loadAdminCategories() {
 
 async function loadAdminAuthors() {
   try {
-    const response = await api.authors({ per_page: 10 })
+    const response = await api.authors({ per_page: 100 })
     adminAuthors.value = response.data || []
   } catch (error) {
     showToast(apiErrorText(error, 'Gagal memuat penulis'), { type: 'error' })
@@ -278,7 +257,7 @@ async function loadAdminAuthors() {
 
 async function loadAdminPublishers() {
   try {
-    const response = await api.publishers({ per_page: 10 })
+    const response = await api.publishers({ per_page: 100 })
     adminPublishers.value = response.data || []
   } catch (error) {
     showToast(apiErrorText(error, 'Gagal memuat penerbit'), { type: 'error' })
@@ -297,7 +276,7 @@ async function loadAdminPeople() {
 async function loadAdminDiscounts() {
   vouchersLoading.value = true
   try {
-    const response = await api.discounts({ per_page: 10 })
+    const response = await api.discounts({ per_page: 100 })
     adminDiscounts.value = response.data || []
   } catch (error) {
     showToast(apiErrorText(error, 'Gagal memuat voucher diskon'), { type: 'error' })
@@ -704,10 +683,26 @@ async function updateBookStock(bookId, amount) {
               }
     }
 
+    let stockCatId = Number(source.categoryId)
+    if (!stockCatId && source.category && adminCategories.value?.length) {
+      const m = adminCategories.value.find((c) => c.name?.toLowerCase() === String(source.category).toLowerCase())
+      if (m) stockCatId = Number(m.id)
+    }
+    let stockAuthId = Number(source.authorId)
+    if (!stockAuthId && source.author && adminAuthors.value?.length) {
+      const m = adminAuthors.value.find((a) => a.name?.toLowerCase() === String(source.author).toLowerCase())
+      if (m) stockAuthId = Number(m.id)
+    }
+    let stockPubId = Number(source.publisherId)
+    if (!stockPubId && source.publisher && adminPublishers.value?.length) {
+      const m = adminPublishers.value.find((p) => p.name?.toLowerCase() === String(source.publisher).toLowerCase())
+      if (m) stockPubId = Number(m.id)
+    }
+
     await api.updateBook(book.rawId, {
-      category_id: Number(source.categoryId),
-      author_id: Number(source.authorId),
-      publisher_id: Number(source.publisherId),
+      category_id: stockCatId || 1,
+      author_id: stockAuthId || 1,
+      publisher_id: stockPubId || 1,
       title: source.title,
       isbn: source.isbn,
       synopsis: source.description,
@@ -740,6 +735,9 @@ async function updateBookStock(bookId, amount) {
 async function onBooksRefresh() {
   await Promise.all([
     loadAdminBooks(),
+    loadAdminCategories(),
+    loadAdminAuthors(),
+    loadAdminPublishers(),
     loadAdminReport(),
     loadCategories(),
     loadBooks(),
@@ -883,7 +881,7 @@ onMounted(async () => {
             </svg>
           </div>
           <p class="font-outfit font-black text-xl sm:text-2xl text-black mt-2">
-            {{ adminBooks.length }} Judul Buku
+            {{ totalBooksCount || adminBooks.length }} Judul Buku
           </p>
           <div class="text-xs font-bold text-black mt-2">
             <span>{{ lowStockBooks.length }} judul stok kritis</span>

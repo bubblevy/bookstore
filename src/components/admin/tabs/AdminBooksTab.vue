@@ -1,9 +1,9 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { api } from '@/lib/api'
 import { assetUrl } from '@/lib/assets'
 import { localizeApiError } from '@/lib/errors'
-import { mapBook } from '@/lib/mappers'
+import { mapBook, mapAdminBook } from '@/lib/mappers'
 import { useStore } from '@/composables/useStore'
 import BookCover from '@/components/BookCover.vue'
 
@@ -64,77 +64,81 @@ function generatePagination(total, current) {
   return [1, '...', current - 1, current, current + 1, '...', total]
 }
 
-function mapAdminBook(raw = {}) {
-  return {
-    ...mapBook(raw),
-    rawId: raw.id,
-    categoryId: raw.category?.id || '',
-    authorId: raw.author?.id || '',
-    publisherId: raw.publisher?.id || '',
-    isbn: raw.isbn || '',
-    description: raw.synopsis || '',
-    pages: raw.pages || 0,
-    publicationDate: raw.publication_date ? raw.publication_date.slice(0, 10) : '',
-    language: raw.language || 'Indonesia',
-    length: raw.length || 0,
-    width: raw.width || 0,
-    height: raw.height || 0,
-    condition: raw.condition || '100% Baru & Segel Penerbit',
-    isActive: raw.is_active !== false,
-    coverImage: raw.cover_image || '',
-    publisher: raw.publisher?.name || '',
-    author: raw.author?.name || '',
-    category: raw.category?.name || '',
-    sold: Number(raw.sold ?? raw.total_sold ?? 0) || 0,
-  }
-}
+// mapAdminBook is imported from @/lib/mappers
+
+const localBooks = ref([])
+const localLoading = ref(false)
+const booksLoading = computed(() => props.loading || localLoading.value)
+
+const booksPage = ref(1)
+const booksPerPage = ref(10)
+const totalBookPages = ref(1)
+const totalBooks = ref(0)
 
 const failedBookCovers = ref({})
 const bookSearch = ref('')
 const selectedCategory = ref('all')
+const selectedStatus = ref('all')
 const bookSort = ref('newest')
 
-const filteredBooks = computed(() => {
-  return props.books
-    .filter((book) => {
-      const matchCat = selectedCategory.value === 'all' || book.category === selectedCategory.value
-      const query = bookSearch.value.toLowerCase().trim()
-      const matchSearch =
-        !query ||
-        book.title.toLowerCase().includes(query) ||
-        book.author.toLowerCase().includes(query) ||
-        (book.publisher && book.publisher.toLowerCase().includes(query))
-      return matchCat && matchSearch
-    })
-    .sort((a, b) => {
-      if (bookSort.value === 'sold-high') return (b.sold || 0) - (a.sold || 0)
-      if (bookSort.value === 'price-low') return a.price - b.price
-      if (bookSort.value === 'price-high') return b.price - a.price
-      if (bookSort.value === 'stock-low') return (a.stock || 0) - (b.stock || 0)
-      if (bookSort.value === 'stock-high') return (b.stock || 0) - (a.stock || 0)
-      return 0
-    })
-})
-
-const booksPage = ref(1)
-const booksPerPage = ref(10)
-const totalBookPages = computed(() =>
-  Math.max(1, Math.ceil(filteredBooks.value.length / booksPerPage.value)),
-)
-const paginatedBooks = computed(() => {
-  const start = (booksPage.value - 1) * booksPerPage.value
-  return filteredBooks.value.slice(start, start + booksPerPage.value)
-})
+const paginatedBooks = computed(() => localBooks.value)
 const visibleBookPages = computed(() => generatePagination(totalBookPages.value, booksPage.value))
+
+let searchTimer = null
+
+async function fetchBooks(page = booksPage.value) {
+  localLoading.value = true
+  booksPage.value = page
+  try {
+    const params = {
+      page,
+      per_page: booksPerPage.value,
+      is_active:
+        selectedStatus.value === 'active'
+          ? 'true'
+          : selectedStatus.value === 'inactive'
+            ? 'false'
+            : 'all',
+      sort_by: bookSort.value || 'newest',
+    }
+    const q = bookSearch.value.trim()
+    if (q) params.search = q
+
+    if (selectedCategory.value && selectedCategory.value !== 'all') {
+      params.category = selectedCategory.value
+    }
+
+    const response = await api.books(params)
+    localBooks.value = (response.data || []).map(mapAdminBook)
+    const meta = response.meta || {}
+    totalBookPages.value = Math.max(1, Number(meta.total_pages) || 1)
+    totalBooks.value = Number(meta.total_items ?? meta.total ?? localBooks.value.length) || 0
+  } catch (error) {
+    showToast(apiErrorText(error, 'Gagal memuat katalog buku'), { type: 'error' })
+  } finally {
+    localLoading.value = false
+  }
+}
 
 function changeBookPage(p) {
   if (p === '...' || p === booksPage.value) return
   if (p < 1 || p > totalBookPages.value) return
-  booksPage.value = p
+  fetchBooks(p)
 }
 
-watch([bookSearch, selectedCategory, bookSort], () => {
-  booksPage.value = 1
+watch(bookSearch, () => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    fetchBooks(1)
+  }, 350)
+})
+
+watch([selectedCategory, selectedStatus, bookSort], () => {
+  fetchBooks(1)
+})
+
+onMounted(() => {
+  fetchBooks(1)
 })
 
 const showBookModal = ref(false)
@@ -418,6 +422,7 @@ async function handleSaveBook() {
       await api.createBook(payload)
       showToast('Buku berhasil ditambahkan.', { type: 'success' })
     }
+    await fetchBooks(booksPage.value)
     emit('refresh')
     draftCover.value = null
     showBookModal.value = false
@@ -441,6 +446,7 @@ async function executeDeleteBook() {
   setBusy('book-delete', true)
   try {
     await api.deleteBook(bookToDelete.value.rawId || bookToDelete.value.id)
+    await fetchBooks(booksPage.value)
     emit('refresh')
     showToast('Buku berhasil dihapus.', { type: 'info' })
   } catch (error) {
@@ -524,7 +530,7 @@ async function updateBookStock(bookId, amount) {
                   class="w-full appearance-none bg-white border-2 border-black rounded-[2px] pl-3 pr-8 py-2 font-outfit font-bold text-xs shadow-neo-sm hover:bg-neutral-50 focus:outline-none focus:border-black cursor-pointer transition-all"
                 >
                   <option value="all">Semua Kategori</option>
-                  <option v-for="cat in categories" :key="cat.id" :value="cat.name">
+                  <option v-for="cat in categories" :key="cat.id" :value="cat.slug || cat.name">
                     {{ cat.name }}
                   </option>
                 </select>
@@ -540,12 +546,11 @@ async function updateBookStock(bookId, amount) {
                   v-model="bookSort"
                   class="w-full appearance-none bg-white border-2 border-black rounded-[2px] pl-3 pr-8 py-2 font-outfit font-bold text-xs shadow-neo-sm hover:bg-neutral-50 focus:outline-none focus:border-black cursor-pointer transition-all"
                 >
-                  <option value="newest">Urutan Standar</option>
-                  <option value="sold-high">Terlaris (Terjual Terbanyak)</option>
-                  <option value="price-low">Harga: Termurah</option>
-                  <option value="price-high">Harga: Termahal</option>
-                  <option value="stock-low">Stok: Sedikit ke Banyak</option>
-                  <option value="stock-high">Stok: Banyak ke Sedikit</option>
+                  <option value="newest">Urutan Standar (Terbaru)</option>
+                  <option value="popular">Terpopuler</option>
+                  <option value="price_asc">Harga: Termurah</option>
+                  <option value="price_desc">Harga: Termahal</option>
+                  <option value="title_asc">Judul (A-Z)</option>
                 </select>
                 <div class="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-black">
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
@@ -592,7 +597,7 @@ async function updateBookStock(bookId, amount) {
                     </div>
                   </td>
                 </tr>
-                <tr v-else-if="filteredBooks.length === 0">
+                <tr v-else-if="paginatedBooks.length === 0">
                   <td colspan="8" class="p-8 text-center bg-gray-50/50">
                     <p class="font-outfit font-black text-sm text-black">Tidak Ada Buku Ditemukan</p>
                     <p class="font-sans text-xs text-muted-foreground mt-1">
@@ -708,14 +713,14 @@ async function updateBookStock(bookId, amount) {
           </div>
 
                     <div
-            v-if="filteredBooks.length > 0"
+            v-if="!booksLoading && (totalBooks > 0 || paginatedBooks.length > 0)"
             class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 border-t-2 border-black bg-neutral-50"
           >
             <div class="text-xs font-sans font-bold text-neutral-600 text-center sm:text-left">
               Halaman <span class="font-outfit font-black text-black">{{ booksPage }}</span> dari
               <span class="font-outfit font-black text-black">{{ totalBookPages }}</span>
               <span class="text-neutral-400 mx-1">·</span>
-              Total {{ filteredBooks.length }} buku
+              Total {{ totalBooks }} buku
             </div>
 
             <div v-if="totalBookPages > 1" class="flex flex-wrap items-center justify-center sm:justify-end gap-1.5">
@@ -823,7 +828,7 @@ async function updateBookStock(bookId, amount) {
                   class="w-full appearance-none bg-white border-2 border-black rounded-[2px] p-2.5 pr-9 font-outfit font-bold text-xs sm:text-sm outline-none shadow-neo-sm focus:border-black cursor-pointer transition-all"
                 >
                   <option value="" disabled>Pilih penulis</option>
-                  <option v-for="author in authors" :key="author.id" :value="author.id">
+                  <option v-for="author in authors" :key="author.id" :value="Number(author.id)">
                     {{ author.name }}
                   </option>
                 </select>
@@ -846,7 +851,7 @@ async function updateBookStock(bookId, amount) {
                   <option
                     v-for="publisher in publishers"
                     :key="publisher.id"
-                    :value="publisher.id"
+                    :value="Number(publisher.id)"
                   >
                     {{ publisher.name }}
                   </option>
@@ -869,7 +874,7 @@ async function updateBookStock(bookId, amount) {
                 class="w-full appearance-none bg-white border-2 border-black rounded-[2px] p-2.5 pr-9 font-outfit font-bold text-xs sm:text-sm outline-none shadow-neo-sm focus:border-black cursor-pointer transition-all"
               >
                 <option value="" disabled>Pilih kategori</option>
-                <option v-for="cat in categories" :key="cat.id" :value="cat.id">
+                <option v-for="cat in categories" :key="cat.id" :value="Number(cat.id)">
                   {{ cat.name }}
                 </option>
               </select>
