@@ -867,13 +867,13 @@ async function loadCategories() {
 const MAX_CATALOG_PAGES = 10
 
 async function loadBooks(params = {}) {
-  const key = JSON.stringify({ per_page: 100, ...params })
+  const key = JSON.stringify({ per_page: 10, ...params })
   if (booksPromise && booksPromiseKey === key) return booksPromise
 
   state.catalogLoading = true
   const promise = (async () => {
     try {
-      const first = await api.books({ per_page: 100, ...params })
+      const first = await api.books({ per_page: 10, ...params })
       const items = [...(first.data || [])]
       const totalPages = Math.min(
         Math.max(1, Number(first.meta?.total_pages) || 1),
@@ -883,7 +883,7 @@ async function loadBooks(params = {}) {
       if (!params.page && totalPages > 1) {
         const pageResults = await Promise.allSettled(
           Array.from({ length: totalPages - 1 }, (_, index) =>
-            api.books({ per_page: 100, ...params, page: index + 2 }),
+            api.books({ per_page: 10, ...params, page: index + 2 }),
           ),
         )
         pageResults.forEach((result) => {
@@ -986,7 +986,7 @@ async function loadBook(slugOrId) {
     } catch (err) {
       if (err?.status === 404 && !state.books.length) {
         try {
-          await loadBooks({ per_page: 100 })
+          await loadBooks({ per_page: 10 })
           const matched = state.books.find(
             (b) => String(b.id) === String(slugOrId) || String(b.slug) === String(slugOrId),
           )

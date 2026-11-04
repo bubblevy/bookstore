@@ -393,7 +393,7 @@ export const api = {
   createBook: (payload) => request('/v1/books', { method: 'POST', body: payload }),
   updateBook: (id, payload) => request(`/v1/books/${id}`, { method: 'PUT', body: payload }),
   deleteBook: (id) => request(`/v1/books/${id}`, { method: 'DELETE' }),
-  authors: (params = {}) => request(`/v1/authors${toQuery({ per_page: 100, ...params })}`),
+  authors: (params = {}) => request(`/v1/authors${toQuery({ per_page: 10, ...params })}`),
   author: (slug) => request(`/v1/authors/${encodeURIComponent(slug)}`),
   createAuthor: (payload) => request('/v1/authors', { method: 'POST', body: payload }),
   updateAuthor: (id, payload) => request(`/v1/authors/${id}`, { method: 'PUT', body: payload }),

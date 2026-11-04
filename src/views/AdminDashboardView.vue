@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useStore } from '@/composables/useStore'
 import { api } from '@/lib/api'
@@ -79,15 +79,49 @@ function mapAdminOrderRow(raw = {}) {
   return {
     id: inv,
     invoice: inv,
-    rawStatus: raw.status,
-    customerName: raw.customer?.name || raw.customer_name || '—',
-    customerEmail: raw.customer?.email || raw.customer_email || '',
-    total: Number(raw.total_amount ?? raw.total) || 0,
-    totalQuantity: Number(raw.total_quantity ?? raw.quantity) || 0,
-    paymentMethod: raw.payment_method || '—',
-    date: formatDateTime(raw.created_at),
-    createdAt: raw.created_at,
+    rawStatus: raw.status || raw.order_status || raw.payment_status,
+    customerName:
+      raw.customer?.name || raw.customer_name || raw.user?.name || raw.recipient_name || '—',
+    customerEmail: raw.customer?.email || raw.customer_email || raw.user?.email || '',
+    total: Number(raw.total_amount ?? raw.total ?? raw.gross_amount) || 0,
+    totalQuantity:
+      Number(
+        raw.total_quantity ??
+          raw.quantity ??
+          (Array.isArray(raw.items)
+            ? raw.items.reduce((s, it) => s + (Number(it.quantity) || 1), 0)
+            : 0),
+      ) || 0,
+    paymentMethod:
+      raw.payment_method || raw.payment?.name || raw.payment?.payment_method || raw.payment_type || '—',
+    date: formatDateTime(raw.created_at || raw.date),
+    createdAt: raw.created_at || raw.date,
   }
+}
+
+function getOrderTimestamp(order) {
+  if (!order) return 0
+  if (order.createdAt) {
+    const t = new Date(order.createdAt).getTime()
+    if (!Number.isNaN(t)) return t
+  }
+  const match = String(order.invoice || order.id || '').match(/INV-(\d{4})(\d{2})(\d{2})/)
+  if (match) {
+    const [, y, m, d] = match
+    return new Date(`${y}-${m}-${d}`).getTime()
+  }
+  return 0
+}
+
+function sortOrdersNewestFirst(a, b) {
+  const timeA = getOrderTimestamp(a)
+  const timeB = getOrderTimestamp(b)
+  if (timeB !== timeA) return timeB - timeA
+  return String(b.invoice || b.id || '').localeCompare(
+    String(a.invoice || a.id || ''),
+    undefined,
+    { numeric: true },
+  )
 }
 
 const activeTab = ref('overview') // 'overview' | 'books' | 'categories' | 'people' | 'vouchers' | 'orders' | 'customers' | 'payments' | 'profile'
@@ -112,10 +146,31 @@ const adminOrdersLoading = ref(false)
 const customersLoading = ref(false)
 const paymentMethodsLoading = ref(false)
 
-const reportOrders = computed(() => {
-  const orders = adminReport.value?.orders || []
-  return orders.map(mapAdminOrderRow)
+const allKnownOrders = computed(() => {
+  const map = new Map()
+
+  // First add adminOrderRows (from /v1/orders/all)
+  for (const row of adminOrderRows.value) {
+    const key = String(row.invoice || row.id || '').trim()
+    if (key) map.set(key, row)
+  }
+
+  // Then add from adminReport if not already present
+  const reportList = adminReport.value?.orders || []
+  for (const raw of reportList) {
+    const row = mapAdminOrderRow(raw)
+    const key = String(row.invoice || row.id || '').trim()
+    if (key && !map.has(key)) {
+      map.set(key, row)
+    }
+  }
+
+  const list = Array.from(map.values())
+  list.sort(sortOrdersNewestFirst)
+  return list
 })
+
+const reportOrders = computed(() => allKnownOrders.value)
 
 const reportSummary = computed(() => adminReport.value?.summary || {})
 const totalRevenue = computed(() => Number(reportSummary.value.net_revenue) || 0)
@@ -191,7 +246,7 @@ async function loadAdminReport() {
 async function loadAdminBooks() {
   booksLoading.value = true
   try {
-    const response = await api.books({ per_page: 100, is_active: 'all' })
+    const response = await api.books({ per_page: 10, is_active: 'all' })
     adminBooks.value = (response.data || []).map(mapAdminBook)
   } catch (error) {
     showToast(apiErrorText(error, 'Gagal memuat data buku'), { type: 'error' })
@@ -214,7 +269,7 @@ async function loadAdminCategories() {
 
 async function loadAdminAuthors() {
   try {
-    const response = await api.authors({ per_page: 100 })
+    const response = await api.authors({ per_page: 10 })
     adminAuthors.value = response.data || []
   } catch (error) {
     showToast(apiErrorText(error, 'Gagal memuat penulis'), { type: 'error' })
@@ -223,7 +278,7 @@ async function loadAdminAuthors() {
 
 async function loadAdminPublishers() {
   try {
-    const response = await api.publishers({ per_page: 100 })
+    const response = await api.publishers({ per_page: 10 })
     adminPublishers.value = response.data || []
   } catch (error) {
     showToast(apiErrorText(error, 'Gagal memuat penerbit'), { type: 'error' })
@@ -242,7 +297,7 @@ async function loadAdminPeople() {
 async function loadAdminDiscounts() {
   vouchersLoading.value = true
   try {
-    const response = await api.discounts({ per_page: 100 })
+    const response = await api.discounts({ per_page: 10 })
     adminDiscounts.value = response.data || []
   } catch (error) {
     showToast(apiErrorText(error, 'Gagal memuat voucher diskon'), { type: 'error' })
@@ -256,7 +311,7 @@ async function loadAdminOrders() {
   try {
     const params = {
       page: 1,
-      per_page: 100,
+      per_page: 10,
       sort_by: 'created_at',
       sort_order: 'desc',
     }
@@ -274,10 +329,13 @@ async function loadAdminOrders() {
         }
       }
     }
+    rows.sort(sortOrdersNewestFirst)
     adminOrderRows.value = rows
   } catch (error) {
     if (adminReport.value?.orders?.length) {
-      adminOrderRows.value = adminReport.value.orders.map(mapAdminOrderRow)
+      const fallbackRows = adminReport.value.orders.map(mapAdminOrderRow)
+      fallbackRows.sort(sortOrdersNewestFirst)
+      adminOrderRows.value = fallbackRows
     } else {
       adminOrderRows.value = []
       showToast(apiErrorText(error, 'Gagal memuat daftar pesanan'), { type: 'error' })
@@ -290,7 +348,7 @@ async function loadAdminOrders() {
 async function loadCustomers() {
   customersLoading.value = true
   try {
-    const response = await api.users({ per_page: 100 })
+    const response = await api.users({ per_page: 10 })
     customersList.value = (response.data || [])
       .filter((user) => String(user.role || '').toLowerCase() !== 'admin')
       .map((user) => ({
@@ -341,6 +399,7 @@ async function loadTabData(tabName) {
     case 'overview':
       await Promise.allSettled([
         loadAdminReport(),
+        loadAdminOrders(),
         loadAdminBooks(),
         loadCustomers(),
       ])
@@ -394,15 +453,19 @@ watch(activeTab, async (tab) => {
 
 // Listen to order SSE updates and sync metrics silently.
 function handleSSEPaymentStatus(data) {
-  if (!data?.invoice_number) return
-  const inv = data.invoice_number
-
-  const rowIndex = adminOrderRows.value.findIndex((r) => r.invoice === inv || r.id === inv)
-  if (rowIndex !== -1) {
-    const row = adminOrderRows.value[rowIndex]
-    if (data.order_status) row.rawStatus = data.order_status
-    if (data.gross_amount) row.total = Number(data.gross_amount) || row.total
-  } else if (loadedTabs.value.has('orders')) {
+  if (!data) return
+  const inv = data.invoice_number || data.invoice || data.order_id || data.id
+  if (inv) {
+    const rowIndex = adminOrderRows.value.findIndex((r) => r.invoice === inv || r.id === inv)
+    if (rowIndex !== -1) {
+      const row = adminOrderRows.value[rowIndex]
+      if (data.order_status) row.rawStatus = data.order_status
+      if (data.payment_status && !data.order_status) row.rawStatus = data.payment_status
+      if (data.gross_amount) row.total = Number(data.gross_amount) || row.total
+    } else {
+      loadAdminOrders().catch(() => {})
+    }
+  } else {
     loadAdminOrders().catch(() => {})
   }
 
@@ -410,43 +473,218 @@ function handleSSEPaymentStatus(data) {
 }
 
 function handleSSEShippingStatus(data) {
-  if (!data?.invoice_number) return
-  const inv = data.invoice_number
-
-  const rowIndex = adminOrderRows.value.findIndex((r) => r.invoice === inv || r.id === inv)
-  if (rowIndex !== -1) {
-    const row = adminOrderRows.value[rowIndex]
-    if (data.order_status) row.rawStatus = data.order_status
-  } else if (loadedTabs.value.has('orders')) {
+  if (!data) return
+  const inv = data.invoice_number || data.invoice || data.order_id || data.id
+  if (inv) {
+    const rowIndex = adminOrderRows.value.findIndex((r) => r.invoice === inv || r.id === inv)
+    if (rowIndex !== -1) {
+      const row = adminOrderRows.value[rowIndex]
+      if (data.order_status) row.rawStatus = data.order_status
+      if (data.shipping_status && !data.order_status) row.rawStatus = data.shipping_status
+    } else {
+      loadAdminOrders().catch(() => {})
+    }
+  } else {
     loadAdminOrders().catch(() => {})
   }
 
   loadAdminReport().catch(() => {})
 }
 
-useOrderStatusSSE({
+function handleSSEGeneralOrderStatus(data) {
+  if (!data) return
+  const inv = data.invoice_number || data.invoice || data.order_id || data.id
+  if (inv) {
+    const rowIndex = adminOrderRows.value.findIndex((r) => r.invoice === inv || r.id === inv)
+    if (rowIndex !== -1) {
+      const row = adminOrderRows.value[rowIndex]
+      if (data.order_status || data.status) row.rawStatus = data.order_status || data.status
+    } else {
+      loadAdminOrders().catch(() => {})
+    }
+  } else {
+    loadAdminOrders().catch(() => {})
+  }
+  loadAdminReport().catch(() => {})
+}
+
+function handleSSEOrderCreated() {
+  loadAdminOrders().catch(() => {})
+  loadAdminReport().catch(() => {})
+}
+
+const { isConnected: isSSEConnected } = useOrderStatusSSE({
   onPaymentStatus: handleSSEPaymentStatus,
   onShippingStatus: handleSSEShippingStatus,
+  onOrderStatus: handleSSEGeneralOrderStatus,
+  onOrderCreated: handleSSEOrderCreated,
+  onOrderEvent: (evt) => {
+    if (evt?.data?.invoice_number || evt?.data?.order_id) {
+      handleSSEGeneralOrderStatus(evt.data)
+    }
+  },
 })
 
-async function downloadReport() {
+async function refreshOverviewOrders() {
+  await Promise.allSettled([loadAdminOrders(), loadAdminReport()])
+}
+
+const showReportModal = ref(false)
+const reportFilter = ref({
+  startDate: '',
+  endDate: '',
+  status: 'all',
+  preset: 'this_month',
+})
+
+const reportDatePresets = [
+  { key: 'today', label: 'Hari Ini' },
+  { key: '7days', label: '7 Hari Terakhir' },
+  { key: '30days', label: '30 Hari Terakhir' },
+  { key: 'this_month', label: 'Bulan Ini' },
+  { key: 'last_month', label: 'Bulan Lalu' },
+  { key: 'all', label: 'Semua Waktu' },
+]
+
+function formatYMD(date) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+function selectReportPreset(preset) {
+  const now = new Date()
+  reportFilter.value.preset = preset
+  if (preset === 'today') {
+    reportFilter.value.startDate = formatYMD(now)
+    reportFilter.value.endDate = formatYMD(now)
+  } else if (preset === '7days') {
+    const d = new Date()
+    d.setDate(d.getDate() - 6)
+    reportFilter.value.startDate = formatYMD(d)
+    reportFilter.value.endDate = formatYMD(now)
+  } else if (preset === '30days') {
+    const d = new Date()
+    d.setDate(d.getDate() - 29)
+    reportFilter.value.startDate = formatYMD(d)
+    reportFilter.value.endDate = formatYMD(now)
+  } else if (preset === 'this_month') {
+    const d = new Date(now.getFullYear(), now.getMonth(), 1)
+    reportFilter.value.startDate = formatYMD(d)
+    reportFilter.value.endDate = formatYMD(now)
+  } else if (preset === 'last_month') {
+    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const end = new Date(now.getFullYear(), now.getMonth(), 0)
+    reportFilter.value.startDate = formatYMD(start)
+    reportFilter.value.endDate = formatYMD(end)
+  } else if (preset === 'all') {
+    reportFilter.value.startDate = ''
+    reportFilter.value.endDate = ''
+  }
+}
+
+function openReportDownloadModal() {
+  if (!reportFilter.value.startDate && !reportFilter.value.endDate) {
+    selectReportPreset('this_month')
+  }
+  showReportModal.value = true
+}
+
+function closeReportDownloadModal() {
+  showReportModal.value = false
+}
+
+function handleReportKeydown(e) {
+  if (e.key === 'Escape' && showReportModal.value) {
+    closeReportDownloadModal()
+  }
+}
+
+let overviewPollingTimer = null
+
+onMounted(() => {
+  window.addEventListener('keydown', handleReportKeydown)
+  overviewPollingTimer = setInterval(() => {
+    if (activeTab.value === 'overview' && !document.hidden) {
+      loadAdminOrders().catch(() => {})
+      loadAdminReport().catch(() => {})
+    }
+  }, 30000)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleReportKeydown)
+  if (overviewPollingTimer) {
+    clearInterval(overviewPollingTimer)
+    overviewPollingTimer = null
+  }
+})
+
+async function executeDownloadReport() {
   if (isBusy('report-download')) return
+
+  if (
+    reportFilter.value.startDate &&
+    reportFilter.value.endDate &&
+    reportFilter.value.startDate > reportFilter.value.endDate
+  ) {
+    showToast('Tanggal mulai tidak boleh melebihi tanggal selesai.', { type: 'error' })
+    return
+  }
+
   setBusy('report-download', true)
   try {
-    const { blob, filename } = await api.reportPdf({ status: 'all' })
+    const params = {
+      status: reportFilter.value.status || 'all',
+    }
+    if (reportFilter.value.startDate) {
+      params.start_date = reportFilter.value.startDate
+      params.from_date = reportFilter.value.startDate
+      params.from = reportFilter.value.startDate
+      params.startDate = reportFilter.value.startDate
+    }
+    if (reportFilter.value.endDate) {
+      params.end_date = reportFilter.value.endDate
+      params.to_date = reportFilter.value.endDate
+      params.to = reportFilter.value.endDate
+      params.endDate = reportFilter.value.endDate
+    }
+
+    const { blob, filename } = await api.reportPdf(params)
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = filename || 'bookstore-report.pdf'
+
+    const defaultFilename =
+      reportFilter.value.startDate && reportFilter.value.endDate
+        ? `laporan-penjualan-${reportFilter.value.startDate}-sd-${reportFilter.value.endDate}.pdf`
+        : 'bookstore-report.pdf'
+
+    link.download = filename || defaultFilename
     document.body.appendChild(link)
     link.click()
     link.remove()
     URL.revokeObjectURL(url)
+
     showToast('Laporan PDF berhasil diunduh.', { type: 'success' })
+    showReportModal.value = false
   } catch (error) {
     showToast(apiErrorText(error, 'Gagal mengunduh laporan'), { type: 'error' })
   } finally {
     setBusy('report-download', false)
+  }
+}
+
+function downloadReport(filters = null) {
+  if (filters && typeof filters === 'object' && (filters.startDate || filters.endDate || filters.status)) {
+    reportFilter.value = {
+      ...reportFilter.value,
+      ...filters,
+    }
+    executeDownloadReport()
+  } else {
+    openReportDownloadModal()
   }
 }
 
@@ -811,7 +1049,7 @@ onMounted(async () => {
         :weekly-sales-total="weeklySalesTotal"
         :low-stock-books="lowStockBooks"
         :report-orders="reportOrders"
-        :report-loading="reportLoading"
+        :report-loading="reportLoading || adminOrdersLoading"
         :downloading-report="isBusy('report-download')"
         @switch-tab="(tab) => (activeTab = tab)"
         @restock="updateBookStock"
@@ -857,6 +1095,7 @@ onMounted(async () => {
         :loading="adminOrdersLoading"
         :books="adminBooks"
         @refresh="onOrdersRefresh"
+        @download-report="downloadReport"
       />
 
       <AdminCustomersTab
@@ -877,5 +1116,163 @@ onMounted(async () => {
         v-if="activeTab === 'profile'"
       />
     </div>
+
+    <!-- Modal Unduh Laporan PDF dengan Rentang Tanggal -->
+    <Teleport to="body">
+      <transition name="modal-fade">
+        <div
+          v-if="showReportModal"
+          class="fixed inset-0 z-50 flex items-center justify-center p-3.5 sm:p-4 bg-black/60 backdrop-blur-xs select-none"
+          @click.self="closeReportDownloadModal"
+        >
+          <transition name="modal-pop" appear>
+            <div
+              class="relative w-full max-w-lg bg-white border-2 sm:border-3 border-black rounded-[2px] shadow-neo-sm sm:shadow-neo overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              <!-- Modal Header -->
+              <div
+                class="bg-neo-yellow border-b-2 sm:border-b-3 border-black p-3.5 sm:p-4 flex items-center justify-between gap-3 shrink-0"
+              >
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <div class="w-8 h-8 rounded-[2px] bg-black text-white flex items-center justify-center shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                    </svg>
+                  </div>
+                  <div class="min-w-0">
+                    <h3 class="font-outfit font-black text-sm sm:text-base text-black uppercase tracking-tight truncate">
+                      Unduh Laporan Penjualan (PDF)
+                    </h3>
+                    <p class="font-sans text-[11px] text-black/70 font-semibold truncate">
+                      Pilih rentang tanggal dan status transaksi
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  class="w-8 h-8 rounded-[2px] bg-white border-2 border-black flex items-center justify-center font-outfit font-black text-sm hover:bg-black hover:text-white transition-colors cursor-pointer shadow-neo-xs shrink-0"
+                  aria-label="Tutup modal"
+                  @click="closeReportDownloadModal"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <!-- Modal Body -->
+              <form class="p-4 sm:p-5 space-y-4 overflow-y-auto select-text" @submit.prevent="executeDownloadReport">
+                <!-- Preset Pilihan Cepat -->
+                <div>
+                  <label class="block font-outfit font-black text-xs uppercase mb-1.5 text-black">
+                    Pilihan Cepat Rentang Tanggal:
+                  </label>
+                  <div class="flex flex-wrap gap-1.5">
+                    <button
+                      v-for="p in reportDatePresets"
+                      :key="p.key"
+                      type="button"
+                      class="px-2.5 py-1 font-outfit font-bold text-xs border-2 border-black rounded-[2px] transition-all cursor-pointer"
+                      :class="reportFilter.preset === p.key ? 'bg-black text-white shadow-neo-xs' : 'bg-white hover:bg-neutral-100 text-black shadow-neo-xs'"
+                      @click="selectReportPreset(p.key)"
+                    >
+                      {{ p.label }}
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Input Tanggal Mulai & Tanggal Selesai -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label class="block font-outfit font-black text-xs uppercase mb-1 text-black">
+                      Dari Tanggal (Mulai):
+                    </label>
+                    <input
+                      v-model="reportFilter.startDate"
+                      type="date"
+                      class="w-full bg-background border-2 border-black p-2 font-outfit font-bold text-xs outline-none shadow-neo-xs rounded-[2px] focus:bg-white"
+                      @change="reportFilter.preset = 'custom'"
+                    />
+                  </div>
+                  <div>
+                    <label class="block font-outfit font-black text-xs uppercase mb-1 text-black">
+                      Sampai Tanggal (Selesai):
+                    </label>
+                    <input
+                      v-model="reportFilter.endDate"
+                      type="date"
+                      class="w-full bg-background border-2 border-black p-2 font-outfit font-bold text-xs outline-none shadow-neo-xs rounded-[2px] focus:bg-white"
+                      @change="reportFilter.preset = 'custom'"
+                    />
+                  </div>
+                </div>
+
+                <!-- Filter Status Pesanan -->
+                <div>
+                  <label class="block font-outfit font-black text-xs uppercase mb-1 text-black">
+                    Filter Status Transaksi:
+                  </label>
+                  <select
+                    v-model="reportFilter.status"
+                    class="w-full bg-background border-2 border-black p-2 font-outfit font-bold text-xs outline-none shadow-neo-xs rounded-[2px] cursor-pointer"
+                  >
+                    <option value="all">Semua Status (Lunas, Proses, Kirim, Batal, dll)</option>
+                    <option value="paid">Hanya Lunas / Sukses (Paid, Processing, Shipped, Completed)</option>
+                    <option value="waiting_payment">Hanya Menunggu Pembayaran</option>
+                    <option value="cancelled">Hanya Dibatalkan</option>
+                    <option value="returned">Hanya Diretur</option>
+                  </select>
+                </div>
+
+                <!-- Info Box -->
+                <div class="p-3 bg-neutral-50 border-2 border-black rounded-[2px] text-xs font-sans space-y-1">
+                  <div class="flex items-center gap-1.5 font-outfit font-black uppercase text-black">
+                    <svg class="w-3.5 h-3.5 text-neo-violet" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+                    </svg>
+                    <span>Cakupan Laporan:</span>
+                  </div>
+                  <p class="text-neutral-600">
+                    <template v-if="reportFilter.startDate && reportFilter.endDate">
+                      Mencakup data transaksi dari <strong class="text-black">{{ reportFilter.startDate }}</strong> s/d <strong class="text-black">{{ reportFilter.endDate }}</strong>.
+                    </template>
+                    <template v-else-if="reportFilter.startDate">
+                      Mencakup data transaksi mulai <strong class="text-black">{{ reportFilter.startDate }}</strong> hingga terbaru.
+                    </template>
+                    <template v-else-if="reportFilter.endDate">
+                      Mencakup data transaksi hingga tanggal <strong class="text-black">{{ reportFilter.endDate }}</strong>.
+                    </template>
+                    <template v-else>
+                      Mencetak seluruh histori data transaksi tanpa filter tanggal.
+                    </template>
+                  </p>
+                </div>
+
+                <!-- Modal Actions -->
+                <div class="border-t-2 border-black pt-3 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    class="neubrutal-btn bg-white text-black border-2 border-black px-4 py-2 rounded-[2px] font-outfit font-black text-xs shadow-neo-sm hover:bg-neutral-100 cursor-pointer"
+                    @click="closeReportDownloadModal"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    :disabled="isBusy('report-download')"
+                    class="neubrutal-btn bg-neo-yellow text-black border-2 border-black px-5 py-2 rounded-[2px] font-outfit font-black text-xs shadow-neo-sm hover:bg-yellow-300 disabled:opacity-60 flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span v-if="isBusy('report-download')" class="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
+                    <svg v-else class="w-3.5 h-3.5 text-black shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                    </svg>
+                    <span>{{ isBusy('report-download') ? 'Sedang Mengunduh...' : 'Unduh Laporan PDF' }}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </transition>
+        </div>
+      </transition>
+    </Teleport>
   </div>
 </template>

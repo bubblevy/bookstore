@@ -109,7 +109,7 @@ onMounted(async () => {
 
   // Fetch remaining tab data in background without duplicate active tab fetch.
   const remainingTasks = []
-  if (!state.books.length) remainingTasks.push(loadBooks({ per_page: 100 }))
+  if (!state.books.length) remainingTasks.push(loadBooks({ per_page: 10 }))
   if (activeTab.value !== 'orders') remainingTasks.push(loadOrders())
   if (activeTab.value !== 'addresses') remainingTasks.push(loadAddresses(true))
   if (remainingTasks.length) {

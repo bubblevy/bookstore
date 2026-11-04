@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 
 const props = defineProps({
@@ -29,6 +30,22 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['switchTab', 'restock', 'downloadReport'])
+
+const latestOrders = computed(() => {
+  const list = [...props.reportOrders]
+  return list
+    .sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+      if (timeB !== timeA) return timeB - timeA
+      return String(b.invoice || b.id || '').localeCompare(
+        String(a.invoice || a.id || ''),
+        undefined,
+        { numeric: true },
+      )
+    })
+    .slice(0, 5)
+})
 
 function formatRupiah(val) {
   return new Intl.NumberFormat('id-ID', {
@@ -75,10 +92,13 @@ function maskEmail(email) {
           <button
             type="button"
             :disabled="downloadingReport"
-            class="neubrutal-btn bg-neo-yellow border-2 border-black px-3 py-1.5 font-outfit font-black text-[11px] shadow-neo-sm hover:bg-yellow-300 shrink-0 disabled:opacity-60 cursor-pointer"
+            class="neubrutal-btn bg-neo-yellow border-2 border-black px-3 py-1.5 font-outfit font-black text-[11px] shadow-neo-sm hover:bg-yellow-300 shrink-0 disabled:opacity-60 cursor-pointer flex items-center gap-1.5"
             @click="emit('downloadReport')"
           >
-            {{ downloadingReport ? 'Mengunduh...' : 'Laporan PDF' }}
+            <svg class="w-3.5 h-3.5 text-black shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+            <span>{{ downloadingReport ? 'Mengunduh...' : 'Laporan PDF' }}</span>
           </button>
         </div>
 
@@ -187,11 +207,12 @@ function maskEmail(email) {
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b-2 border-black pb-3 mb-4">
         <div>
           <h3 class="font-outfit font-black text-base sm:text-lg text-black">Transaksi Masuk Terbaru</h3>
-          <p class="font-sans text-xs text-muted-foreground">
+          <p class="font-sans text-xs text-muted-foreground mt-0.5">
             Pembaruan langsung status transaksi pembeli
           </p>
         </div>
         <button
+          type="button"
           class="neubrutal-btn bg-white border-2 border-black px-3 py-1.5 font-outfit font-black text-xs shadow-neo-sm hover:bg-neo-yellow cursor-pointer self-start sm:self-auto shrink-0"
           @click="emit('switchTab', 'orders')"
         >
@@ -212,7 +233,7 @@ function maskEmail(email) {
             </tr>
           </thead>
           <tbody>
-            <tr v-if="reportLoading">
+            <tr v-if="reportLoading && !latestOrders.length">
               <td colspan="6" class="p-8 text-center bg-gray-50/50">
                 <div class="inline-flex items-center justify-center gap-2.5">
                   <span
@@ -224,7 +245,7 @@ function maskEmail(email) {
                 </div>
               </td>
             </tr>
-            <tr v-else-if="!reportOrders.length">
+            <tr v-else-if="!latestOrders.length">
               <td colspan="6" class="p-8 text-center bg-gray-50/50">
                 <p class="font-outfit font-black text-sm text-black">Belum Ada Transaksi</p>
                 <p class="font-sans text-xs text-muted-foreground mt-1">
@@ -234,7 +255,7 @@ function maskEmail(email) {
             </tr>
             <template v-else>
               <tr
-                v-for="order in reportOrders.slice(0, 5)"
+                v-for="order in latestOrders"
                 :key="order.id"
                 class="border-b border-black/10 hover:bg-gray-50"
               >

@@ -191,21 +191,58 @@ export function useOrderStatusSSE(options = {}) {
       parsed = rawData
     }
 
+    const payload = typeof parsed === 'object' && parsed !== null ? parsed : {}
+    const isPayment =
+      eventName === 'payment_status' ||
+      payload.event === 'payment_status' ||
+      Boolean(payload.payment_status)
+
+    const isShipping =
+      eventName === 'shipping_status' ||
+      payload.event === 'shipping_status' ||
+      Boolean(payload.shipping_status || payload.waybill_number || payload.tracking_id)
+
     if (eventName === 'connected') {
       isConnected.value = true
       if (typeof options.onConnected === 'function') {
         options.onConnected(parsed)
       }
-    } else if (eventName === 'payment_status') {
+    } else if (isPayment) {
       lastPaymentUpdate.value = parsed
       if (typeof options.onPaymentStatus === 'function') {
         options.onPaymentStatus(parsed)
       }
-    } else if (eventName === 'shipping_status') {
+    } else if (isShipping) {
       lastShippingUpdate.value = parsed
       if (typeof options.onShippingStatus === 'function') {
         options.onShippingStatus(parsed)
       }
+    }
+
+    if (
+      eventName === 'order_created' ||
+      eventName === 'new_order' ||
+      payload.event === 'order_created' ||
+      payload.event === 'new_order'
+    ) {
+      if (typeof options.onOrderCreated === 'function') {
+        options.onOrderCreated(parsed)
+      }
+    }
+
+    if (
+      eventName === 'order_status' ||
+      eventName === 'order_update' ||
+      eventName === 'order_updated' ||
+      payload.order_status
+    ) {
+      if (typeof options.onOrderStatus === 'function') {
+        options.onOrderStatus(parsed)
+      }
+    }
+
+    if (typeof options.onOrderEvent === 'function') {
+      options.onOrderEvent({ event: eventName, data: parsed })
     }
   }
 

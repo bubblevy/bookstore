@@ -213,7 +213,7 @@ async function ensureBooksLoaded() {
   if (availableBooks.value.length > 0) return
   booksLoading.value = true
   try {
-    const res = await api.books({ per_page: 100, is_active: 'all' })
+    const res = await api.books({ per_page: 10, is_active: 'all' })
     localBooks.value = (res.data || []).map(mapBook)
   } catch {
   } finally {

@@ -392,7 +392,7 @@ onMounted(async () => {
   window.addEventListener('click', handleClickOutside)
   window.addEventListener('keydown', handleKeydown)
   if (!state.books.length) {
-    await loadBooks({ per_page: 100 })
+    await loadBooks({ per_page: 10 })
   }
   syncFromRoute()
 })
