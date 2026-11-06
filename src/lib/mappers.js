@@ -42,6 +42,8 @@ export function mapBook(raw = {}) {
   const price = Number(raw.price) || 0
   const originalPrice = Number(raw.original_price) || 0
   const discount = Number(raw.discount_percentage)
+  const rating = Number(raw.average_rating ?? raw.rating ?? 0)
+  const reviewsCount = Number(raw.total_reviews ?? raw.reviews_count ?? 0)
 
   const authorName =
     (typeof raw.author === 'object' && raw.author !== null ? raw.author.name : null) ??
@@ -95,6 +97,8 @@ export function mapBook(raw = {}) {
     subtitle: '',
     synopsis: raw.synopsis || raw.description || '',
     format: raw.format || 'Paperback',
+    rating: Number.isFinite(rating) ? Number(rating.toFixed(1)) : 0,
+    reviewsCount,
   }
 }
 

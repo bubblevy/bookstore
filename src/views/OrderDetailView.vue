@@ -8,6 +8,7 @@ import { formatFullAddress } from '@/lib/mappers'
 import { assetUrl } from '@/lib/assets'
 import FullScreenLoader from '@/components/FullScreenLoader.vue'
 import PaymentInstructions from '@/components/PaymentInstructions.vue'
+import ReviewModal from '@/components/ReviewModal.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -30,6 +31,12 @@ const copiedResi = ref(false)
 const paymentExpired = ref(false)
 const downloadingPdf = ref(false)
 const sseConnected = ref(false)
+const showReviewModal = ref(false)
+
+const isOrderDelivered = computed(() => {
+  const status = String(order.value?.status || '').toLowerCase()
+  return ['delivered', 'completed', 'selesai'].includes(status)
+})
 
 let sseSubscription = null
 
@@ -428,13 +435,25 @@ onUnmounted(() => {
                 </div>
               </div>
 
-                            <div class="flex items-center pt-1">
+                            <div class="flex items-center justify-between pt-1 flex-wrap gap-2">
                 <span
                   class="border-2 border-black px-2.5 py-1 font-outfit font-black text-[11px] tracking-wide uppercase inline-flex items-center shadow-neo-sm"
                   :class="orderStatusMeta.bgClass"
                 >
                   {{ orderStatusMeta.label }}
                 </span>
+
+                <button
+                  v-if="isOrderDelivered"
+                  type="button"
+                  class="neubrutal-btn bg-neo-yellow text-black border-2 border-black px-3 py-1 font-outfit font-black text-xs shadow-neo-sm hover:bg-yellow-300 flex items-center gap-1.5 cursor-pointer"
+                  @click="showReviewModal = true"
+                >
+                  <svg class="w-3.5 h-3.5 fill-amber-400 text-black" viewBox="0 0 24 24">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                  </svg>
+                  <span>Beri Ulasan Produk</span>
+                </button>
               </div>
             </div>
 
@@ -620,5 +639,12 @@ onUnmounted(() => {
         </div>
       </div>
     </div>
+
+    <!-- Review Modal -->
+    <ReviewModal
+      v-model="showReviewModal"
+      :invoice-number="order?.invoice_number || invoiceNumber"
+      @submitted="fetchOrderDetail(true)"
+    />
   </div>
 </template>

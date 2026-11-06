@@ -15,6 +15,7 @@ import AdminCategoriesTab from '@/components/admin/tabs/AdminCategoriesTab.vue'
 import AdminPeopleTab from '@/components/admin/tabs/AdminPeopleTab.vue'
 import AdminVouchersTab from '@/components/admin/tabs/AdminVouchersTab.vue'
 import AdminOrdersTab from '@/components/admin/tabs/AdminOrdersTab.vue'
+import AdminReviewsTab from '@/components/admin/tabs/AdminReviewsTab.vue'
 import AdminCustomersTab from '@/components/admin/tabs/AdminCustomersTab.vue'
 import AdminPaymentsTab from '@/components/admin/tabs/AdminPaymentsTab.vue'
 import AdminProfileTab from '@/components/admin/tabs/AdminProfileTab.vue'
@@ -408,6 +409,9 @@ async function loadTabData(tabName) {
         loadAdminOrders(),
         loadAdminBooks(),
       ])
+      break
+    case 'reviews':
+      await loadAdminBooks()
       break
     case 'customers':
       await Promise.allSettled([
@@ -914,7 +918,8 @@ onMounted(async () => {
         </div>
       </div>
 
-            <div class="relative mb-6">
+            <!-- Navigation Tabs -->
+      <div class="relative mb-6">
         <div class="flex items-center gap-2 overflow-x-auto pb-2 -mb-2 pt-1 pr-2 scrollbar-none">
           <button
             type="button"
@@ -998,6 +1003,19 @@ onMounted(async () => {
             >
               {{ needsActionCount }}
             </span>
+          </button>
+
+          <button
+            type="button"
+            class="neubrutal-btn px-3.5 sm:px-5 py-2.5 rounded-[2px] font-outfit font-black text-xs sm:text-sm whitespace-nowrap transition-all border-2 sm:border-3 border-black shrink-0 cursor-pointer"
+            :class="
+              activeTab === 'reviews'
+                ? 'bg-neo-yellow text-black shadow-neo-sm -translate-y-0.5'
+                : 'bg-white text-muted-foreground hover:bg-gray-100 shadow-neo-sm'
+            "
+            @click="activeTab = 'reviews'"
+          >
+            Ulasan & Rating
           </button>
 
           <button
@@ -1094,6 +1112,11 @@ onMounted(async () => {
         :books="adminBooks"
         @refresh="onOrdersRefresh"
         @download-report="downloadReport"
+      />
+
+      <AdminReviewsTab
+        v-if="activeTab === 'reviews'"
+        :books="adminBooks"
       />
 
       <AdminCustomersTab
