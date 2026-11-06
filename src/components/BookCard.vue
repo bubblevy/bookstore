@@ -146,7 +146,21 @@ function goToDetail() {
           {{ book.author }}
         </p>
 
-        <div class="flex items-center gap-1.5 mt-1 text-[10px] sm:text-xs font-sans">
+        <div class="flex items-center gap-1.5 mt-1 text-[10px] sm:text-xs font-sans flex-wrap">
+          <div v-if="book.rating > 0" class="flex items-center gap-0.5 sm:gap-1 font-bold text-black">
+            <svg class="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-amber-400 text-black" viewBox="0 0 24 24">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+            </svg>
+            <span class="font-outfit font-black text-[11px] sm:text-xs">{{ Number(book.rating).toFixed(1) }}</span>
+            <span class="text-muted-foreground font-semibold text-[9px] sm:text-[10px]">({{ book.reviewsCount || 0 }})</span>
+          </div>
+          <div v-else class="flex items-center gap-0.5 sm:gap-1 font-bold text-neutral-500">
+            <svg class="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-neutral-200 text-neutral-400" viewBox="0 0 24 24">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+            </svg>
+            <span class="font-outfit font-bold text-[10px] sm:text-[11px] text-neutral-500">N/A</span>
+          </div>
+          <span class="text-black/30 font-bold">•</span>
           <span class="text-muted-foreground font-semibold text-[10px] sm:text-[11px]">{{ soldLabel }}</span>
         </div>
       </div>

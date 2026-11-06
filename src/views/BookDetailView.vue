@@ -2,6 +2,7 @@
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useStore } from '@/composables/useStore'
+import { api } from '@/lib/api'
 import { assetUrl } from '@/lib/assets'
 import BookCard from '@/components/BookCard.vue'
 import BookCover from '@/components/BookCover.vue'
@@ -80,9 +81,93 @@ async function fetchBook() {
     if (detailed.slug && route.params.id !== detailed.slug) {
       router.replace({ name: 'book-detail', params: { id: detailed.slug } })
     }
+    fetchReviews(1)
   }
   loading.value = false
   await refreshWishlistStatus(book.value?.id)
+}
+
+// Reviews State & Logic
+const reviewsLoading = ref(false)
+const reviewsList = ref([])
+const reviewBreakdown = ref({
+  average_rating: 0,
+  total_reviews: 0,
+  star_5_count: 0,
+  star_4_count: 0,
+  star_3_count: 0,
+  star_2_count: 0,
+  star_1_count: 0,
+  with_comment_count: 0,
+})
+const reviewFilterRating = ref('')
+const reviewFilterHasComment = ref(false)
+const reviewSortBy = ref('newest')
+const reviewPage = ref(1)
+const reviewMeta = ref({
+  page: 1,
+  per_page: 5,
+  total_items: 0,
+  total_pages: 1,
+})
+
+async function fetchReviews(page = 1) {
+  const targetSlug = book.value?.slug || route.params.id
+  if (!targetSlug) return
+  reviewPage.value = page
+  reviewsLoading.value = true
+  try {
+    const params = {
+      page: reviewPage.value,
+      per_page: 5,
+      sort_by: reviewSortBy.value,
+    }
+    if (reviewFilterRating.value) {
+      params.rating = Number(reviewFilterRating.value)
+    }
+    if (reviewFilterHasComment.value) {
+      params.has_comment = 'true'
+    }
+    const res = await api.bookReviews(targetSlug, params)
+    reviewsList.value = res.data?.reviews || []
+    if (res.data?.breakdown) {
+      reviewBreakdown.value = res.data.breakdown
+    }
+    if (res.meta) {
+      reviewMeta.value = res.meta
+    }
+  } catch {
+    // Reviews are non-blocking
+  } finally {
+    reviewsLoading.value = false
+  }
+}
+
+watch(
+  () => [reviewFilterRating.value, reviewFilterHasComment.value, reviewSortBy.value],
+  () => {
+    fetchReviews(1)
+  },
+)
+
+function calculatePercentage(count) {
+  const total = Number(reviewBreakdown.value?.total_reviews) || 0
+  if (total <= 0) return 0
+  return Math.round(((Number(count) || 0) / total) * 100)
+}
+
+function formatReviewDate(dateStr) {
+  if (!dateStr) return '-'
+  try {
+    const dt = new Date(dateStr)
+    return new Intl.DateTimeFormat('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    }).format(dt)
+  } catch {
+    return dateStr
+  }
 }
 
 watch(() => route.params.id, fetchBook, { immediate: true })
@@ -477,6 +562,39 @@ const specItems = computed(() => {
               </span>
               <span v-if="!inStock" class="text-red-600 font-black uppercase">· Stok habis</span>
             </div>
+
+            <!-- Star rating badge -->
+            <a
+              href="#ulasan-pembeli"
+              class="flex items-center gap-1.5 text-xs font-sans font-bold hover:text-neo-violet transition-colors group cursor-pointer"
+            >
+              <span class="text-black/30 font-bold">•</span>
+              <div v-if="(reviewBreakdown.total_reviews > 0) || (book.rating > 0)" class="flex items-center gap-1 text-black">
+                <svg class="w-4 h-4 fill-amber-400 text-black" viewBox="0 0 24 24">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                </svg>
+                <span class="font-outfit font-black text-sm">{{ Number(reviewBreakdown.average_rating || book.rating).toFixed(1) }}</span>
+                <span class="text-muted-foreground font-semibold group-hover:underline">
+                  ({{ reviewBreakdown.total_reviews || book.reviewsCount || 0 }} ulasan)
+                </span>
+              </div>
+              <div v-else class="flex items-center gap-1.5 text-neutral-500">
+                <div class="flex items-center">
+                  <svg
+                    v-for="s in 5"
+                    :key="s"
+                    class="w-3.5 h-3.5 fill-neutral-200 text-neutral-400"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <span class="font-outfit font-bold text-xs text-neutral-600">N/A</span>
+                <span class="text-muted-foreground font-semibold group-hover:underline text-[11px]">
+                  (0 ulasan)
+                </span>
+              </div>
+            </a>
           </div>
 
           <div>
@@ -809,6 +927,253 @@ const specItems = computed(() => {
           </div>
         </div>
       </div>
+
+      <!-- Ulasan & Rating Pembeli -->
+      <section id="ulasan-pembeli" class="pt-8 sm:pt-12 border-t-2 sm:border-t-3 border-black space-y-6 scroll-mt-24 mb-10">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="font-outfit font-black text-2xl sm:text-3xl text-black">
+                Ulasan & Rating Pembeli
+              </h2>
+              <span class="px-2.5 py-0.5 bg-neo-yellow text-black border-2 border-black rounded-[2px] font-outfit font-black text-xs shadow-neo-xs">
+                {{ reviewBreakdown.total_reviews }} Ulasan
+              </span>
+            </div>
+            <p class="font-sans text-xs sm:text-sm text-neutral-600 font-medium mt-1">
+              Ulasan nyata dari pembeli terverifikasi setelah pesanan diterima.
+            </p>
+          </div>
+        </div>
+
+        <!-- Rating Breakdown Card -->
+        <div class="bg-white border-2 sm:border-3 border-black p-5 sm:p-7 rounded-[2px] shadow-neo-sm sm:shadow-neo grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8 items-center">
+          <!-- Overall Rating -->
+          <div class="md:col-span-4 flex flex-col items-center justify-center text-center p-4 bg-amber-50/60 border-2 border-black rounded-[2px]">
+            <div class="font-outfit font-black text-4xl sm:text-5xl text-black flex items-baseline gap-1">
+              <span>{{ Number(reviewBreakdown.average_rating || 0).toFixed(1) }}</span>
+              <span class="text-lg text-neutral-500 font-bold">/ 5.0</span>
+            </div>
+            <div class="flex items-center gap-1 mt-2">
+              <svg
+                v-for="star in 5"
+                :key="star"
+                class="w-5 h-5"
+                :class="star <= Math.round(reviewBreakdown.average_rating || 0) ? 'fill-amber-400 text-black' : 'fill-neutral-200 text-neutral-400'"
+                viewBox="0 0 24 24"
+              >
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <p class="font-sans text-xs font-bold text-neutral-600 mt-2">
+              {{ reviewBreakdown.total_reviews }} total ulasan • {{ reviewBreakdown.with_comment_count }} dengan komentar
+            </p>
+          </div>
+
+          <!-- Star Distribution Bars -->
+          <div class="md:col-span-8 space-y-2 font-sans">
+            <div
+              v-for="s in [5, 4, 3, 2, 1]"
+              :key="s"
+              class="flex items-center gap-3 text-xs"
+            >
+              <div class="flex items-center gap-1 w-14 shrink-0 font-bold text-black">
+                <span>{{ s }}</span>
+                <svg class="w-3.5 h-3.5 fill-amber-400 text-black" viewBox="0 0 24 24">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" stroke-width="1.5"/>
+                </svg>
+              </div>
+
+              <!-- Bar -->
+              <div class="flex-1 h-3.5 bg-neutral-100 border border-black rounded-[2px] overflow-hidden relative">
+                <div
+                  class="h-full bg-neo-yellow border-r border-black transition-all duration-300"
+                  :style="{ width: `${calculatePercentage(reviewBreakdown[`star_${s}_count`])}%` }"
+                ></div>
+              </div>
+
+              <div class="w-12 text-right font-mono font-bold text-neutral-600 text-[11px] shrink-0">
+                {{ reviewBreakdown[`star_${s}_count`] || 0 }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filters & Sorting Toolbar -->
+        <div class="bg-neutral-50 border-2 border-black p-3.5 rounded-[2px] flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <!-- Star Filter Pills -->
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <button
+              type="button"
+              class="px-3 py-1.5 rounded-[2px] font-outfit font-black text-xs border-2 border-black transition-all cursor-pointer"
+              :class="reviewFilterRating === '' ? 'bg-black text-white shadow-neo-xs' : 'bg-white text-black hover:bg-neutral-100'"
+              @click="reviewFilterRating = ''"
+            >
+              Semua ({{ reviewBreakdown.total_reviews }})
+            </button>
+            <button
+              v-for="star in [5, 4, 3, 2, 1]"
+              :key="star"
+              type="button"
+              class="px-2.5 py-1.5 rounded-[2px] font-outfit font-black text-xs border-2 border-black transition-all cursor-pointer flex items-center gap-1"
+              :class="reviewFilterRating === String(star) ? 'bg-neo-yellow text-black shadow-neo-xs -translate-y-0.5' : 'bg-white text-black hover:bg-neutral-100'"
+              @click="reviewFilterRating = reviewFilterRating === String(star) ? '' : String(star)"
+            >
+              <span>{{ star }}</span>
+              <svg class="w-3 h-3 fill-amber-400 text-black" viewBox="0 0 24 24">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>
+              <span>({{ reviewBreakdown[`star_${star}_count`] || 0 }})</span>
+            </button>
+          </div>
+
+          <!-- Secondary Filters: Has comment toggle & Sort dropdown -->
+          <div class="flex items-center gap-2.5 flex-wrap justify-between md:justify-end">
+            <button
+              type="button"
+              class="px-3 py-1.5 rounded-[2px] font-outfit font-bold text-xs border-2 border-black transition-all cursor-pointer flex items-center gap-1.5"
+              :class="reviewFilterHasComment ? 'bg-neo-yellow text-black shadow-neo-xs font-black' : 'bg-white text-neutral-700 hover:bg-neutral-100'"
+              @click="reviewFilterHasComment = !reviewFilterHasComment"
+            >
+              <span>Ada Komentar</span>
+              <span class="text-[10px] px-1 bg-black/10 rounded-[1px] font-mono font-bold">{{ reviewBreakdown.with_comment_count || 0 }}</span>
+            </button>
+
+            <select
+              v-model="reviewSortBy"
+              class="px-2.5 py-1.5 rounded-[2px] font-outfit font-black text-xs border-2 border-black bg-white focus:outline-none cursor-pointer"
+            >
+              <option value="newest">Terbaru</option>
+              <option value="oldest">Terlama</option>
+              <option value="highest_rating">Rating Tertinggi</option>
+              <option value="lowest_rating">Rating Terendah</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Reviews List -->
+        <div v-if="reviewsLoading" class="space-y-4 py-6">
+          <div v-for="i in 3" :key="i" class="p-5 bg-white border-2 border-black rounded-[2px] animate-pulse space-y-3">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-full bg-neutral-200"></div>
+              <div class="space-y-1.5">
+                <div class="h-4 w-32 bg-neutral-200 rounded-[2px]"></div>
+                <div class="h-3 w-20 bg-neutral-100 rounded-[2px]"></div>
+              </div>
+            </div>
+            <div class="h-4 w-3/4 bg-neutral-100 rounded-[2px]"></div>
+          </div>
+        </div>
+
+        <div v-else-if="reviewsList.length === 0" class="p-8 sm:p-12 text-center bg-white border-2 border-black rounded-[2px] shadow-neo-sm space-y-2">
+          <p class="font-outfit font-black text-base text-black">
+            Belum ada ulasan untuk filter ini
+          </p>
+          <p class="font-sans text-xs text-neutral-500 max-w-sm mx-auto">
+            Jadilah yang pertama membaca dan memberikan ulasan setelah menyelesaikan pesanan buku ini.
+          </p>
+        </div>
+
+        <div v-else class="space-y-4">
+          <div
+            v-for="rev in reviewsList"
+            :key="rev.id"
+            class="p-4 sm:p-6 bg-white border-2 sm:border-3 border-black rounded-[2px] shadow-neo-sm space-y-3"
+          >
+            <!-- Review Header -->
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex items-center gap-2.5">
+                <!-- User avatar placeholder -->
+                <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-neo-yellow border-2 border-black font-outfit font-black text-xs sm:text-sm flex items-center justify-center text-black shrink-0 shadow-neo-xs">
+                  {{ (rev.user_name || 'U').charAt(0).toUpperCase() }}
+                </div>
+                <div>
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="font-outfit font-black text-xs sm:text-sm text-black">
+                      {{ rev.user_name }}
+                    </span>
+                    <span class="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 border border-emerald-600 rounded-[1px] font-outfit font-bold text-[9px] uppercase">
+                      Terverifikasi
+                    </span>
+                  </div>
+                  <span class="font-sans text-[11px] text-neutral-500">
+                    {{ formatReviewDate(rev.created_at) }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Rating stars -->
+              <div class="flex items-center gap-0.5 shrink-0 bg-neutral-100 border border-black px-2 py-1 rounded-[2px]">
+                <svg
+                  v-for="s in 5"
+                  :key="s"
+                  class="w-3.5 h-3.5"
+                  :class="s <= rev.rating ? 'fill-amber-400 text-black' : 'fill-neutral-200 text-neutral-400'"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" stroke-width="1.5"/>
+                </svg>
+              </div>
+            </div>
+
+            <!-- Comment text -->
+            <p v-if="rev.comment" class="font-sans text-xs sm:text-sm text-neutral-800 leading-relaxed whitespace-pre-line">
+              {{ rev.comment }}
+            </p>
+
+            <!-- Seller Reply Box -->
+            <div
+              v-if="rev.seller_reply"
+              class="mt-3 p-3 sm:p-4 bg-neutral-50 border-2 border-black rounded-[2px] space-y-1.5"
+            >
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-1.5">
+                  <span class="px-1.5 py-0.5 bg-black text-white font-outfit font-black text-[9px] uppercase rounded-[1px]">
+                    Penjual
+                  </span>
+                  <span class="font-outfit font-black text-xs text-black">
+                    BookStore Official
+                  </span>
+                </div>
+                <span class="font-sans text-[10px] text-neutral-500">
+                  {{ formatReviewDate(rev.seller_reply_at) }}
+                </span>
+              </div>
+              <p class="font-sans text-xs text-neutral-700 leading-relaxed italic">
+                "{{ rev.seller_reply }}"
+              </p>
+            </div>
+          </div>
+
+          <!-- Pagination -->
+          <div
+            v-if="reviewMeta.total_pages > 1"
+            class="flex items-center justify-between pt-2 select-none"
+          >
+            <span class="font-outfit font-bold text-xs text-neutral-600">
+              Halaman {{ reviewMeta.page }} dari {{ reviewMeta.total_pages }}
+            </span>
+            <div class="flex items-center gap-1.5">
+              <button
+                type="button"
+                :disabled="reviewPage <= 1 || reviewsLoading"
+                class="px-3 py-1.5 bg-white border-2 border-black font-outfit font-black text-xs shadow-neo-xs hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                @click="fetchReviews(reviewPage - 1)"
+              >
+                ← Sebelumnya
+              </button>
+              <button
+                type="button"
+                :disabled="reviewPage >= reviewMeta.total_pages || reviewsLoading"
+                class="px-3 py-1.5 bg-neo-yellow text-black border-2 border-black font-outfit font-black text-xs shadow-neo-xs hover:bg-yellow-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                @click="fetchReviews(reviewPage + 1)"
+              >
+                Selanjutnya →
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <section v-if="relatedBooks.length > 0" class="pt-8 border-t-2 border-black/10">
         <div class="flex items-center justify-between mb-6">

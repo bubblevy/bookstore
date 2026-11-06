@@ -490,4 +490,35 @@ export const api = {
         ...(refreshToken ? { refresh_token: refreshToken } : {}),
       },
     }),
+  // Reviews & Ratings
+  bookReviews: (slug, params = {}) =>
+    request(`/v1/books/${encodeURIComponent(slug)}/reviews${toQuery(params)}`),
+  orderReviewEligibility: (invoice) =>
+    request(`/v1/orders/${encodeURIComponent(invoice)}/review-eligibility`),
+  submitOrderReviews: (invoice, payload) =>
+    request(`/v1/orders/${encodeURIComponent(invoice)}/reviews`, {
+      method: 'POST',
+      body: payload,
+    }),
+  myReviews: (params = {}) => request(`/v1/reviews/my${toQuery(params)}`),
+  updateReview: (id, payload) =>
+    request(`/v1/reviews/${id}`, {
+      method: 'PUT',
+      body: payload,
+    }),
+  adminReviews: (params = {}) => request(`/v1/admin/reviews${toQuery(params)}`),
+  adminModerateReview: (id, payload) =>
+    request(`/v1/admin/reviews/${id}/visibility`, {
+      method: 'PATCH',
+      body: payload,
+    }),
+  adminReplyReview: (id, payload) =>
+    request(`/v1/admin/reviews/${id}/reply`, {
+      method: 'POST',
+      body: payload,
+    }),
+  adminDeleteReview: (id) =>
+    request(`/v1/admin/reviews/${id}`, {
+      method: 'DELETE',
+    }),
 }
