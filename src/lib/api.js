@@ -492,7 +492,7 @@ export const api = {
     }),
   // Reviews & Ratings
   bookReviews: (slug, params = {}) =>
-    request(`/v1/books/${encodeURIComponent(slug)}/reviews${toQuery(params)}`),
+    request(`/v1/books/${encodeURIComponent(slug)}/reviews${toQuery(params)}`, { auth: false }),
   orderReviewEligibility: (invoice) =>
     request(`/v1/orders/${encodeURIComponent(invoice)}/review-eligibility`),
   submitOrderReviews: (invoice, payload) =>

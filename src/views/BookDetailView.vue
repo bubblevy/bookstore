@@ -164,6 +164,8 @@ function formatReviewDate(dateStr) {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
     }).format(dt)
   } catch {
     return dateStr
@@ -932,14 +934,9 @@ const specItems = computed(() => {
       <section id="ulasan-pembeli" class="pt-8 sm:pt-12 border-t-2 sm:border-t-3 border-black space-y-6 scroll-mt-24 mb-10">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <div class="flex items-center gap-2">
-              <h2 class="font-outfit font-black text-2xl sm:text-3xl text-black">
-                Ulasan & Rating Pembeli
-              </h2>
-              <span class="px-2.5 py-0.5 bg-neo-yellow text-black border-2 border-black rounded-[2px] font-outfit font-black text-xs shadow-neo-xs">
-                {{ reviewBreakdown.total_reviews }} Ulasan
-              </span>
-            </div>
+            <h2 class="font-outfit font-black text-2xl sm:text-3xl text-black">
+              Ulasan & Rating Pembeli
+            </h2>
             <p class="font-sans text-xs sm:text-sm text-neutral-600 font-medium mt-1">
               Ulasan nyata dari pembeli terverifikasi setelah pesanan diterima.
             </p>
@@ -977,9 +974,9 @@ const specItems = computed(() => {
               :key="s"
               class="flex items-center gap-3 text-xs"
             >
-              <div class="flex items-center gap-1 w-14 shrink-0 font-bold text-black">
-                <span>{{ s }}</span>
-                <svg class="w-3.5 h-3.5 fill-amber-400 text-black" viewBox="0 0 24 24">
+              <div class="flex items-center gap-1.5 w-8 shrink-0 font-bold text-black">
+                <span class="w-3 text-right tabular-nums">{{ s }}</span>
+                <svg class="w-3.5 h-3.5 fill-amber-400 text-black shrink-0" viewBox="0 0 24 24">
                   <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" stroke-width="1.5"/>
                 </svg>
               </div>
@@ -1088,22 +1085,17 @@ const specItems = computed(() => {
                   {{ (rev.user_name || 'U').charAt(0).toUpperCase() }}
                 </div>
                 <div>
-                  <div class="flex items-center gap-1.5 flex-wrap">
-                    <span class="font-outfit font-black text-xs sm:text-sm text-black">
-                      {{ rev.user_name }}
-                    </span>
-                    <span class="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 border border-emerald-600 rounded-[1px] font-outfit font-bold text-[9px] uppercase">
-                      Terverifikasi
-                    </span>
-                  </div>
-                  <span class="font-sans text-[11px] text-neutral-500">
+                  <span class="font-outfit font-black text-xs sm:text-sm text-black block">
+                    {{ rev.user_name }}
+                  </span>
+                  <span class="font-sans text-[11px] text-neutral-500 block mt-0.5">
                     {{ formatReviewDate(rev.created_at) }}
                   </span>
                 </div>
               </div>
 
               <!-- Rating stars -->
-              <div class="flex items-center gap-0.5 shrink-0 bg-neutral-100 border border-black px-2 py-1 rounded-[2px]">
+              <div class="flex items-center gap-0.5 shrink-0">
                 <svg
                   v-for="s in 5"
                   :key="s"
@@ -1121,26 +1113,27 @@ const specItems = computed(() => {
               {{ rev.comment }}
             </p>
 
-            <!-- Seller Reply Box -->
+            <!-- Seller Reply (Thread Connected) -->
             <div
               v-if="rev.seller_reply"
-              class="mt-3 p-3 sm:p-4 bg-neutral-50 border-2 border-black rounded-[2px] space-y-1.5"
+              class="mt-3.5 ml-1 sm:ml-2 pl-3.5 sm:pl-4 border-l-2 border-black space-y-1"
             >
               <div class="flex items-center justify-between gap-2">
                 <div class="flex items-center gap-1.5">
-                  <span class="px-1.5 py-0.5 bg-black text-white font-outfit font-black text-[9px] uppercase rounded-[1px]">
-                    Penjual
-                  </span>
-                  <span class="font-outfit font-black text-xs text-black">
-                    BookStore Official
+                  <span class="font-outfit font-black text-xs text-black flex items-center gap-1">
+                    Admin
+                    <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="none">
+                      <circle cx="10" cy="10" r="10" fill="#3B82F6" />
+                      <path d="M6 10l2.5 2.5L14 7.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
                   </span>
                 </div>
                 <span class="font-sans text-[10px] text-neutral-500">
                   {{ formatReviewDate(rev.seller_reply_at) }}
                 </span>
               </div>
-              <p class="font-sans text-xs text-neutral-700 leading-relaxed italic">
-                "{{ rev.seller_reply }}"
+              <p class="font-sans text-xs text-neutral-800 leading-relaxed">
+                {{ rev.seller_reply }}
               </p>
             </div>
           </div>
@@ -1255,17 +1248,6 @@ const specItems = computed(() => {
                 >
                   {{ book.description }}
                 </div>
-              </div>
-
-              <!-- Modal Footer -->
-              <div class="p-3.5 sm:p-4 border-t-2 border-black bg-neutral-50 flex justify-end shrink-0">
-                <button
-                  type="button"
-                  class="neubrutal-btn bg-neo-yellow text-black border-2 border-black py-2 px-5 rounded-[2px] font-outfit font-black text-xs sm:text-sm shadow-neo-sm hover:bg-yellow-300 active:translate-x-0.5 active:translate-y-0.5 transition-all text-center cursor-pointer"
-                  @click="closeSynopsisModal"
-                >
-                  Tutup
-                </button>
               </div>
             </div>
           </transition>

@@ -630,19 +630,17 @@ async function checkSelectedPayment() {
             <button
               v-if="order.status === 'selesai'"
               type="button"
-              class="neubrutal-btn bg-amber-300 text-black border-2 border-black px-3 py-2 font-outfit font-black text-xs shadow-neo-sm hover:bg-amber-400 flex items-center justify-center gap-1 cursor-pointer"
+              class="col-span-1 neubrutal-btn bg-amber-300 text-black border-2 border-black px-3 py-2 font-outfit font-black text-xs shadow-neo-sm hover:bg-amber-400 flex items-center justify-center cursor-pointer"
               @click="openReviewModal(order)"
             >
-              <svg class="w-3.5 h-3.5 fill-black text-black" viewBox="0 0 24 24">
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-              </svg>
               <span>Beri Ulasan</span>
             </button>
 
             <button
               type="button"
               :disabled="isBusy(`reorder-${order.id}`)"
-              class="col-span-2 sm:col-span-1 w-full sm:w-auto neubrutal-btn bg-neo-yellow text-black border-2 border-black px-3.5 py-2 font-outfit font-black text-xs shadow-neo-sm hover:bg-yellow-300 disabled:opacity-60 flex items-center justify-center cursor-pointer"
+              class="w-full sm:w-auto neubrutal-btn bg-neo-yellow text-black border-2 border-black px-3.5 py-2 font-outfit font-black text-xs shadow-neo-sm hover:bg-yellow-300 disabled:opacity-60 flex items-center justify-center cursor-pointer"
+              :class="order.status === 'selesai' ? 'col-span-1' : 'col-span-2 sm:col-span-1'"
               @click="handleReorder(order)"
             >
               <span>{{ isBusy(`reorder-${order.id}`) ? 'Memproses...' : 'Beli Lagi' }}</span>

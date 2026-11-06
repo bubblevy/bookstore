@@ -117,6 +117,19 @@ function formatDate(dateStr) {
   }
 }
 
+function maskEmail(email) {
+  if (!email || typeof email !== 'string') return '—'
+  const trimmed = email.trim()
+  const parts = trimmed.split('@')
+  if (parts.length !== 2) return trimmed
+  const [name, domain] = parts
+  if (name.length <= 2) {
+    return `${name.charAt(0)}***@${domain}`
+  }
+  const maskedMiddle = '*'.repeat(Math.min(name.length - 2, 4))
+  return `${name.charAt(0)}${maskedMiddle}${name.charAt(name.length - 1)}@${domain}`
+}
+
 // Open Reply Modal
 function openReply(rev) {
   targetReview.value = rev
@@ -349,26 +362,25 @@ onMounted(() => {
                 <!-- Book Title -->
                 <td class="p-3 min-w-[180px]">
                   <p class="font-outfit font-black text-sm text-black line-clamp-2 leading-snug">
-                    {{ rev.book_title || 'Buku #' + rev.book_id }}
+                    {{ rev.book_title || 'Buku' }}
                   </p>
-                  <span class="text-[11px] font-mono text-muted-foreground">ID Buku: {{ rev.book_id }}</span>
                 </td>
 
                 <!-- Customer -->
                 <td class="p-3 min-w-[160px]">
                   <span class="block font-outfit font-bold text-xs text-black">{{ rev.user_name || 'Pembeli' }}</span>
                   <span v-if="rev.user_email" class="text-muted-foreground text-[11px] font-mono block">
-                    {{ rev.user_email }}
+                    {{ maskEmail(rev.user_email) }}
                   </span>
                 </td>
 
                 <!-- Rating -->
                 <td class="p-3 whitespace-nowrap">
-                  <div class="inline-flex items-center gap-1 bg-amber-50 border border-black px-2 py-0.5 rounded-[2px] shadow-neo-xs">
+                  <div class="inline-flex items-center gap-1 font-outfit font-black text-xs text-black">
                     <svg class="w-3.5 h-3.5 fill-amber-400 text-black" viewBox="0 0 24 24">
                       <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" stroke-width="1.5"/>
                     </svg>
-                    <span class="font-outfit font-black text-xs text-black">{{ rev.rating }}.0</span>
+                    <span>{{ rev.rating }}.0</span>
                   </div>
                 </td>
 
