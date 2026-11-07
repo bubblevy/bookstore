@@ -308,7 +308,7 @@ onMounted(() => {
               <th class="p-3 whitespace-nowrap min-w-[250px]">KOMENTAR & BALASAN</th>
               <th class="p-3 whitespace-nowrap min-w-[120px]">TANGGAL</th>
               <th class="p-3 text-center whitespace-nowrap min-w-[100px]">STATUS</th>
-              <th class="p-3 text-right whitespace-nowrap shrink-0 min-w-[130px]">AKSI</th>
+              <th class="p-3 text-right whitespace-nowrap shrink-0 min-w-[210px]">AKSI</th>
             </tr>
           </thead>
           <tbody>
@@ -425,41 +425,28 @@ onMounted(() => {
 
                 <!-- Actions -->
                 <td class="p-3 text-right whitespace-nowrap shrink-0">
-                  <div class="inline-flex items-center gap-1.5 justify-end">
+                  <div class="flex items-center justify-end gap-1.5 whitespace-nowrap">
                     <button
                       type="button"
-                      class="neubrutal-btn bg-white border border-black sm:border-2 p-1.5 rounded-[2px] hover:bg-neutral-100 shadow-neo-xs cursor-pointer"
-                      :title="rev.seller_reply ? 'Ubah Balasan Toko' : 'Balas Ulasan'"
+                      class="neubrutal-btn bg-white border border-black px-2.5 py-1 font-outfit font-black text-xs shadow-neo-sm hover:bg-neo-yellow cursor-pointer"
                       @click="openReply(rev)"
                     >
-                      <svg class="w-3.5 h-3.5 text-black" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a.75.75 0 0 1-.974-.94 5.942 5.942 0 0 0 .974-2.82A8.066 8.066 0 0 1 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
-                      </svg>
+                      {{ rev.seller_reply ? 'Ubah Balasan' : 'Balas' }}
                     </button>
                     <button
                       type="button"
-                      class="neubrutal-btn border border-black sm:border-2 p-1.5 rounded-[2px] shadow-neo-xs cursor-pointer"
-                      :class="rev.is_hidden ? 'bg-emerald-300 hover:bg-emerald-400' : 'bg-amber-100 hover:bg-amber-200'"
-                      :title="rev.is_hidden ? 'Tampilkan ke Publik' : 'Sembunyikan dari Publik'"
+                      class="neubrutal-btn border border-black px-2.5 py-1 font-outfit font-black text-xs shadow-neo-sm cursor-pointer"
+                      :class="rev.is_hidden ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-amber-100 text-amber-800 hover:bg-amber-200'"
                       @click="openModerate(rev)"
                     >
-                      <svg v-if="rev.is_hidden" class="w-3.5 h-3.5 text-black" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                      </svg>
-                      <svg v-else class="w-3.5 h-3.5 text-black" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
-                      </svg>
+                      {{ rev.is_hidden ? 'Tampilkan' : 'Sembunyikan' }}
                     </button>
                     <button
                       type="button"
-                      class="neubrutal-btn bg-red-100 text-red-800 border border-black sm:border-2 p-1.5 rounded-[2px] shadow-neo-xs hover:bg-red-200 cursor-pointer"
-                      title="Hapus Ulasan"
+                      class="neubrutal-btn bg-red-100 text-red-700 border border-black px-2.5 py-1 font-outfit font-black text-xs shadow-neo-sm hover:bg-red-200 cursor-pointer"
                       @click="openDelete(rev)"
                     >
-                      <svg class="w-3.5 h-3.5 text-black" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-                      </svg>
+                      Hapus
                     </button>
                   </div>
                 </td>
@@ -544,13 +531,19 @@ onMounted(() => {
       @click.self="showReplyModal = false"
     >
       <div class="bg-white border-2 sm:border-3 border-black rounded-[2px] shadow-neo-lg w-full max-w-lg overflow-hidden animate-scale-up">
-        <div class="bg-neo-yellow border-b-2 sm:border-b-3 border-black p-4 flex items-center justify-between">
-          <h3 class="font-outfit font-black text-base sm:text-lg text-black">
-            Balas Ulasan Pembeli
-          </h3>
+        <div class="bg-neo-yellow border-b-2 sm:border-b-3 border-black p-3.5 sm:p-4 flex items-center justify-between gap-3 shrink-0">
+          <div>
+            <h3 class="font-outfit font-black text-sm sm:text-base text-black uppercase tracking-wide">
+              Balas Ulasan Pembeli
+            </h3>
+            <p class="font-sans text-[11px] text-black/70 mt-0.5">
+              Kirimkan tanggapan atau solusi resmi toko untuk ulasan pelanggan ini.
+            </p>
+          </div>
           <button
             type="button"
-            class="w-7 h-7 rounded-full border-2 border-black bg-white hover:bg-neutral-100 flex items-center justify-center cursor-pointer shadow-neo-xs"
+            class="w-8 h-8 shrink-0 aspect-square rounded-[2px] bg-white border-2 border-black flex items-center justify-center font-outfit font-black text-sm hover:bg-black hover:text-white transition-colors cursor-pointer"
+            aria-label="Tutup modal"
             @click="showReplyModal = false"
           >
             ✕
@@ -585,10 +578,10 @@ onMounted(() => {
           </div>
         </div>
 
-        <div class="bg-neutral-50 border-t-2 border-black p-3.5 flex items-center justify-end gap-2">
+        <div class="bg-neutral-50 border-t-2 sm:border-t-3 border-black p-3.5 sm:p-4 flex items-center justify-end gap-2.5">
           <button
             type="button"
-            class="neubrutal-btn bg-white border-2 border-black px-4 py-1.5 font-outfit font-bold text-xs shadow-neo-xs hover:bg-neutral-100 cursor-pointer"
+            class="neubrutal-btn bg-white border-2 border-black px-4 py-2 font-outfit font-bold text-xs shadow-neo-sm hover:bg-neutral-100 cursor-pointer"
             @click="showReplyModal = false"
           >
             Batal
@@ -596,7 +589,7 @@ onMounted(() => {
           <button
             type="button"
             :disabled="replying"
-            class="neubrutal-btn bg-neo-yellow text-black border-2 border-black px-4 py-1.5 font-outfit font-black text-xs shadow-neo-xs hover:bg-yellow-300 disabled:opacity-60 cursor-pointer flex items-center gap-1.5"
+            class="neubrutal-btn bg-neo-yellow text-black border-2 border-black px-5 py-2 font-outfit font-black text-xs shadow-neo-sm hover:bg-yellow-300 disabled:opacity-60 cursor-pointer flex items-center gap-1.5"
             @click="submitReply"
           >
             <span>{{ replying ? 'Menyimpan...' : 'Simpan Balasan' }}</span>
@@ -613,15 +606,21 @@ onMounted(() => {
     >
       <div class="bg-white border-2 sm:border-3 border-black rounded-[2px] shadow-neo-lg w-full max-w-md overflow-hidden animate-scale-up">
         <div
-          class="border-b-2 sm:border-b-3 border-black p-4 flex items-center justify-between"
+          class="border-b-2 sm:border-b-3 border-black p-3.5 sm:p-4 flex items-center justify-between gap-3 shrink-0"
           :class="isHiding ? 'bg-amber-300' : 'bg-emerald-300'"
         >
-          <h3 class="font-outfit font-black text-base sm:text-lg text-black">
-            {{ isHiding ? 'Sembunyikan Ulasan' : 'Tampilkan Ulasan' }}
-          </h3>
+          <div>
+            <h3 class="font-outfit font-black text-sm sm:text-base text-black uppercase tracking-wide">
+              {{ isHiding ? 'Sembunyikan Ulasan' : 'Tampilkan Ulasan' }}
+            </h3>
+            <p class="font-sans text-[11px] text-black/70 mt-0.5">
+              {{ isHiding ? 'Atur status ulasan menjadi tersembunyi dari publik.' : 'Kembalikan visibilitas ulasan agar dapat dilihat publik.' }}
+            </p>
+          </div>
           <button
             type="button"
-            class="w-7 h-7 rounded-full border-2 border-black bg-white hover:bg-neutral-100 flex items-center justify-center cursor-pointer shadow-neo-xs"
+            class="w-8 h-8 shrink-0 aspect-square rounded-[2px] bg-white border-2 border-black flex items-center justify-center font-outfit font-black text-sm hover:bg-black hover:text-white transition-colors cursor-pointer"
+            aria-label="Tutup modal"
             @click="showModerateModal = false"
           >
             ✕
@@ -651,10 +650,10 @@ onMounted(() => {
           </div>
         </div>
 
-        <div class="bg-neutral-50 border-t-2 border-black p-3.5 flex items-center justify-end gap-2">
+        <div class="bg-neutral-50 border-t-2 sm:border-t-3 border-black p-3.5 sm:p-4 flex items-center justify-end gap-2.5">
           <button
             type="button"
-            class="neubrutal-btn bg-white border-2 border-black px-4 py-1.5 font-outfit font-bold text-xs shadow-neo-xs hover:bg-neutral-100 cursor-pointer"
+            class="neubrutal-btn bg-white border-2 border-black px-4 py-2 font-outfit font-bold text-xs shadow-neo-sm hover:bg-neutral-100 cursor-pointer"
             @click="showModerateModal = false"
           >
             Batal
@@ -662,7 +661,7 @@ onMounted(() => {
           <button
             type="button"
             :disabled="moderating"
-            class="neubrutal-btn border-2 border-black px-4 py-1.5 font-outfit font-black text-xs shadow-neo-xs cursor-pointer flex items-center gap-1.5"
+            class="neubrutal-btn border-2 border-black px-5 py-2 font-outfit font-black text-xs shadow-neo-sm cursor-pointer flex items-center gap-1.5"
             :class="isHiding ? 'bg-amber-400 text-black hover:bg-amber-500' : 'bg-emerald-400 text-black hover:bg-emerald-500'"
             @click="submitModerate"
           >
@@ -678,30 +677,18 @@ onMounted(() => {
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
       @click.self="showDeleteModal = false"
     >
-      <div class="bg-white border-2 sm:border-3 border-black rounded-[2px] shadow-neo-lg w-full max-w-sm overflow-hidden animate-scale-up">
-        <div class="bg-red-400 border-b-2 sm:border-b-3 border-black p-4 flex items-center justify-between">
-          <h3 class="font-outfit font-black text-base text-black">
-            Hapus Ulasan Permanen?
-          </h3>
+      <div
+        class="bg-white border-2 sm:border-3 border-black max-w-sm w-full rounded-[2px] shadow-neo-sm overflow-hidden animate-hero-entrance p-5 space-y-4 text-center"
+      >
+        <h3 class="font-outfit font-black text-base text-black">Hapus Ulasan?</h3>
+        <p class="font-sans text-xs text-muted-foreground">
+          Ulasan dari "<strong>{{ targetReview?.user_name || 'Pembeli' }}</strong>" untuk buku "<strong>{{ targetReview?.book_title || 'Buku' }}</strong>" akan dihapus secara permanen.
+        </p>
+
+        <div class="flex items-center justify-center gap-2 pt-2">
           <button
             type="button"
-            class="w-7 h-7 rounded-full border-2 border-black bg-white hover:bg-neutral-100 flex items-center justify-center cursor-pointer shadow-neo-xs"
-            @click="showDeleteModal = false"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div class="p-4 sm:p-5 space-y-2">
-          <p class="font-sans text-xs text-neutral-800 leading-relaxed">
-            Apakah Anda yakin ingin menghapus ulasan ini secara permanen? Data yang telah dihapus tidak dapat dipulihkan kembali.
-          </p>
-        </div>
-
-        <div class="bg-neutral-50 border-t-2 border-black p-3.5 flex items-center justify-end gap-2">
-          <button
-            type="button"
-            class="neubrutal-btn bg-white border-2 border-black px-4 py-1.5 font-outfit font-bold text-xs shadow-neo-xs hover:bg-neutral-100 cursor-pointer"
+            class="neubrutal-btn bg-white border-2 border-black px-4 py-2 font-outfit font-black text-xs shadow-neo-sm hover:bg-gray-100 cursor-pointer"
             @click="showDeleteModal = false"
           >
             Batal
@@ -709,10 +696,10 @@ onMounted(() => {
           <button
             type="button"
             :disabled="deleting"
-            class="neubrutal-btn bg-red-500 text-white border-2 border-black px-4 py-1.5 font-outfit font-black text-xs shadow-neo-xs hover:bg-red-600 disabled:opacity-60 cursor-pointer flex items-center gap-1.5"
+            class="neubrutal-btn bg-red-500 text-white border-2 border-black px-4 py-2 font-outfit font-black text-xs shadow-neo-sm hover:bg-red-600 disabled:opacity-60 cursor-pointer"
             @click="submitDelete"
           >
-            <span>{{ deleting ? 'Menghapus...' : 'Ya, Hapus' }}</span>
+            {{ deleting ? 'Menghapus...' : 'Ya, Hapus Ulasan' }}
           </button>
         </div>
       </div>

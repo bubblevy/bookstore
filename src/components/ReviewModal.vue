@@ -165,23 +165,22 @@ async function handleSubmit() {
       class="bg-white border-2 sm:border-3 border-black rounded-[2px] shadow-neo-lg w-full max-w-xl my-8 overflow-hidden animate-scale-up"
     >
       <!-- Header -->
-      <div class="bg-neo-yellow border-b-2 sm:border-b-3 border-black p-4 sm:p-5 flex items-center justify-between">
+      <div class="bg-neo-yellow border-b-2 sm:border-b-3 border-black p-3.5 sm:p-4 flex items-center justify-between gap-3 shrink-0">
         <div>
-          <h3 class="font-outfit font-black text-lg sm:text-xl text-black">
+          <h3 class="font-outfit font-black text-sm sm:text-base text-black uppercase tracking-tight">
             Beri Ulasan Produk
           </h3>
-          <p class="font-mono text-xs font-bold text-black/75 mt-0.5">
+          <p class="font-mono text-[11px] font-bold text-black/75 mt-0.5">
             Invoice: #{{ invoiceNumber }}
           </p>
         </div>
         <button
           type="button"
-          class="w-8 h-8 rounded-full border-2 border-black bg-white hover:bg-neutral-100 flex items-center justify-center cursor-pointer transition-colors shadow-neo-xs"
+          class="w-8 h-8 shrink-0 aspect-square rounded-[2px] bg-white border-2 border-black flex items-center justify-center font-outfit font-black text-sm hover:bg-black hover:text-white transition-colors cursor-pointer"
+          aria-label="Tutup modal"
           @click="closeModal"
         >
-          <svg class="w-4 h-4 text-black" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          ✕
         </button>
       </div>
 
@@ -316,7 +315,7 @@ async function handleSubmit() {
           class="neubrutal-btn bg-white border-2 border-black px-4 py-2 font-outfit font-bold text-xs shadow-neo-sm hover:bg-neutral-100 cursor-pointer"
           @click="closeModal"
         >
-          Tutup
+          Batal
         </button>
         <button
           v-if="eligibility && eligibility.is_eligible"
